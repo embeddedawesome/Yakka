@@ -1,0 +1,5 @@
+name: Inja
+
+includes:
+  global:
+    - src

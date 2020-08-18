@@ -1,0 +1,25 @@
+name: BOB
+
+sources:
+  - bob.cpp
+  - bob_project.cpp
+  - bob_component.cpp
+  - component_database.cpp
+
+supports:
+  windows:
+    sources: windows.cpp
+  macos:
+    sources: posix.cpp
+  linux:
+    sources: posix.cpp
+
+requires:
+  components:
+    - yaml-cpp
+    - cpp-subprocess
+    - inja
+    - json
+    - CTPL
+    - semver
+

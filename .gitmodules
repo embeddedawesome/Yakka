@@ -1,0 +1,25 @@
+[submodule "tools/mbob"]
+	path = tools/mbob
+	url = git@github.com:embeddedawesome/mBOB.git
+	branch = master
+[submodule "components/semver/master"]
+	path = components/semver/master
+	url = git@github.com:embeddedawesome/semver.git
+[submodule "components/CTPL/master"]
+	path = components/CTPL/master
+	url = git@github.com:embeddedawesome/CTPL.git
+[submodule "components/boost/master"]
+	path = components/boost/master
+	url = https://github.com/boostorg/boost.git
+[submodule "components/inja/master"]
+	path = components/inja/master
+	url = git@github.com:embeddedawesome/inja.git
+[submodule "components/yaml-cpp/master"]
+	path = components/yaml-cpp/master
+	url = git@github.com:embeddedawesome/yaml-cpp.git
+[submodule "components/cpp-subprocess/master"]
+	path = components/cpp-subprocess/master
+	url = https://github.com/arun11299/cpp-subprocess.git
+[submodule "components/json/master"]
+	path = components/json/master
+	url = git@github.com:embeddedawesome/json.git

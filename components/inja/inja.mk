@@ -1,0 +1,3 @@
+NAME := Inja
+
+$(NAME)_GLOBAL_INCLUDES := src
