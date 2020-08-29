@@ -7,6 +7,7 @@ $(NAME)_SOURCES := master/src/binary.cpp \
                    master/src/contrib/graphbuilder.cpp \
                    master/src/contrib/graphbuilderadapter.cpp \
                    master/src/convert.cpp \
+                   master/src/depthguard.cpp \
                    master/src/directives.cpp \
                    master/src/emit.cpp \
                    master/src/emitfromevents.cpp \

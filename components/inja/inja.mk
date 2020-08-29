@@ -1,3 +1,3 @@
 NAME := Inja
 
-$(NAME)_GLOBAL_INCLUDES := src
+$(NAME)_GLOBAL_INCLUDES := master/single_include/inja
