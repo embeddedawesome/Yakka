@@ -3,7 +3,8 @@ NAME := BOB
 $(NAME)_SOURCES := bob.cpp \
                    bob_project.cpp \
                    bob_component.cpp \
-                   component_database.cpp
+                   component_database.cpp \
+                   uc_component.cpp
 
 $(NAME)_SUPPORTED_FEATURES := windows \
                               osx

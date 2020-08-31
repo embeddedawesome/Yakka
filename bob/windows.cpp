@@ -8,14 +8,16 @@
 
 namespace bob {
 
-std::string exec( std::string command_text, const std::string& arg_text )
+std::string exec( const std::string_view command_text, const std::string_view& arg_text )
 {
     std::array<char, 128> buffer;
     std::string result;
-    std::replace(command_text.begin(), command_text.end(), '/', '\\');
-    command_text.append(" " + arg_text);
-    std::clog << "exec: " << command_text << "\n";
-    std::shared_ptr<FILE> pipe( _popen( command_text.c_str(), "rt" ), _pclose );
+    std::string full_command { command_text };
+    std::replace(full_command.begin(), full_command.end(), '/', '\\');
+    full_command.append(" ");
+    full_command.append(arg_text);
+    std::clog << "exec: " << full_command << "\n";
+    std::shared_ptr<FILE> pipe( _popen( full_command.c_str(), "rt" ), _pclose );
     if ( !pipe )
         throw std::runtime_error( "_popen() failed!" );
     while ( !feof( pipe.get( ) ) )

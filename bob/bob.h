@@ -12,5 +12,5 @@ namespace bob {
         return dotname.find_last_of(".") != std::string::npos ? dotname.substr(dotname.find_last_of(".")+1) : dotname;
     }
 
-    std::string exec( std::string command_text, const std::string& arg_text );
+    std::string exec( const std::string_view command_text, const std::string_view& arg_text );
 }

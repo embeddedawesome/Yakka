@@ -2,25 +2,15 @@
 
 namespace bob
 {
-
-    component::component( )
+    component::component( fs::path file_path )
     {
+        parse_file(file_path);
     }
 
-    component::~component( )
+    void component::parse_file( fs::path file_path )
     {
-    }
-
-
-    component::component( fs::path path )
-    {
-        parse_file(path);
-    }
-
-    void component::parse_file( fs::path path )
-    {
-        this->path = path;
-        std::string path_string = path.generic_string();
+        this->file_path = file_path;
+        std::string path_string = file_path.generic_string();
         std::clog << "Parsing '" << path_string << "'\n";
 
         try
@@ -34,48 +24,28 @@ namespace bob
         }
 
         // Add known information
-        this->id = path.stem().string();
+        this->id = file_path.stem().string();
         yaml["bob_file"] = path_string;
-        path_string = path.parent_path().generic_string();
+        path_string = file_path.parent_path().generic_string();
         yaml["directory"] = path_string;
         std::replace(path_string.begin(), path_string.end(), '/', '.');
         path_string = path_string.substr(path_string.find_first_not_of('.'));
         yaml["dot_name"] = path_string;
 
-        if (yaml["requires"].IsDefined())
+        // Ensure certain nodes are sequences
+        if (yaml["requires"]["components"].IsScalar())
         {
-        	if (!yaml["requires"].IsMap())
-        		for (const auto& i: yaml["requires"])
-        			if (i.IsScalar())
-        			{
-        				// Assume it's a component
-        				yaml["requires"]["components"] = YAML::Node();
-        				yaml["requires"]["components"].push_back(i.Scalar());
-        			}
-        			else if (i.IsSequence())
-        			{
-        				// Assume each item is a sequence
-        				yaml["requires"]["components"] = YAML::Node();
-        				for (const auto& a: i)
-        					yaml["requires"]["components"].push_back(a.Scalar());
-        			}
-
-        	// Ensure certain nodes are sequences
-        	if (yaml["requires"]["components"].IsScalar())
-        	{
-        		std::string value = yaml["requires"]["components"].Scalar();
-        		yaml["requires"]["components"] = YAML::Node();
-        		yaml["requires"]["components"].push_back(value);
-        	}
-
-        	if (yaml["requires"]["features"].IsScalar())
-        	{
-        		std::string value = yaml["requires"]["features"].Scalar();
-        		yaml["requires"]["features"] = YAML::Node();
-        		yaml["requires"]["features"].push_back(value);
-        	}
+            std::string value = yaml["requires"]["components"].Scalar();
+            yaml["requires"]["components"] = YAML::Node();
+            yaml["requires"]["components"].push_back(value);
         }
 
+        if (yaml["requires"]["features"].IsScalar())
+        {
+            std::string value = yaml["requires"]["features"].Scalar();
+            yaml["requires"]["features"] = YAML::Node();
+            yaml["requires"]["features"].push_back(value);
+        }
 
         // Fix relative component addressing
         for( auto n: yaml["requires"]["components"])

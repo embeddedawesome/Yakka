@@ -1,4 +1,5 @@
 #include "component_database.h"
+#include "bob_component.h"
 #include <iostream>
 #include <fstream>
 
@@ -44,6 +45,7 @@ namespace bob
     void component_database::save()
     {
         std::ofstream database_file( bob_component_database_filename );
+        (*this)["provides"]["features"] = slcc::slcc_database["features"];
         database_file << static_cast<YAML::Node&>(*this);
         database_file.close();
         database_is_dirty = false;
@@ -57,10 +59,14 @@ namespace bob
             {
                 const auto component_id   = p.path().filename().generic_string();
                 const auto component_path = p.path().generic_string() + "/" + component_id + ".yaml";
-                if (fs::exists(component_path))
-                {
-                    (*this)[component_id].push_back( component_path );
-                }
+                if ( fs::exists( component_path ) )
+                    ( *this )[component_id].push_back( component_path );
+            }
+            else if (p.path().filename().extension() == ".slcc")
+            {
+                slcc uc(p.path());
+                uc.convert_to_bob();
+                (*this)[uc.yaml["id"].as<std::string>()].push_back( p.path().generic_string() );
             }
     }
 

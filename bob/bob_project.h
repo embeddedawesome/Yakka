@@ -4,15 +4,15 @@
 #include "bob.h"
 #include "bob_component.h"
 #include "component_database.h"
-#include "json.hpp"
+#include "nlohmann/json.hpp"
 #include "inja.hpp"
+#include "ctpl.h"
 #include <filesystem>
 #include <regex>
 #include <map>
 #include <optional>
 
 namespace fs = std::filesystem;
-//namespace fs = std::experimental::filesystem;
 
 namespace bob
 {
@@ -46,20 +46,27 @@ namespace bob
         void save_summary();
         void load_component_registries();
         std::optional<YAML::Node> find_registry_component(const std::string& name);
-        std::optional<fs::path> fetch_component(const std::string& name);
         bool fetch_component(YAML::Node& node);
+        std::future<void> fetch_component(const std::string& name);
 
+        // Basic project data
         std::string project_name;
         std::string bob_home_directory;
+
+        // Component processing
         std::set<std::string> required_components;
         std::set<std::string> required_features;
         std::set<std::string> commands;
+
         YAML::Node  project_summary;
         std::string project_directory;
         std::vector<std::shared_ptr<bob::component>> components;
         bob::component_database component_database;
+
         nlohmann::json project_summary_json;
         nlohmann::json configuration_json;
+
+        // Blueprint evaluation
         inja::Environment inja_environment;
         std::multimap<std::string, std::shared_ptr< construction_task > > construction_list;
         std::vector<std::string> todo_list;
@@ -68,6 +75,9 @@ namespace bob
 
         std::vector< std::pair<std::string, YAML::Node> > blueprint_list;
         std::map< std::string, blueprint_command> blueprint_commands;
+
+        // Local thread execution pool
+        ctpl::thread_pool thread_pool;
 
     private:
         void process_aggregate( YAML::Node& aggregate );

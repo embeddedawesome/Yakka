@@ -4,8 +4,11 @@
 
 namespace bob
 {
+    using namespace std::chrono_literals;
 
-    project::project( ) : project_directory("."), bob_home_directory("/.bob")
+    #define THREAD_POOL_SIZE   8
+
+    project::project( ) : project_directory("."), bob_home_directory("/.bob"), thread_pool(THREAD_POOL_SIZE)
     {
         load_config_file("config.yaml");
         configuration_json["host_os"] = host_os_string;
@@ -16,7 +19,7 @@ namespace bob
     }
 
 
-    project::project(  std::vector<std::string>& project_string ) : project_directory("."), bob_home_directory("/.bob")
+    project::project(  std::vector<std::string>& project_string ) : project_directory("."), bob_home_directory("/.bob"), thread_pool(THREAD_POOL_SIZE)
     {
         load_config_file("config.yaml");
         configuration_json["host_os"] = host_os_string;
@@ -87,6 +90,7 @@ namespace bob
         feature_list_t unprocessed_features;
         feature_list_t new_features;
         component_list_t missing_components;
+        std::vector<std::pair<std::string, std::future<void>>> component_git_list;
 
         // Start processing all the required components and features
         unprocessed_components.swap(required_components);
@@ -101,20 +105,20 @@ namespace bob
                 if ( required_components.find( c ) != required_components.end() )
                     continue;
 
-                auto component_path = find_component( c );
-                if (!component_path)
-                {
-                    std::cerr << "Couldn't find: " << c << std::endl;
-                    missing_components.insert(c);
-                    continue;
-                }
-
-                auto new_component = std::make_shared<bob::component>( component_path.value() );
-                
-                components.push_back( new_component );
-                required_components.insert( c );
                 try
                 {
+                    // Find the component, if it doesn't exist check the known registries
+                    auto component_path = find_component(c);
+                    if ( !component_path )
+                    {
+                        component_git_list.push_back( {c, fetch_component(c)});
+                        continue;
+                    }
+
+                auto new_component = std::make_shared<bob::component>( component_path.value() );
+                    components.push_back( new_component );
+                    required_components.insert( c );
+
                     for (const auto& r : new_component->yaml["requires"]["components"])
                         new_components.insert(r.Scalar());
 
@@ -126,7 +130,7 @@ namespace bob
                 }
                 catch ( ... )
                 {
-                    std::cerr << "Failed to parse: " << c << std::endl;
+                    missing_components.insert(c);
                 }
             }
 
@@ -155,7 +159,25 @@ namespace bob
             new_components.clear();
             new_features.clear();
             missing_components.clear();
-        } while ( !unprocessed_components.empty( ) || !unprocessed_features.empty( ) );
+
+            // Check if component fetching is complete
+            for ( auto a = component_git_list.begin( ); a != component_git_list.end( ); )
+            {
+                if (!a->second.valid())
+                {
+                    std::cerr << "Failed to start thread for " << a->first << std::endl;
+                    a = component_git_list.erase( a );
+                }
+                else if ( a->second.wait_for( 1ms ) == std::future_status::ready )
+                {
+                    unprocessed_components.insert( a->first );
+                    a = component_git_list.erase( a );
+                }
+                else
+                    ++a;
+            }
+
+        } while ( !unprocessed_components.empty( ) || !unprocessed_features.empty( ) || !component_git_list.empty());
 
         if ( missing_components.size( ) != 0 )
         {
@@ -208,22 +230,20 @@ namespace bob
 
         // Check if that component is in the database
         if (!c)
-        {
-            auto component_path = fetch_component(component_id);
-            if (!component_path)
-                return {};
-            component_database.insert(component_id, component_path.value());
-        }
+            return {};
 
-        if (c.IsScalar()) return c.Scalar();
+        if (c.IsScalar() && fs::exists(c.Scalar()))
+            return c.Scalar();
         if (c.IsSequence())
         {
-            if (c.size() == 1)
-                return c[0].Scalar();
-
-            std::cerr << "TODO: Parse multiple matches to the same component ID: " << component_id << std::endl;
+            if ( c.size( ) == 1 )
+            {
+                if ( fs::exists( c[0].Scalar( ) ) )
+                    return c[0].Scalar( );
+            }
+            else
+                std::cerr << "TODO: Parse multiple matches to the same component ID: " << component_id << std::endl;
         }
-
         return {};
     }
 
@@ -407,19 +427,19 @@ namespace bob
                 int arg_count = 0;
                 for ( auto& regex_match : s )
                 {
-                    match->regex_matches["$" + std::to_string( arg_count )] = regex_match.str( );
+                    match->regex_matches[arg_count] = regex_match.str( );
                     ++arg_count;
                 }
             }
             else
             {
-                match->regex_matches["$0"] = target;
+                match->regex_matches[0] = target;
             }
 
             inja::Environment local_inja_env;
-            local_inja_env.add_custom_regex("regex_args", inja::Regex{"\\s*(\\$\\d+)\\s*"}, [&match](const inja::Parsed::Arguments& args, const nlohmann::json& data) {
-                    return match->regex_matches[ args[0].command ];
-                });
+            local_inja_env.add_callback("$", 1, [&match](const inja::Arguments& args) {
+                        return match->regex_matches[ args[0]->get<int>() ];
+                    });
             // Set the regex matches
 //            for (nlohmann::json::iterator i = item->blueprint->regex_matches.begin(); i != item->blueprint->regex_matches.end(); ++i)
 //                project_summary_json[i.key()] = i.value();
@@ -566,8 +586,8 @@ namespace bob
                 }
                 else
                 {
-                    std::string temp = (command["template"]) ? command["template"].Scalar() : command["inja"].Scalar();
-                    captured_output = inja_env.render(temp, generated_json);
+                    const auto& node = (command["template"]) ? command["template"] : command["inja"];
+                    captured_output = inja_env.render(node.Scalar(), generated_json);
                 }
             }
             catch (std::exception &e)
@@ -649,12 +669,11 @@ namespace bob
         inja::Environment inja_env = inja::Environment();
         auto& blueprint = task->blueprint;
 
-        // Add custom regex to support $0, $1, etc which refer to matching entries found for a blueprint rule
-        inja_env.add_custom_regex("regex_args", inja::Regex{"\\s*(\\$\\d+)\\s*"}, [&blueprint](const inja::Parsed::Arguments& args, const nlohmann::json&) {
-            return blueprint->regex_matches[ args[0].command ];
+        inja_env.add_callback("$", 1, [&blueprint](const inja::Arguments& args) {
+            return blueprint->regex_matches[ args[0]->get<int>() ];
         });
 
-        inja_env.add_callback("curdir", 0, [&blueprint](const inja::Parsed::Arguments& args, const nlohmann::json&) { return blueprint->blueprint["bob_parent_path"].Scalar();});
+        inja_env.add_callback("curdir", 0, [&blueprint](const inja::Arguments& args) { return blueprint->blueprint["bob_parent_path"].Scalar();});
 
 
         if ( !blueprint->blueprint["process"].IsSequence())
@@ -791,7 +810,6 @@ namespace bob
 
     void project::process_construction()
     {
-        using namespace std::chrono_literals;
         typedef enum
         {
             nothing_to_do,
@@ -805,9 +823,6 @@ namespace bob
 
         if ( todo_list.size( ) == 0 )
             return;
-
-        #define THREAD_POOL_SIZE   8
-        ctpl::thread_pool thread_pool( THREAD_POOL_SIZE );
 
         std::vector<std::shared_ptr<construction_task>> running_tasks;
 
@@ -935,20 +950,17 @@ namespace bob
             i++;
         }
 
-        // Stop the thread pool
-        //thread_pool.stop(true);
+        for (auto& a: todo_list )
+        {
+            std::cout << "Couldn't build: " << a << std::endl;
+            for (auto entries = this->construction_list.equal_range(a); entries.first != entries.second; ++entries.first)
+                for (auto b: entries.first->second->blueprint->dependencies)
+                    std::cout << "\t" << b << std::endl;
+        }
 
-//        for (const auto a: todo_list )
-//        {
-//            std::cout << "Couldn't build: " << a << std::endl;
-//            for (auto entries = this->construction_list.equal_range(a); entries.first != entries.second; ++entries.first)
-//                for (auto b: entries.first->second->blueprint->dependencies)
-//                    std::cout << "\t" << b << std::endl;
-//        }
-//
-//        for (const auto a: construction_list)
-//            if (a.second->state == bob_task_to_be_done )
-//                std::clog << a.first << std::endl;
+        for (auto a: construction_list)
+            if (a.second->state == bob_task_to_be_done )
+                std::clog << a.first << std::endl;
     }
 
     void project::load_config_file(const std::string config_filename)
@@ -990,11 +1002,11 @@ namespace bob
 
     void project::load_component_registries()
     {
-    	// Verify the directory exists before attempting to iterate through it
+        // Verify the .bob/registries path exists
     	if (!fs::exists(this->project_directory + "/.bob/registries"))
-    	    return;
-
-        for ( const auto p : fs::recursive_directory_iterator( this->project_directory + "/.bob/registries") )
+            return;
+        
+        for ( const auto& p : fs::recursive_directory_iterator( this->project_directory + "/.bob/registries") )
             if ( p.path().extension().generic_string() == ".yaml" )
                 try
                 {
@@ -1015,10 +1027,11 @@ namespace bob
         return {};
     }
 
-    std::optional<fs::path> project::fetch_component(const std::string& name)
+    std::future<void> project::fetch_component(const std::string& name)
     {
         try
         {
+            const std::string git_path = project_summary["tools"]["git"].Scalar( );
             const auto result = find_registry_component(name);
             if (!result)
             {
@@ -1035,30 +1048,33 @@ namespace bob
             // Check if the repo already exists
             if (fs::exists(bob_home_directory + "/repos/" + name))
             {
-
                 // Defer an update
 //                std::clog << exec( project_summary["tools"]["git"].Scalar(), "-C " + bob_home_directory + "/repos/" + name + " pull" );
             }
             else
             {
                 // Fetch it
-                std::clog << exec( project_summary["tools"]["git"].Scalar(), "-C " + bob_home_directory + "/repos/ clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout" );
+                const std::string fetch_string = "-C " + bob_home_directory + "/repos/ clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
+                return thread_pool.push( [git_path, fetch_string](int) {
+                    exec(git_path, fetch_string);
+                });
             }
 
             if (!fs::exists("components/" + name))
                 fs::create_directories("components/" + name);
-
-            // Check it out
-            std::cout << "Creating local instance of '" << name << "'" << std::endl;
-            std::clog << exec( project_summary["tools"]["git"].Scalar(), "--git-dir " + bob_home_directory + "/repos/" + name + "/.git --work-tree components/" + name + " checkout " + branch + " --force");
-            std::clog << exec( project_summary["tools"]["git"].Scalar(), "--git-dir " + bob_home_directory + "/repos/" + name + "/.git --work-tree components/" + name + " lfs checkout" );
+            const std::string checkout_string     = "--git-dir " + bob_home_directory + "/repos/" + name + "/.git --work-tree components/" + name + " checkout " + branch + " --force";
+            const std::string lfs_checkout_string = "--git-dir " + bob_home_directory + "/repos/" + name + "/.git --work-tree components/" + name + " lfs checkout";
+            return thread_pool.push( [git_path, checkout_string, lfs_checkout_string]( int ) {
+                // Check it out
+//                std::cout << "Creating local instance of '" << name << "'" << std::endl;
+                exec( git_path, checkout_string);
+                exec( git_path, lfs_checkout_string);
+            } );
 
             // Return the path to the new component
-            const std::string component_file = "components/" + name+ "/" + name + ".yaml";
-            if (fs::exists(component_file))
-               return component_file;
-            else
-                std::cerr << "Component does not contain bob descriptor" << std::endl;
+//            const std::string component_file = "components/" + name+ "/" + name + ".yaml";
+//            if (!fs::exists(component_file))
+//                std::cerr << "Component does not contain bob descriptor" << std::endl;
 
         }
         catch(...)

@@ -3,11 +3,7 @@
 #include "yaml-cpp/yaml.h"
 #include <filesystem>
 
-#ifdef EXPERIMENTAL_FILESYSTEM
-namespace fs = std::experimental::filesystem;
-#else
 namespace fs = std::filesystem;
-#endif
 
 namespace bob
 {

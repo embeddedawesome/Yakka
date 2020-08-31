@@ -55,4 +55,6 @@ int main(int argc, char **argv)
 //    std::cout << "Need to build: " << std::endl;
 //    for (const auto& c: project.construction_list)
 //        std::cout << c.first << std::endl;
+
+    return 0;
 }
