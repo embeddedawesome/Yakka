@@ -67,7 +67,7 @@ namespace bob
         // Process 'provides'
         {
             YAML::Node provides;
-            for ( auto& p : yaml["provides"] )
+            for (const auto& p : yaml["provides"] )
             {
                 provides["features"].push_back( p["name"] );
             }
@@ -77,7 +77,7 @@ namespace bob
         // Process 'requires'
         {
             YAML::Node requires;
-            for ( auto& p : yaml["requires"] )
+            for ( const auto& p : yaml["requires"] )
             {
                 requires["features"].push_back( p["name"] );
             }
@@ -87,7 +87,7 @@ namespace bob
         // Process 'source'
         {
             YAML::Node sources;
-            for ( auto& p : yaml["source"] )
+            for ( const auto& p : yaml["source"] )
                 sources.push_back(p["path"]);
             yaml["sources"] = sources;
             yaml.remove("source");
@@ -96,7 +96,7 @@ namespace bob
         // Process 'include'
         {
             YAML::Node includes;
-            for ( auto& p : yaml["include"] )
+            for ( const auto& p : yaml["include"] )
             {
                 if (p["condition"])
                     for (auto& c: p["condition"])

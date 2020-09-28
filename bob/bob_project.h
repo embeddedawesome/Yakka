@@ -21,7 +21,7 @@ namespace bob
     const std::string default_output_directory    = "output/";
     const std::string host_os_string              = "windows";
 
-    typedef std::function<std::string(std::string, YAML::Node&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
+    typedef std::function<std::string(std::string, const YAML::Node&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
 
     class project
     {

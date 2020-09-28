@@ -519,7 +519,7 @@ namespace bob
 
     void project::load_common_commands()
     {
-        blueprint_commands["echo"] = []( std::string target, YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
+        blueprint_commands["echo"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
             if (!command.begin()->second.IsNull())
                 captured_output = inja_env.render(command.begin()->second.as<std::string>(), generated_json);
 
@@ -528,7 +528,7 @@ namespace bob
         };
 
 
-        blueprint_commands["execute"] = []( std::string target, YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
+        blueprint_commands["execute"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
             if (command.begin()->second.IsNull())
                 return "";
 
@@ -544,13 +544,13 @@ namespace bob
             return captured_output;
         };
 
-        blueprint_commands["fix_slashes"] = []( std::string target, YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
+        blueprint_commands["fix_slashes"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
             std::replace(captured_output.begin(), captured_output.end(), '\\', '/');
             return captured_output;
         };
 
 
-        blueprint_commands["regex"] = []( std::string target, YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
+        blueprint_commands["regex"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
             std::regex regex_search(command["search"].as<std::string>());
             if (command["split"])
             {
@@ -573,7 +573,7 @@ namespace bob
         };
 
 
-        blueprint_commands["inja"] = []( std::string target, YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
+        blueprint_commands["inja"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
             try
             {
                 if (command["file"])
@@ -598,7 +598,7 @@ namespace bob
             return captured_output;
         };
 
-        blueprint_commands["save"] = []( std::string target, YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
+        blueprint_commands["save"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
             std::string save_filename;
 
             if (command.begin()->second.IsNull())
@@ -623,7 +623,7 @@ namespace bob
             return captured_output;
         };
 
-        blueprint_commands["create_directory"] = [ ]( std::string target, YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
+        blueprint_commands["create_directory"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
             if (!command.begin()->second.IsNull())
             {
                 std::string filename = "";
@@ -645,7 +645,7 @@ namespace bob
             return "";
         };
 
-        blueprint_commands["verify"] = [ ]( std::string target, YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
+        blueprint_commands["verify"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
             std::string filename = command.begin()->second.as<std::string>( );
             filename = inja_env.render(filename, generated_json);
             if (fs::exists(filename))
@@ -655,7 +655,7 @@ namespace bob
             return captured_output;
         };
 
-        blueprint_commands["rm"] = [ ]( std::string target, YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
+        blueprint_commands["rm"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
             std::string filename = command.begin()->second.as<std::string>( );
             filename = inja_env.render(filename, generated_json);
             fs::remove(filename);
@@ -685,7 +685,7 @@ namespace bob
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 
         // Note: A blueprint process is a sequence of maps
-        for ( auto command_entry : blueprint->blueprint["process"] )
+        for ( const auto command_entry : blueprint->blueprint["process"] )
         {
             // Take the first entry in the map as the command
             auto        command      = command_entry.begin();
