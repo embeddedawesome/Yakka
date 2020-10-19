@@ -33,7 +33,9 @@ int main(int argc, char **argv)
     for (auto f: project.required_features)
         std::clog << "- " << f << std::endl;
 
-    project.process_aggregates();
+    // project.process_aggregates();
+
+    project.save_summary();
 
     t1 = std::chrono::high_resolution_clock::now();
     project.parse_blueprints();
@@ -43,8 +45,6 @@ int main(int argc, char **argv)
     t2 = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
     std::clog << duration << " milliseconds to process blueprints\n";
-
-    project.save_summary();
 
     project.load_common_commands();
 

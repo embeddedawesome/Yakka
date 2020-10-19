@@ -2,4 +2,4 @@ name: Inja
 
 includes:
   global:
-    - src
+    - master/include/inja

@@ -7,10 +7,12 @@ $(NAME)_SOURCES := bob.cpp \
                    uc_component.cpp
 
 $(NAME)_SUPPORTED_FEATURES := windows \
-                              osx
+                              osx \
+                              linux64
 
 $(NAME)_windows_SOURCES := windows.cpp
 $(NAME)_osx_SOURCES   := posix.cpp
+$(NAME)_linux64_SOURCES   := posix.cpp
 
 $(NAME)_REQUIRED_COMPONENTS := yaml-cpp \
                                cpp-subprocess \

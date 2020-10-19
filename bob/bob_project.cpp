@@ -6,7 +6,7 @@ namespace bob
 {
     using namespace std::chrono_literals;
 
-    #define THREAD_POOL_SIZE   8
+    #define THREAD_POOL_SIZE   std::thread::hardware_concurrency()
 
     project::project( ) : project_directory("."), bob_home_directory("/.bob"), thread_pool(THREAD_POOL_SIZE)
     {
@@ -213,9 +213,15 @@ namespace bob
 
         // Process all the supported features by merging their content with the parent component
         for ( auto c : project_summary["components"] )
-            for ( auto f : this->required_features )
-                if ( c.second["supports"].IsDefined() && c.second["supports"][f].IsDefined() )
-                    yaml_node_merge( c.second, c.second["supports"][f] );
+        	if (c.second["supports"].IsDefined())
+				for ( auto f : this->required_features )
+					if ( c.second["supports"][f].IsDefined() )
+						yaml_node_merge( c.second, c.second["supports"][f] );
+
+
+        project_summary["features"] = {};
+        for (const auto& i: this->required_features)
+        	project_summary["features"].push_back(i);
 
         project_summary_json = project_summary.as<nlohmann::json>();
         project_summary_json["aggregate"] = nlohmann::json::object();
@@ -998,6 +1004,9 @@ namespace bob
         std::ofstream summary_file( project_summary["project_output"].Scalar() + "/bob_summary.yaml" );
         summary_file << project_summary;
         summary_file.close();
+        std::ofstream json_file( project_summary["project_output"].Scalar() + "/bob_summary.json" );
+		json_file << project_summary_json.dump(3);
+		json_file.close();
     }
 
     void project::load_component_registries()

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <array>
+#include <algorithm>
 
 namespace bob {
 

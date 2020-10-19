@@ -1,4 +1,4 @@
-ifeq ($(filter windows osx,$(HOST_OS)),)
+ifeq ($(filter windows osx linux64,$(HOST_OS)),)
 $(error $(HOST_OS) not supported)
 endif
 
@@ -14,9 +14,7 @@ ifeq (windows,$(HOST_OS))
 TOOLCHAIN_LOCATION := ../apps/llvm9/bin/
 #$(CURDIR)/$(HOST_OS)
 else
-ifeq (osx,$(HOST_OS))
 TOOLCHAIN_LOCATION :=
-endif
 endif
 
 
@@ -35,11 +33,9 @@ OBJCOPY   := "$(TOOLCHAIN_LOCATION)objcopy$(HOST_EXECUTABLE_SUFFIX)"
 OBJDUMP   := "$(TOOLCHAIN_LOCATION)llvm-objdump$(HOST_EXECUTABLE_SUFFIX)"
 STRIP_ELF := "$(TOOLCHAIN_LOCATION)strip$(HOST_EXECUTABLE_SUFFIX)"
 ifeq (windows,$(HOST_OS))
-LINKER    := "$(TOOLCHAIN_LOCATION)lld-link$(HOST_EXECUTABLE_SUFFIX)"
-else
-ifeq (osx,$(HOST_OS))
 LINKER    := "$(TOOLCHAIN_LOCATION)clang++$(HOST_EXECUTABLE_SUFFIX)"
-endif
+else
+LINKER    := "$(TOOLCHAIN_LOCATION)clang++$(HOST_EXECUTABLE_SUFFIX)"
 endif
 #LINKER    := $(cpp_COMPILER) -fms-compatibility-version=19.00 -v -Xlinker /SUBSYSTEM:CONSOLE -Xlinker /machine:X64 
 
@@ -61,16 +57,13 @@ TOOLCHAIN_COMPILE_OUTPUT_FLAG        :=-o
 TOOLCHAIN_LINKER_PATH_INDICATOR      :=-L 
 TOOLCHAIN_OBJECTS_ONLY               := true
 
-
 # Rule to create the elf file
 $(BOB_OUTPUT_BINARY_DIRECTORY)/$(BOB_PROJECT)$(HOST_EXECUTABLE_SUFFIX): $(BOB_OUTPUT_DIRECTORY)/build_summary.mk $(BOB_GLOBAL_LINKER_SCRIPT) | $(BOB_OUTPUT_BINARY_DIRECTORY)
 	$(ECHO) Making executable file
 ifeq (windows,$(HOST_OS))
 	$(LINKER) -PDB:"$(BOB_OUTPUT_BINARY_DIRECTORY)/$(BOB_PROJECT).pdb" $(BOB_GENERATED_OBJECTS) $(foreach c,$(BOB_COMPONENT_NAMES),$(addprefix $($(c)_DIRECTORY),$($(c)_LIBRARIES))) $(BOB_GLOBAL_LDFLAGS) -OUT:$@
 else
-ifeq (osx,$(HOST_OS))
-	$(LINKER) -o $@ $(BOB_GENERATED_OBJECTS)
-endif
+	$(LINKER) $(BOB_GLOBAL_LDFLAGS) -o $@ $(BOB_GENERATED_OBJECTS)
 endif
 	
 $(BOB_OUTPUT_BINARY_DIRECTORY)/$(BOB_PROJECT).fuzz: 

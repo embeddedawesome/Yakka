@@ -1,3 +1,3 @@
 NAME := cpp_subprocess
 
-$(NAME)_GLOBAL_INCLUDES := .
+$(NAME)_GLOBAL_INCLUDES := master

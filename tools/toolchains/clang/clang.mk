@@ -1,13 +1,20 @@
 NAME := Clang_toolchain
 
-ifeq ($(filter windows osx,$(HOST_OS)),)
+ifeq ($(filter windows osx linux64,$(HOST_OS)),)
 $(error $(HOST_OS) not supported)
+else
+$(NAME)_PROVIDED_FEATURES += $(HOST_OS)
 endif
 
 $(NAME)_SUPPORTED_FEATURES := BOB_TOOLCHAIN
                               
-$(NAME)_PROVIDED_FEATURES := clang_compiler
+$(NAME)_PROVIDED_FEATURES += clang_compiler
 
+debug_OPTIMIZATION_FLAG   := -Og
+release_OPTIMIZATION_FLAG := -O3
+COMMON_LINKER_FLAGS  := $($(BUILD_TYPE)_OPTIMIZATION_FLAG)
+debug_LINKER_FLAGS   := $(COMMON_LINKER_FLAGS) 
+release_LINKER_FLAGS := $(COMMON_LINKER_FLAGS) 
 
 $(NAME)_GLOBAL_CFLAGS   := $$($(BUILD_TYPE)_OPTIMIZATION_FLAG) 
 $(NAME)_GLOBAL_CPPFLAGS := $$($(BUILD_TYPE)_OPTIMIZATION_FLAG) -std=c++17
@@ -15,7 +22,7 @@ $(NAME)_GLOBAL_LDFLAGS  := $$($(BUILD_TYPE)_OPTIMIZATION_FLAG)
 
 
 ifeq (windows,$(HOST_OS))
-$(NAME)_PROVIDED_FEATURES += windows
+#$(NAME)_PROVIDED_FEATURES += windows
 include $(CURDIR)/../msvc/msvc_toolchain_locations.mk
 
 #$(NAME)_GLOBAL_DEFINES += _HAVE_STDC
@@ -26,8 +33,7 @@ $(NAME)_GLOBAL_INCLUDES := .
 
 $(NAME)_GLOBAL_LDFLAGS  := $(DEBUG_LINK_FLAGS)
 $(NAME)_GLOBAL_LDFLAGS  += $(subst \ , ,-LIBPATH:"$(WINDOWS_SDK_DIR)/Lib/$(WINDOWS_SDK_VERSION)/um/x64" -LIBPATH:"$(VISUAL_STUDIO_TOOLS)/lib/onecore/x64" -LIBPATH:"$(WINDOWS_SDK_DIR)/Lib/$(WINDOWS_SDK_VERSION)/ucrt/x64")
-
-else
+endif 
 ifeq (osx,$(HOST_OS))
 
 #$(NAME)_GLOBAL_INCLUDES += osx \
@@ -35,6 +41,8 @@ ifeq (osx,$(HOST_OS))
                            osx/include/c++/v1 \
                            osx/lib/clang/6.0.0/include
 endif
+ifeq (linux64,$(HOST_OS))
+$(NAME)_GLOBAL_LDFLAGS += -lpthread
 endif
 
 

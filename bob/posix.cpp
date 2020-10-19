@@ -7,7 +7,7 @@
 
 namespace bob {
 
-std::string exec( std::string command_text, const std::string& arg_text )
+std::string exec( const std::string_view command_text, const std::string_view& arg_text )
 {
 //    std::initializer_list<const char *> args { arg_text.c_str()};
     try

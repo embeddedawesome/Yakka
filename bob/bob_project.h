@@ -35,7 +35,7 @@ namespace bob
         YAML::Node get_project_summary();
         void parse_project_string( std::vector<std::string>& project_string );
         void evaluate_dependencies();
-        std::optional<fs::path> project::find_component(const std::string component_dotname);
+        std::optional<fs::path> find_component(const std::string component_dotname);
         void parse_blueprints();
         void process_aggregates();
         std::vector<std::unique_ptr<blueprint_match>> find_blueprint_match( const std::string target );
