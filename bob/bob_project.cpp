@@ -53,6 +53,7 @@ namespace bob
                 s.pop_back( );
                 if (s == refresh_database_command)
                 {
+                    component_database.reset();
                     component_database.scan_for_components(project_directory);
                     component_database.save();
                 }
@@ -134,8 +135,8 @@ namespace bob
                 }
             }
 
-            if (missing_components.size() != 0)
-                component_database.scan_for_components(project_directory);
+            //if (missing_components.size() != 0)
+            //    component_database.scan_for_components(project_directory);
 
             for ( auto& f : unprocessed_features )
             {
