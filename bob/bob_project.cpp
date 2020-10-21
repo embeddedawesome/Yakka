@@ -1,5 +1,7 @@
 #include "bob_project.h"
 #include <fstream>
+#include <chrono>
+#include <thread>
 
 namespace bob
 {
@@ -955,6 +957,8 @@ namespace bob
                             else
                                 t->second->state = bob_task_complete;
                             break;
+                        default:
+                        	break;
                     }
             }
 
