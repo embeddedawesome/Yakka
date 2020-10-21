@@ -18,6 +18,7 @@ namespace bob
         void insert(const std::string id, fs::path config_file);
         void load( fs::path project_home );
         void save();
+        void add_component( fs::path path );
         void scan_for_components(fs::path project_home);
 
     private:
