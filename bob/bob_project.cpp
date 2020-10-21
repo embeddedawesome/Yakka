@@ -148,7 +148,7 @@ namespace bob
             }
 
             // Check if we should abort because nothing new has happened
-            if (new_components.size() == 0 && new_features.size() == 0)
+            if (new_components.empty() && new_features.empty() && component_git_list.empty())
                 break;
 
             unprocessed_components.clear();
@@ -161,20 +161,26 @@ namespace bob
             missing_components.clear();
 
             // Check if component fetching is complete
-            for ( auto a = component_git_list.begin( ); a != component_git_list.end( ); )
+            for ( auto a = component_git_list.begin( ); !component_git_list.empty(); )
             {
                 if (!a->second.valid())
                 {
-                    std::cerr << "Failed to start thread for " << a->first << std::endl;
+                    // std::cerr << "Failed to start thread for " << a->first << std::endl;
                     a = component_git_list.erase( a );
                 }
-                else if ( a->second.wait_for( 1ms ) == std::future_status::ready )
+                else if ( a->second.wait_for( 100ms ) == std::future_status::ready )
                 {
                     unprocessed_components.insert( a->first );
+                    component_database.scan_for_components(fs::path("components/" + a->first));
                     a = component_git_list.erase( a );
                 }
                 else
                     ++a;
+
+                if (a == component_git_list.end( ))
+                {
+                    a = component_git_list.begin( );
+                }
             }
 
         } while ( !unprocessed_components.empty( ) || !unprocessed_features.empty( ) || !component_git_list.empty());
