@@ -1118,7 +1118,8 @@ namespace bob
         {
             if (line.empty() || line.compare("\\\n") == 0)
                 continue;
-
+            if (line.back() == '\n') line.pop_back();
+            if (line.back() == '\r') line.pop_back();
             dependencies.push_back(line);
         }
 
