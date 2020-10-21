@@ -18,6 +18,5 @@ $(NAME)_REQUIRED_COMPONENTS := yaml-cpp \
                                cpp-subprocess \
                                inja \
                                json \
-                               CTPL \
                                semver
 

@@ -1,14 +1,11 @@
 #include "bob_project.h"
-#include "ctpl.h"
 #include <fstream>
 
 namespace bob
 {
     using namespace std::chrono_literals;
 
-    #define THREAD_POOL_SIZE   std::thread::hardware_concurrency()
-
-    project::project( ) : project_directory("."), bob_home_directory("/.bob"), thread_pool(THREAD_POOL_SIZE)
+    project::project( ) : project_directory("."), bob_home_directory("/.bob")
     {
         load_config_file("config.yaml");
         configuration_json["host_os"] = host_os_string;
@@ -19,7 +16,7 @@ namespace bob
     }
 
 
-    project::project(  std::vector<std::string>& project_string ) : project_directory("."), bob_home_directory("/.bob"), thread_pool(THREAD_POOL_SIZE)
+    project::project(  std::vector<std::string>& project_string ) : project_directory("."), bob_home_directory("/.bob")
     {
         load_config_file("config.yaml");
         configuration_json["host_os"] = host_os_string;
@@ -676,7 +673,7 @@ namespace bob
         };
     }
 
-    static void run_command( int id, std::shared_ptr< construction_task> task, const project* project )
+    static void run_command( std::shared_ptr< construction_task> task, const project* project )
     {
         std::string captured_output;
         inja::Environment inja_env = inja::Environment();
@@ -950,7 +947,8 @@ namespace bob
                             {
                                 std::clog << t->second->blueprint->target << ": Executing blueprint" << std::endl;
     //                            auto& blah = thread_pool.push(run_command, t->second, t->second.blueprint->target, this );
-                                t->second->thread_result = thread_pool.push(run_command, t->second, this );
+                                t->second->thread_result = std::async(run_command, t->second, this);
+                                		//thread_pool.push(run_command, t->second, this );
                                 running_tasks.push_back(t->second);
                                 t->second->state = bob_task_executing;
                             }
@@ -1071,21 +1069,28 @@ namespace bob
             {
                 // Fetch it
                 const std::string fetch_string = "-C " + bob_home_directory + "/repos/ clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
-                return thread_pool.push( [git_path, fetch_string](int) {
-                    exec(git_path, fetch_string);
+                return std::async([git_path, fetch_string]() {
+                	exec(git_path, fetch_string);
                 });
+//                return thread_pool.push( [git_path, fetch_string](int) {
+//                    exec(git_path, fetch_string);
+//                });
             }
 
             if (!fs::exists("components/" + name))
                 fs::create_directories("components/" + name);
             const std::string checkout_string     = "--git-dir " + bob_home_directory + "/repos/" + name + "/.git --work-tree components/" + name + " checkout " + branch + " --force";
             const std::string lfs_checkout_string = "--git-dir " + bob_home_directory + "/repos/" + name + "/.git --work-tree components/" + name + " lfs checkout";
-            return thread_pool.push( [git_path, checkout_string, lfs_checkout_string]( int ) {
-                // Check it out
-//                std::cout << "Creating local instance of '" << name << "'" << std::endl;
+            return std::async( [git_path, checkout_string, lfs_checkout_string]( ) {
                 exec( git_path, checkout_string);
                 exec( git_path, lfs_checkout_string);
-            } );
+            });
+
+//            return thread_pool.push( [git_path, checkout_string, lfs_checkout_string]( int ) {
+//                // Check it out
+//                exec( git_path, checkout_string);
+//                exec( git_path, lfs_checkout_string);
+//            } );
 
             // Return the path to the new component
 //            const std::string component_file = "components/" + name+ "/" + name + ".yaml";

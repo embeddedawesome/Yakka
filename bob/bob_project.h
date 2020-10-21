@@ -6,7 +6,6 @@
 #include "component_database.h"
 #include "nlohmann/json.hpp"
 #include "inja.hpp"
-#include "ctpl.h"
 #include <filesystem>
 #include <regex>
 #include <map>
@@ -76,14 +75,11 @@ namespace bob
         std::vector< std::pair<std::string, YAML::Node> > blueprint_list;
         std::map< std::string, blueprint_command> blueprint_commands;
 
-        // Local thread execution pool
-        ctpl::thread_pool thread_pool;
-
     private:
         void process_aggregate( YAML::Node& aggregate );
     };
 
-    static void run_command( int id, std::shared_ptr< construction_task> task, const project* project );
+    static void run_command( std::shared_ptr< construction_task> task, const project* project );
     static void yaml_node_merge(YAML::Node merge_target, const YAML::Node& node);
     static std::vector<std::string> parse_gcc_dependency_file(const std::string filename);
 

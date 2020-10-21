@@ -1,7 +1,0 @@
-name: C_thread_pool_library
-
-includes:
-  global: .
-
-requires:
-  component: boost

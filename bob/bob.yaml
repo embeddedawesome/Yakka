@@ -20,6 +20,5 @@ requires:
     - cpp-subprocess
     - inja
     - json
-    - CTPL
     - semver
 
