@@ -66,6 +66,8 @@ namespace bob
     {
         add_component(path);
 
+        if (!fs::exists(path)) return;
+
         for ( const auto& p : fs::recursive_directory_iterator( path ) )
         {
             if (p.is_directory() )
