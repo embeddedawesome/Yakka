@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 
     // Setup logging
     std::ofstream log_file( "bob.log" );
-    std::clog.rdbuf( log_file.rdbuf( ) );
+    auto clog_backup = std::clog.rdbuf( log_file.rdbuf( ) );
 
     // Convert the command line args into a vector
     std::vector< std::string > args;
@@ -55,6 +55,7 @@ int main(int argc, char **argv)
 //    std::cout << "Need to build: " << std::endl;
 //    for (const auto& c: project.construction_list)
 //        std::cout << c.first << std::endl;
-
+    
+    std::clog.rdbuf( clog_backup );
     return 0;
 }
