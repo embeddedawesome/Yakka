@@ -1,6 +1,6 @@
 NAME := xcode_toolchain
 
-ifeq ($(filter osx,$(HOST_OS)),)
+ifeq ($(filter macos,$(HOST_OS)),)
 $(error $(HOST_OS) not supported)
 endif
 
