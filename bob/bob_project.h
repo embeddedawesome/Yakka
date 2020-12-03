@@ -6,10 +6,12 @@
 #include "component_database.h"
 #include "nlohmann/json.hpp"
 #include "inja.hpp"
+#include <indicators/progress_bar.hpp>
 #include <filesystem>
 #include <regex>
 #include <map>
 #include <optional>
+#include <functional>
 
 namespace fs = std::filesystem;
 
@@ -18,7 +20,7 @@ namespace bob
     const std::string bob_component_extension   = ".yaml";
     const std::string refresh_database_command    = "refresh-db";
     const std::string default_output_directory    = "output/";
-    const std::string host_os_string              = "windows";
+    const std::string host_os_string              = "macos";
 
     typedef std::function<std::string(std::string, const YAML::Node&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
 
@@ -40,7 +42,7 @@ namespace bob
         std::vector<std::unique_ptr<blueprint_match>> find_blueprint_match( const std::string target );
         void evalutate_blueprint_dependencies();
         void load_common_commands();
-        void process_construction();
+        void process_construction(indicators::ProgressBar& bar);
         void load_config_file(const std::string config_filename);
         void save_summary();
         void load_component_registries();
@@ -73,7 +75,7 @@ namespace bob
         YAML::Node registries;
 
         std::vector< std::pair<std::string, YAML::Node> > blueprint_list;
-        std::map< std::string, blueprint_command> blueprint_commands;
+        std::map< std::string, blueprint_command > blueprint_commands;
 
     private:
         void process_aggregate( YAML::Node& aggregate );

@@ -1,4 +1,6 @@
 #include "bob_project.h"
+#include <indicators/dynamic_progress.hpp>
+#include <indicators/progress_bar.hpp>
 #include <fstream>
 #include <chrono>
 #include <thread>
@@ -535,7 +537,7 @@ namespace bob
             if (!command.begin()->second.IsNull())
                 captured_output = inja_env.render(command.begin()->second.as<std::string>(), generated_json);
 
-            std::cout << captured_output << "\n";
+            //std::cout << captured_output << "\n";
             return captured_output;
         };
 
@@ -546,12 +548,12 @@ namespace bob
 
             std::string temp = command.begin( )->second.as<std::string>( );
             captured_output = inja_env.render( temp, generated_json );
-            std::replace( captured_output.begin( ), captured_output.end( ), '/', '\\' );
+            //std::replace( captured_output.begin( ), captured_output.end( ), '/', '\\' );
             std::clog << "Executing '" << captured_output << "'\n";
             captured_output = exec( captured_output, std::string( "" ) );
 
             if ( captured_output.length( ) != 0 )
-                std::cout << captured_output << "\n";
+                std::clog << captured_output << "\n";
 
             return captured_output;
         };
@@ -725,7 +727,7 @@ namespace bob
 
                     // Echo the output of the command
                     // TODO: Note this should be done by the main thread to ensure the outputs from multiple run_command instances don't overlap
-                    std::cout << captured_output;
+                    std::clog << captured_output;
                 }
                 else if (project->blueprint_commands.at(command_name))
                 {
@@ -820,7 +822,7 @@ namespace bob
         }
     }
 
-    void project::process_construction()
+    void project::process_construction(indicators::ProgressBar& bar)
     {
         typedef enum
         {
@@ -832,6 +834,8 @@ namespace bob
         int loop_count = 0;
         bool something_updated = true;
         auto construction_start_time = fs::file_time_type::clock::now();
+        int starting_size = todo_list.size( );
+        int completed_tasks = 0;
 
         if ( todo_list.size( ) == 0 )
             return;
@@ -852,44 +856,39 @@ namespace bob
         while ( todo_list.size() != 0 )
         {
             ++loop;
-            // Check if we've done a pass through all the items in the construction list
-            if ( i == todo_list.end( ) )
-            {
-                bool thread_completed = false;
 
+            do
+            {
                 // Update the modified times of the construction items
-//                for (auto& a = executing_list.begin(); a != executing_list.end(); )
                 for (auto a = running_tasks.begin(); a != running_tasks.end();)
                 {
-                    if ( a->get()->thread_result.wait_for( 1ms ) == std::future_status::ready )
+                    if ( a->get()->thread_result.wait_for(1ms) == std::future_status::ready )
                     {
-                        // Make a copy of the target name so we can refer to it after we move it to the complete_list
-                        std::string target_name = a->get()->blueprint->target;
-                        std::clog << target_name << ": Done\n";
+                        std::clog << a->get()->blueprint->target << ": Done\n";
                         a->get()->blueprint->last_modified = construction_start_time;
                         a->get()->state = bob_task_complete;
-//                        complete_list.emplace( target_name, std::move( a->get()->blueprint ) );
-                        thread_completed = true;
                         a = running_tasks.erase( a );
+                        ++completed_tasks;
                     }
                     else
                         ++a;
                 }
+            } while (running_tasks.size() >= std::thread::hardware_concurrency());
 
-                // Remove all the nodes that were completed and have been moved to the complete_list
-    //            executing_list.erase(std::remove_if(executing_list.begin(), executing_list.end(), [](const auto& a) { return !(a.second); }), executing_list.end());
+            int progress = (100 * completed_tasks)/starting_size;
+            bar.set_progress(progress);
 
-                if (running_tasks.size() == 0 && something_updated == false && thread_completed == false)
+            // Check if we've done a pass through all the items in the construction list
+            if ( i == todo_list.end( ) )
+            {
+                if (running_tasks.size() == 0 && something_updated == false )
                     break;
 
                 // Reset iterator back to the start of the list and continue
                 i = todo_list.begin( );
                 something_updated = false;
 
-                if (thread_completed == true)
-                    std::clog << todo_list.size() << " items left to construct\n";
-
-                continue;
+                // std::clog << "Completed " << completed_tasks << " out of " << starting_size << "\n";
             }
 
             auto task_list = construction_list.equal_range(*i);
@@ -941,6 +940,7 @@ namespace bob
                         case set_to_complete:
                             std::clog << t->second->blueprint->target << ": Nothing to do" << std::endl;
                             t->second->state = bob_task_complete;
+                            --starting_size;
                             something_updated = true;
                             break;
                         case execute_process:
@@ -948,9 +948,7 @@ namespace bob
                             if ( t->second->blueprint->blueprint["process"])
                             {
                                 std::clog << t->second->blueprint->target << ": Executing blueprint" << std::endl;
-    //                            auto& blah = thread_pool.push(run_command, t->second, t->second.blueprint->target, this );
-                                t->second->thread_result = std::async(run_command, t->second, this);
-                                		//thread_pool.push(run_command, t->second, this );
+                                t->second->thread_result = std::async(std::launch::async | std::launch::deferred, run_command, t->second, this);
                                 running_tasks.push_back(t->second);
                                 t->second->state = bob_task_executing;
                             }
@@ -965,12 +963,15 @@ namespace bob
             i++;
         }
 
+        bar.set_progress(100);
+        bar.mark_as_completed();
+
         for (auto& a: todo_list )
         {
-            std::cout << "Couldn't build: " << a << std::endl;
+            std::clog << "Couldn't build: " << a << std::endl;
             for (auto entries = this->construction_list.equal_range(a); entries.first != entries.second; ++entries.first)
                 for (auto b: entries.first->second->blueprint->dependencies)
-                    std::cout << "\t" << b << std::endl;
+                    std::clog << "\t" << b << std::endl;
         }
 
         for (auto a: construction_list)
@@ -1073,7 +1074,7 @@ namespace bob
             {
                 // Fetch it
                 const std::string fetch_string = "-C " + bob_home_directory + "/repos/ clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
-                return std::async([git_path, fetch_string]() {
+                return std::async(std::launch::async | std::launch::deferred, [git_path, fetch_string]() {
                 	exec(git_path, fetch_string);
                 });
 //                return thread_pool.push( [git_path, fetch_string](int) {
@@ -1084,8 +1085,8 @@ namespace bob
             if (!fs::exists("components/" + name))
                 fs::create_directories("components/" + name);
             const std::string checkout_string     = "--git-dir " + bob_home_directory + "/repos/" + name + "/.git --work-tree components/" + name + " checkout " + branch + " --force";
-            const std::string lfs_checkout_string = "--git-dir " + bob_home_directory + "/repos/" + name + "/.git --work-tree components/" + name + " lfs checkout";
-            return std::async( [git_path, checkout_string, lfs_checkout_string]( ) {
+            const std::string lfs_checkout_string = "--git-dir " + bob_home_directory + "/repos/" + name + "/.git --work-tree components/" + name + " lfs fetch";
+            return std::async(std::launch::async | std::launch::deferred,  [git_path, checkout_string, lfs_checkout_string]( ) {
                 exec( git_path, checkout_string);
                 exec( git_path, lfs_checkout_string);
             });

@@ -18,5 +18,6 @@ $(NAME)_REQUIRED_COMPONENTS := yaml-cpp \
                                cpp-subprocess \
                                inja \
                                json \
-                               semver
+                               semver \
+                               indicators
 
