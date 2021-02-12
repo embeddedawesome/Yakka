@@ -9,9 +9,9 @@ namespace bob
 {
     class component_database : public YAML::Node
     {
-        const std::string bob_component_database_filename  = "bob-components.yaml";
-
     public:
+        static const std::string database_filename;
+
         component_database( fs::path project_home = "." );
         virtual ~component_database( );
 
@@ -19,7 +19,7 @@ namespace bob
         void load( fs::path project_home );
         void save();
         void add_component( fs::path path );
-        void scan_for_components(fs::path project_home);
+        void scan_for_components(fs::path project_home = ".");
 
     private:
         bool database_is_dirty;

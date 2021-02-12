@@ -19,5 +19,6 @@ $(NAME)_REQUIRED_COMPONENTS := yaml-cpp \
                                inja \
                                json \
                                semver \
-                               indicators
+                               indicators \
+                               cxxopts
 

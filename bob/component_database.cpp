@@ -5,6 +5,8 @@
 
 namespace bob
 {
+    const std::string component_database::database_filename = "bob-components.yaml";
+
     component_database::component_database( fs::path project_home )
     {
         load( project_home );
@@ -25,7 +27,7 @@ namespace bob
 
     void component_database::load( fs::path project_home )
     {
-        if ( !fs::exists( bob_component_database_filename ) )
+        if ( !fs::exists( database_filename ) )
         {
             scan_for_components( project_home );
             save();
@@ -34,7 +36,7 @@ namespace bob
         {
             try
             {
-                YAML::Node::operator =( YAML::LoadFile( bob_component_database_filename ) );
+                YAML::Node::operator =( YAML::LoadFile( database_filename ) );
             }
             catch(...)
             {

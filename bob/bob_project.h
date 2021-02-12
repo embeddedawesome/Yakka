@@ -18,7 +18,6 @@ namespace fs = std::filesystem;
 namespace bob
 {
     const std::string bob_component_extension   = ".yaml";
-    const std::string refresh_database_command    = "refresh-db";
     const std::string default_output_directory    = "output/";
     const std::string host_os_string              = "macos";
 
@@ -28,13 +27,13 @@ namespace bob
     {
     public:
         project( );
-        project(  std::vector<std::string>& project_string );
+        project( const std::vector<std::string>& project_string );
 
         virtual ~project( );
 
         void set_project_directory(const std::string path);
         YAML::Node get_project_summary();
-        void parse_project_string( std::vector<std::string>& project_string );
+        void parse_project_string( const std::vector<std::string>& project_string );
         void evaluate_dependencies();
         std::optional<fs::path> find_component(const std::string component_dotname);
         void parse_blueprints();

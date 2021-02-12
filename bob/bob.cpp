@@ -1,5 +1,6 @@
 #include "bob.h"
 #include "bob_project.h"
+#include "cxxopts.hpp"
 #include <indicators/dynamic_progress.hpp>
 #include <indicators/progress_bar.hpp>
 #include <indicators/cursor_control.hpp>
@@ -20,6 +21,40 @@ int main(int argc, char **argv)
     // std::cout << bob::exec("git", "clone ssh://git@stash.silabs.com/gos/sl_wifi.git");
     // exit(0);
 
+    cxxopts::Options options("bob", "BOB the universal builder");
+    options.add_options()
+        ("h,help", "Print usage")
+        ("l,list", "List known components", cxxopts::value<bool>()->default_value("false"))
+        ("r,refresh", "Refresh component database", cxxopts::value<bool>()->default_value("false"))
+        ("f,fetch", "Fetch missing components", cxxopts::value<bool>()->default_value("false"));
+
+    auto result = options.parse(argc, argv);
+    if (result.count("help") || argc == 1)
+    {
+        std::cout << options.help() << std::endl;
+        exit(0);
+    }
+    if (result["refresh"].as<bool>())
+    {
+        fs::remove(bob::component_database::database_filename);
+
+        std::cout << "Scanning '.' for components" << std::endl;
+        bob::component_database db;
+        db.save();
+        std::cout << "Scan complete. " << bob::component_database::database_filename << " has been updated" << std::endl;
+    }
+    if (result["list"].as<bool>())
+    {
+        bob::component_database db;
+        for (const auto& c: db)
+        {
+            std::cout << c.first << ":\n  " << c.second << std::endl;
+        }
+    }
+
+    if (result.unmatched().empty())
+        exit(0);
+
     // Setup logging
     std::ofstream log_file( "bob.log" );
     auto clog_backup = std::clog.rdbuf( log_file.rdbuf( ) );
@@ -32,14 +67,9 @@ int main(int argc, char **argv)
     bars.set_option(option::HideBarWhenComplete{false});
     bars.print_progress();
 
-    // Convert the command line args into a vector
-    std::vector< std::string > args;
-    for ( int a = 1; a < argc; a++ )
-        args.push_back( argv[a] );
-
     auto t1 = std::chrono::high_resolution_clock::now();
 
-    bob::project project(args);
+    bob::project project(result.unmatched());
 
     project.load_component_registries();
 

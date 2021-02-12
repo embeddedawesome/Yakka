@@ -20,7 +20,7 @@ namespace bob
     }
 
 
-    project::project(  std::vector<std::string>& project_string ) : project_directory("."), bob_home_directory("/.bob")
+    project::project( const std::vector<std::string>& project_string ) : project_directory("."), bob_home_directory("/.bob")
     {
         load_config_file("config.yaml");
         configuration_json["host_os"] = host_os_string;
@@ -38,7 +38,7 @@ namespace bob
         return project_summary;
     }
 
-    void project::parse_project_string( std::vector<std::string>& project_string )
+    void project::parse_project_string( const std::vector<std::string>& project_string )
     {
         project_name = "";
         for ( auto& s : project_string )
@@ -46,20 +46,12 @@ namespace bob
             // Identify features, commands, and components
             if ( s.front( ) == '+' )
             {
-                s.erase( 0, 1 );
-                required_features.insert( s );
+                //s.erase( 0, 1 );
+                required_features.insert( s.substr(1) );
             }
             else if ( s.back( ) == '!' )
             {
-                s.pop_back( );
-                if (s == refresh_database_command)
-                {
-                    component_database.reset();
-                    component_database.scan_for_components(project_directory);
-                    component_database.save();
-                }
-                else
-                    commands.insert( s );
+                commands.insert( s.substr(0, s.size()-1) );
             }
             else
             {
