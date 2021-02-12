@@ -23,3 +23,10 @@
 [submodule "components/json/master"]
 	path = components/json/master
 	url = https://github.com/embeddedawesome/json.git
+[submodule "components/indicators/master"]
+	path = components/indicators/master
+	url = https://github.com/p-ranav/indicators.git
+[submodule "components/cxxopts/master"]
+	path = components/cxxopts/master
+	url = https://github.com/jarro2783/cxxopts.git
+	branch = master
