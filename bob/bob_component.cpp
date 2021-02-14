@@ -65,13 +65,13 @@ namespace bob
             process_requirements( yaml["supports"][feature_name], new_components, new_features );
         }
 
-        if ( yaml["provides"][feature_name] )
-        {
-            if ( yaml["provides"][feature_name].IsScalar( ) )
-                new_features.insert( yaml["provides"][feature_name].as<std::string>( ) );
-            else
-                process_requirements( yaml["provides"][feature_name], new_components, new_features );
-        }
+        // if ( yaml["provides"][feature_name] )
+        // {
+        //     if ( yaml["provides"][feature_name].IsScalar( ) )
+        //         new_features.insert( yaml["provides"][feature_name].as<std::string>( ) );
+        //     else
+        //         process_requirements( yaml["provides"][feature_name], new_components, new_features );
+        // }
     }
 
     void component::process_requirements(const YAML::Node& node, component_list_t& new_components, feature_list_t& new_features )
