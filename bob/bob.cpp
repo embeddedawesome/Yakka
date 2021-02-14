@@ -59,21 +59,32 @@ int main(int argc, char **argv)
     std::ofstream log_file( "bob.log" );
     auto clog_backup = std::clog.rdbuf( log_file.rdbuf( ) );
 
-     ProgressBar bar1{option::BarWidth{50},
-                   option::ShowElapsedTime{true},
-                   option::PrefixText{"Building "}};
-
-    DynamicProgress<ProgressBar> bars(bar1);
-    bars.set_option(option::HideBarWhenComplete{false});
-    bars.print_progress();
-
     auto t1 = std::chrono::high_resolution_clock::now();
 
     bob::project project(result.unmatched());
 
     project.load_component_registries();
 
-    project.evaluate_dependencies();
+    do {
+        project.evaluate_dependencies();
+
+        if ( project.unknown_components.size( ) != 0 )
+        {
+            std::cerr << "Failed to find the following components:" << std::endl;
+            for (const auto& c: project.unknown_components)
+                std::cerr << " - " << c << std::endl;
+            
+            // Check whether any of the unknown components are in registries.
+            for ( auto r : project.registries )
+                for (const auto& c: project.unknown_components)
+                    if ( r.second["provides"]["components"][c].IsDefined( ) )
+                    {
+                        std::cerr << "Component '" << c << "' can be fetched from the '" << r.second["name"] << "' registry" << std::endl;
+                    }
+            
+            exit(0);
+        }
+    } while(0);
 
     auto t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
@@ -83,14 +94,14 @@ int main(int argc, char **argv)
     for (auto f: project.required_features)
         std::clog << "- " << f << std::endl;
 
-    // project.process_aggregates();
-
+    project.generate_project_summary();
     project.save_summary();
+
 
     t1 = std::chrono::high_resolution_clock::now();
     project.parse_blueprints();
 
-    project.evalutate_blueprint_dependencies();
+    project.evaluate_blueprint_dependencies();
 
     t2 = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
@@ -98,21 +109,32 @@ int main(int argc, char **argv)
 
     project.load_common_commands();
 
+    ProgressBar bar1{option::BarWidth{50}, option::ShowElapsedTime{false}, option::PrefixText{"Building "}, option::SavedStartTime{true}};
+
+    DynamicProgress<ProgressBar> bars(bar1);
+    bars.set_option(option::HideBarWhenComplete{false});
+    bars.print_progress();
 //    std::clog << project.project_summary_json << std::endl;
 
-    //auto building_future = std::async([&project, &bar1]() {
-    //    project.process_construction(bar1);
-    //});
+    auto construction_start_time = fs::file_time_type::clock::now();
+
     auto building_future = std::async(std::launch::async,[&project, &bar1](){
         project.process_construction(bar1);
     });
 
   // Update bar state
+  size_t previous = 0;
   do {
-      bars.print_progress();
-  } while ( building_future.wait_for( 100ms ) != std::future_status::ready );
+    if (bar1.current() != previous) {
+        bars.print_progress();
+        previous = bar1.current();
+    }
+  } while ( building_future.wait_for( 200ms ) != std::future_status::ready );
   
+  auto construction_end_time = fs::file_time_type::clock::now();
+
   bars.print_progress();
+  std::cout << "Completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(construction_end_time - construction_start_time).count() << " milliseconds" << std::endl;
 
 //    std::cout << "Need to build: " << std::endl;
 //    for (const auto& c: project.construction_list)

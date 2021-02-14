@@ -18,16 +18,25 @@ namespace bob
         try
         {
             yaml = YAML::LoadFile( path_string );
+
+            // Check if SLCC file is an omap. Convert it to a map
+            if (yaml.IsSequence())
+            {
+                YAML::Node new_format;
+                for (const auto& it: yaml)
+                    new_format[it.begin()->first.Scalar()] = it.begin()->second;
+                yaml.reset(new_format);
+            }
+            
             const std::string id = (yaml["id"]) ? yaml["id"].as<std::string>() : yaml["name"].as<std::string>();
             yaml["id"] = id;
-            for (const auto& p: yaml["provides"])
-                slcc::slcc_database["features"][p["name"]] = id;
 
-            slcc::slcc_database["components"][id] = yaml;
+            if (yaml["root_path"])
+                yaml["directory"] = yaml["root_path"];
         }
         catch ( ... )
         {
-            std::cerr << "Failed to load file: " << path_string << "\n";
+            std::clog << "Failed to load file: " << path_string << "\n";
             return;
         }
 
@@ -107,6 +116,5 @@ namespace bob
             yaml["includes"] = includes;
             yaml.remove("include");
         }
-
     }
 }

@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <regex>
 #include <map>
+#include <unordered_set>
 #include <optional>
 #include <functional>
 
@@ -18,13 +19,27 @@ namespace fs = std::filesystem;
 namespace bob
 {
     const std::string bob_component_extension   = ".yaml";
-    const std::string default_output_directory    = "output/";
-    const std::string host_os_string              = "macos";
+    const std::string default_output_directory  = "output/";
+
+    #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__) 
+    const std::string host_os_string  = "windows";
+    #elif defined(__APPLE__)
+    const std::string host_os_string  = "macos";
+    #elif defined (__linux__)
+    const std::string host_os_string  = "linux";
+    #endif
 
     typedef std::function<std::string(std::string, const YAML::Node&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
 
     class project
     {
+    public:
+        enum class state {
+            PROJECT_HAS_UNKNOWN_COMPONENTS,
+            PROJECT_HAS_REMOTE_COMPONENTS,
+            PROJECT_VALID
+        };
+
     public:
         project( );
         project( const std::vector<std::string>& project_string );
@@ -34,29 +49,35 @@ namespace bob
         void set_project_directory(const std::string path);
         YAML::Node get_project_summary();
         void parse_project_string( const std::vector<std::string>& project_string );
-        void evaluate_dependencies();
+        void process_requirements(const YAML::Node& node);
+        state evaluate_dependencies();
         std::optional<fs::path> find_component(const std::string component_dotname);
         void parse_blueprints();
-        void process_aggregates();
+        void generate_project_summary();
+        
         std::vector<std::unique_ptr<blueprint_match>> find_blueprint_match( const std::string target );
-        void evalutate_blueprint_dependencies();
+        void evaluate_blueprint_dependencies();
         void load_common_commands();
         void process_construction(indicators::ProgressBar& bar);
         void load_config_file(const std::string config_filename);
         void save_summary();
         void load_component_registries();
         std::optional<YAML::Node> find_registry_component(const std::string& name);
-        bool fetch_component(YAML::Node& node);
-        std::future<void> fetch_component(const std::string& name);
+        std::future<void> fetch_component(const std::string& name, indicators::ProgressBar& bar);
+        void process_data_dependency(const std::string& path);
 
         // Basic project data
         std::string project_name;
         std::string bob_home_directory;
 
         // Component processing
-        std::set<std::string> required_components;
-        std::set<std::string> required_features;
-        std::set<std::string> commands;
+        std::vector<std::string> unprocessed_components;
+        std::vector<std::string> unprocessed_features;
+        std::unordered_set<std::string> required_components;
+        std::unordered_set<std::string> required_features;
+        std::unordered_set<std::string> commands;
+        std::unordered_set<std::string> unknown_components;
+        // std::map<std::string, YAML::Node> remote_components;
 
         YAML::Node  project_summary;
         std::string project_directory;
@@ -70,18 +91,21 @@ namespace bob
         inja::Environment inja_environment;
         std::multimap<std::string, std::shared_ptr< construction_task > > construction_list;
         std::vector<std::string> todo_list;
+        std::unordered_set<std::string> required_data;
 
         YAML::Node registries;
 
         std::vector< std::pair<std::string, YAML::Node> > blueprint_list;
         std::map< std::string, blueprint_command > blueprint_commands;
 
+
     private:
         void process_aggregate( YAML::Node& aggregate );
     };
 
     static void run_command( std::shared_ptr< construction_task> task, const project* project );
-    static void yaml_node_merge(YAML::Node merge_target, const YAML::Node& node);
+    static void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node);
+    static void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node);
     static std::vector<std::string> parse_gcc_dependency_file(const std::string filename);
 
 } /* namespace bob */

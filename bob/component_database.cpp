@@ -46,8 +46,9 @@ namespace bob
     }
     void component_database::save()
     {
-        std::ofstream database_file( bob_component_database_filename );
-        (*this)["provides"]["features"] = slcc::slcc_database["features"];
+        std::ofstream database_file( database_filename );
+        if (slcc::slcc_database["features"])
+            (*this)["provides"]["features"] = slcc::slcc_database["features"];
         database_file << static_cast<YAML::Node&>(*this);
         database_file.close();
         database_is_dirty = false;
@@ -59,13 +60,16 @@ namespace bob
         const auto component_path = path.generic_string() + "/" + component_id + ".yaml";
         if ( fs::exists( component_path ) )
         {
+            const auto& temp = (*this)[component_id];
             ( *this )[component_id].push_back( component_path );
-             database_is_dirty = true;
+            database_is_dirty = true;
         }
     }
 
     void component_database::scan_for_components( fs::path path )
     {
+        std::vector<std::future<slcc>> parsed_slcc_files;
+
         add_component(path);
 
         if (!fs::exists(path)) return;
@@ -78,9 +82,42 @@ namespace bob
             }
             else if (p.path().filename().extension() == ".slcc")
             {
-                slcc uc(p.path());
-                uc.convert_to_bob();
-                (*this)[uc.yaml["id"].as<std::string>()].push_back( p.path().generic_string() );
+                parsed_slcc_files.push_back( std::async(std::launch::async, [](fs::path path) {
+                        try
+                        {
+                            slcc uc(path);
+                            uc.convert_to_bob();
+                            return uc;
+                        }
+                        catch(...)
+                        {
+                            return slcc();
+                        }
+                    }, p.path()));
+            }
+        }
+
+        // TODO: SLCC database should be initialized elsewhere
+        if (!slcc::slcc_database["features"])
+            slcc::slcc_database["features"] = YAML::Node();
+
+        if (!slcc::slcc_database["components"])
+            slcc::slcc_database["components"] = YAML::Node();
+
+        for (auto& file: parsed_slcc_files)
+        {
+            file.wait();
+            const auto slcc = file.get();
+            if (slcc.yaml["id"])
+            {
+                const auto id = slcc.yaml["id"].as<std::string>();
+                (*this)[id].push_back( slcc.file_path.generic_string() );
+
+                for (const auto& p: slcc.yaml["provides"])
+                    if (p.IsDefined())
+                        slcc::slcc_database["features"][p["name"]] = id;
+
+                slcc::slcc_database["components"][id] = slcc.yaml;
             }
         }
     }
