@@ -18,7 +18,6 @@ namespace fs = std::filesystem;
 
 namespace bob
 {
-    const std::string bob_component_extension   = ".yaml";
     const std::string default_output_directory  = "output/";
 
     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__) 

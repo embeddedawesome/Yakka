@@ -56,12 +56,12 @@ namespace bob
 
     void component_database::add_component( fs::path path )
     {
-        const auto component_id   = path.filename().generic_string();
-        const auto component_path = path.generic_string() + "/" + component_id + ".yaml";
-        if ( fs::exists( component_path ) )
+        //const auto component_path = path.generic_string() + "/" + component_id + bob_component_extension;
+        if ( fs::exists( path ) )
         {
+            const auto component_id   = path.filename().replace_extension().generic_string();
             const auto& temp = (*this)[component_id];
-            ( *this )[component_id].push_back( component_path );
+            ( *this )[component_id].push_back( path.generic_string() );
             database_is_dirty = true;
         }
     }
@@ -70,13 +70,13 @@ namespace bob
     {
         std::vector<std::future<slcc>> parsed_slcc_files;
 
-        add_component(path);
+        // add_component(path);
 
         if (!fs::exists(path)) return;
 
         for ( const auto& p : fs::recursive_directory_iterator( path ) )
         {
-            if (p.is_directory() )
+            if (p.path().filename().extension() == bob_component_extension)
             {
                 add_component(p.path());
             }

@@ -334,11 +334,15 @@ namespace bob
 
             // Check if rule is a regex, otherwise do a string comparison
             if ( b.second["regex"] )
+            {
                 if ( !std::regex_match(target, s, std::regex { b.first } ) )
                     continue;
+            }
             else
+            {
                 if (target != b.first )
                     continue;
+            }
 
             auto match = std::make_unique<blueprint_match>();
             match->target = target;
@@ -436,7 +440,7 @@ namespace bob
                 match->blueprint     = YAML::Node();
                 match->last_modified = fs::last_write_time( target );
                 blueprint_matches.push_back( std::move( match ) );
-                std::clog << "Found non-blueprint dependency '" << target << "'" << std::endl;
+                // std::clog << "Found non-blueprint dependency '" << target << "'" << std::endl;
             }
             else
                 std::clog << "No blueprint for '" << target << "'" << std::endl;
@@ -769,7 +773,8 @@ namespace bob
                                   << node << "\n";
                         return;
                     }
-                    yaml_node_merge(merge_target[item_name], item_node);
+                    auto new_merge = merge_target[item_name]; 
+                    yaml_node_merge(new_merge, item_node);
                 }
             }
         }
@@ -810,23 +815,23 @@ namespace bob
         {
             ++loop;
 
-            // if (running_tasks.size() >= std::thread::hardware_concurrency())
-            // {
-            //     // Update the modified times of the construction items
-            //     for (auto a = running_tasks.begin(); a != running_tasks.end();)
-            //     {
-            //         if ( a->get()->thread_result.wait_for(1ms) == std::future_status::ready )
-            //         {
-            //             std::clog << a->get()->blueprint->target << ": Done\n";
-            //             a->get()->blueprint->last_modified = construction_start_time;
-            //             a->get()->state = bob_task_complete;
-            //             a = running_tasks.erase( a );
-            //             ++completed_tasks;
-            //         }
-            //         else
-            //             ++a;
-            //     }
-            // }
+            while (running_tasks.size() >= std::thread::hardware_concurrency())
+            {
+                // Update the modified times of the construction items
+                for (auto a = running_tasks.begin(); a != running_tasks.end();)
+                {
+                    if ( a->get()->thread_result.wait_for(0ms) == std::future_status::ready )
+                    {
+                        std::clog << a->get()->blueprint->target << ": Done\n";
+                        a->get()->blueprint->last_modified = construction_start_time;
+                        a->get()->state = bob_task_complete;
+                        a = running_tasks.erase( a );
+                        ++completed_tasks;
+                    }
+                    else
+                        ++a;
+                }
+            }
             // } while ;
 
             int progress = (100 * completed_tasks)/starting_size;
@@ -841,7 +846,7 @@ namespace bob
                 // Update the modified times of the construction items
                 for (auto a = running_tasks.begin(); a != running_tasks.end();)
                 {
-                    if ( a->get()->thread_result.wait_for(1ms) == std::future_status::ready )
+                    if ( a->get()->thread_result.wait_for(0ms) == std::future_status::ready )
                     {
                         std::clog << a->get()->blueprint->target << ": Done\n";
                         a->get()->blueprint->last_modified = construction_start_time;
@@ -907,9 +912,9 @@ namespace bob
                     switch ( get_task_status( *(t->second) ) )
                     {
                         case set_to_complete:
-                            std::clog << t->second->blueprint->target << ": Nothing to do" << std::endl;
+                            // std::clog << t->second->blueprint->target << ": Nothing to do" << std::endl;
                             t->second->state = bob_task_complete;
-                            --starting_size;
+                            if (starting_size > 1) --starting_size;
                             something_updated = true;
                             break;
                         case execute_process:
@@ -1087,8 +1092,11 @@ namespace bob
 
         std::string line;
 
-        // Drop the first line
-        std::getline(infile, line);
+        // Find and ignore the first line with the target. Typically "<target>: \"
+        do
+        {
+            std::getline(infile, line);
+        } while(line.find(':') == std::string::npos);
 
         while (std::getline(infile, line, ' '))
         {

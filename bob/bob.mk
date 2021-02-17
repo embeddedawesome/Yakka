@@ -6,13 +6,13 @@ $(NAME)_SOURCES := bob.cpp \
                    component_database.cpp \
                    uc_component.cpp
 
-$(NAME)_SUPPORTED_FEATURES := windows \
+#$(NAME)_SUPPORTED_FEATURES := windows \
                               osx \
                               linux64
 
-$(NAME)_windows_SOURCES := windows.cpp
-$(NAME)_osx_SOURCES   := posix.cpp
-$(NAME)_linux64_SOURCES   := posix.cpp
+#$(NAME)_windows_SOURCES := windows.cpp
+#$(NAME)_osx_SOURCES   := posix.cpp
+#$(NAME)_linux64_SOURCES   := posix.cpp
 
 $(NAME)_REQUIRED_COMPONENTS := yaml-cpp \
                                cpp-subprocess \

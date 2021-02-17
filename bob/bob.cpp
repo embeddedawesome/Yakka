@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 {
     auto bob_start_time = std::time(nullptr);
 
-    // std::cout << bob::exec("git", "clone ssh://git@stash.silabs.com/gos/sl_wifi.git");
+    // bob::exec("\\silabs\\apps\\git\\bin\\git.exe", "clone --progress ssh://git@stash.silabs.com/gos/sl_wifi.git");
     // exit(0);
 
     cxxopts::Options options("bob", "BOB the universal builder");
@@ -142,4 +142,59 @@ int main(int argc, char **argv)
     
     std::clog.rdbuf( clog_backup );
     return 0;
+}
+
+
+#if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__) 
+#define POPEN  _popen
+#define PCLOSE _pclose
+#else
+#define POPEN  popen
+#define PCLOSE pclose
+#endif
+
+namespace bob {
+std::string exec( const std::string_view command_text, const std::string_view& arg_text )
+{
+    std::array<char, 64> buffer;
+    std::string result;
+    std::string full_command { command_text };
+
+    #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+    full_command.insert(0, "\"");
+    full_command.append("\"");
+    // std::replace(full_command.begin(), full_command.end(), '/', '\\');
+    #endif
+
+    if (!arg_text.empty())
+    {
+        full_command.append(" ");
+        full_command.append(arg_text);
+    }
+    full_command.append(" 2>&1");
+
+    std::clog << "exec: " << full_command << "\n";
+
+    std::unique_ptr<FILE, decltype(&PCLOSE)> pipe(POPEN(full_command.c_str(), "rt"), PCLOSE);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    // fread(buffer.data(), buffer.size(), 1, pipe.get());
+
+    size_t count;
+    int index=0;
+    do {
+        if ((count = fread(buffer.data(), 1, buffer.size(), pipe.get())) > 0) {
+            // std::cout << index++ << ": " << buffer.data() << std::endl;
+            result.insert(result.end(), std::begin(buffer), std::next(std::begin(buffer), count));
+        }
+    } while(count > 0);
+
+    // int index=0;
+    // while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+    //     std::cout << index++ << ": " << buffer.data() << std::endl;
+    //     result += buffer.data();
+    // }
+    return result;
+}
 }
