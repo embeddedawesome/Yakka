@@ -1,0 +1,4 @@
+name: cxxopts
+
+includes:
+  global: master/include

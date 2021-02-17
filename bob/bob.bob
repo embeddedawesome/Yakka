@@ -5,14 +5,7 @@ sources:
   - bob_project.cpp
   - bob_component.cpp
   - component_database.cpp
-
-supports:
-  windows:
-    sources: windows.cpp
-  macos:
-    sources: posix.cpp
-  linux:
-    sources: posix.cpp
+  - uc_component.cpp
 
 requires:
   components:
@@ -21,4 +14,6 @@ requires:
     - inja
     - json
     - semver
+    - indicators
+    - cxxopts
 

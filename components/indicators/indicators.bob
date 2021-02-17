@@ -1,0 +1,4 @@
+name: indicators
+
+includes:
+  global: master/include
