@@ -8,7 +8,7 @@ windows_sdk:
 flags:
   cpp:
     global:
-      - /Fm /c /EHsc /O3 /Zi /FS -MT /std:c++17
+      - /Fm /c /EHsc /O2 /Zi /FS -MT /std:c++17
       - -I"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.28.29333\\include" 
       - -I"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.18362.0\\um"
       - -I"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.18362.0\\shared" 

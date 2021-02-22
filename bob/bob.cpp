@@ -1,6 +1,7 @@
 #include "bob.h"
 #include "bob_project.h"
 #include "cxxopts.hpp"
+#include "subprocess.hpp"
 #include <indicators/dynamic_progress.hpp>
 #include <indicators/progress_bar.hpp>
 #include <indicators/cursor_control.hpp>
@@ -12,14 +13,61 @@
 using namespace indicators;
 using namespace std::chrono_literals;
 
-#include "bob.h"
-
 int main(int argc, char **argv)
 {
     auto bob_start_time = std::time(nullptr);
 
-    // bob::exec("\\silabs\\apps\\git\\bin\\git.exe", "clone --progress ssh://git@stash.silabs.com/gos/sl_wifi.git");
-    // exit(0);
+    // Setup logging
+    std::ofstream log_file( "bob.log" );
+    auto clog_backup = std::clog.rdbuf( log_file.rdbuf( ) );
+
+#if 0
+
+    ProgressBar temp_git_bar{option::BarWidth{50}, option::ShowElapsedTime{false}, option::PrefixText{"Fetching "}, option::SavedStartTime{true}};
+    DynamicProgress<ProgressBar> temp_bars(temp_git_bar);
+    temp_bars.set_option(option::HideBarWhenComplete{false});
+    temp_bars.print_progress();
+
+    enum {
+        GIT_COUNTING    = 0,
+        GIT_COMPRESSING = 1,
+        GIT_RECEIVING   = 2,
+    } phase = GIT_COUNTING;
+    static const int phase_rates[] = {0, 20, 40, 100};
+#if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+    bob::exec("c:\\silabs\\apps\\git\\bin\\git", "clone --progress ssh://git@stash.silabs.com/gos/sl_wifi.git", [&temp_git_bar, &phase, &temp_bars](std::string& data) -> void {
+        std::smatch s;
+        //std::clog << "[[ " << data << " ]]\n";
+
+        // Determine phase
+        // if ( data.find("Coun") != data.npos ) phase = GIT_COUNTING;//std::clog << "Counting...\n";
+        if ( data.find("Comp" ) != data.npos ) phase = GIT_COMPRESSING;//std::clog << "Compressing...\n";
+        if ( data.find("Rece") != data.npos ) phase = GIT_RECEIVING;//std::clog << "Receiving...\n";
+        
+        if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
+        {
+            int phase_progress = std::stoi( s[1] );
+            int end_value = std::stoi( s[2] );
+            float progress = phase_rates[phase] + (phase_rates[phase+1]-phase_rates[phase])*phase_progress/end_value;
+            temp_git_bar.set_progress(progress);
+            temp_bars.print_progress();
+            std::clog << "Got " << s[1] << " of " << s[2] << ".. Calculated " << progress << "%" << std::endl;
+        }
+        // Determine progress
+        // auto left  = data.find("(");
+        // auto right = data.find(")", left);
+        // if (left != data.npos && right != data.npos)
+        // {
+            
+        // }
+    });
+#else
+    std::clog << bob::exec("git", "clone --progress ssh://git@stash.silabs.com/gos/sl_wifi.git");
+#endif
+    std::clog.flush();
+    std::clog.rdbuf( clog_backup );
+    exit(0);
+#endif
 
     cxxopts::Options options("bob", "BOB the universal builder");
     options.add_options()
@@ -54,10 +102,6 @@ int main(int argc, char **argv)
 
     if (result.unmatched().empty())
         exit(0);
-
-    // Setup logging
-    std::ofstream log_file( "bob.log" );
-    auto clog_backup = std::clog.rdbuf( log_file.rdbuf( ) );
 
     auto t1 = std::chrono::high_resolution_clock::now();
 
@@ -144,57 +188,185 @@ int main(int argc, char **argv)
     return 0;
 }
 
+namespace bob {
 
-#if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__) 
-#define POPEN  _popen
-#define PCLOSE _pclose
+// static std::string make_command(const std::string_view command_text, const std::string_view& arg_text)
+// {
+//     std::string full_command { command_text };
+
+//     // #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+
+//     // #endif
+
+//     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+//         // std::replace(full_command.begin(), full_command.end(), '/', '\\');
+//         // if (!arg_text.empty())
+//         // {
+//             full_command.insert(0, "\"");
+//             full_command.append("\"");
+//         // }
+//     #endif
+
+//        if (!arg_text.empty())
+//         {
+//             full_command.append(" ");
+//             full_command.append(arg_text);
+//         }
+
+//         // full_command.append(" 2>&1");
+//         std::clog << "exec: " << full_command << "\n";
+//     return full_command;
+// }
+
+#if 0//defined(__USING_WINDOWS__)
+std::string exec( const std::string& command_text, const std::string& arg_text)
+{
+    std::clog << command_text << " " << arg_text << "\n";
+    try {
+        auto output = subprocess::check_output({command_text, arg_text}, subprocess::error{subprocess::STDOUT});
+        return output.buf.data();
+    } catch (std::exception e)
+    {
+        std::clog << e.what();
+        return {};
+    }
+}
 #else
-#define POPEN  popen
-#define PCLOSE pclose
+std::string exec( const std::string& command_text, const std::string& arg_text)
+{
+    std::clog << command_text << " " << arg_text << "\n";
+    try {
+        std::string command = command_text + " " + arg_text;
+        auto p = subprocess::Popen(command, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} );
+        auto output = p.output();
+        std::array<char, 512> buffer;
+        std::string result;
+        size_t count = 0;
+        do {
+            if (output != nullptr)
+            {
+                if ((count = fread(buffer.data(), 1, buffer.size(), output)) > 0) {
+                    result += buffer.data();
+                }
+            }
+        } while(count > 0);
+
+        p.wait();
+        return result;
+    } catch (std::exception e)
+    {
+        std::clog << e.what();
+        return {};
+    }
+}
 #endif
 
-namespace bob {
-std::string exec( const std::string_view command_text, const std::string_view& arg_text )
-{
-    std::array<char, 64> buffer;
-    std::string result;
-    std::string full_command { command_text };
+//     std::array<char, 512> buffer;
+//     std::string result = "";
+//     std::string full_command { command_text };
 
-    #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-    full_command.insert(0, "\"");
-    full_command.append("\"");
-    // std::replace(full_command.begin(), full_command.end(), '/', '\\');
-    #endif
+//     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+//     // std::replace(full_command.begin(), full_command.end(), '/', '\\');
+//     // if (!arg_text.empty())
+//     // {
+//         full_command.insert(0, "\"");
+//         full_command.append("\"");
+//     // }
+//     #endif
 
-    if (!arg_text.empty())
-    {
-        full_command.append(" ");
-        full_command.append(arg_text);
-    }
-    full_command.append(" 2>&1");
+//     if (!arg_text.empty())
+//     {
+//         full_command.append(" ");
+//         full_command.append(arg_text);
+//     }
 
-    std::clog << "exec: " << full_command << "\n";
+//     // full_command.append(" 2>&1");
+//     std::clog << "exec: " << full_command << "\n";
 
-    std::unique_ptr<FILE, decltype(&PCLOSE)> pipe(POPEN(full_command.c_str(), "rt"), PCLOSE);
-    if (!pipe) {
-        throw std::runtime_error("popen() failed!");
-    }
-    // fread(buffer.data(), buffer.size(), 1, pipe.get());
+//     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+//     // auto out = subprocess::check_output(full_command, subprocess::error{subprocess::STDOUT});
+//     // return out.buf.data();
+//     auto p = subprocess::Popen(full_command, subprocess::error{subprocess::STDOUT} );
+//     auto output = p.output();
+//     size_t count = 0;
+//     do {
+//         if (output != nullptr)
+//         {
+//             if ((count = fread(buffer.data(), 1, buffer.size(), output)) > 0) {
+//                 result += buffer.data();
+//             }
+//         }
+//     } while(count > 0);
 
-    size_t count;
-    int index=0;
-    do {
-        if ((count = fread(buffer.data(), 1, buffer.size(), pipe.get())) > 0) {
-            // std::cout << index++ << ": " << buffer.data() << std::endl;
-            result.insert(result.end(), std::begin(buffer), std::next(std::begin(buffer), count));
-        }
-    } while(count > 0);
+//     p.wait();
+//     return result;
+//     #else
+//         // auto p = (command_text.find("git") != command_text.npos) ?
+//                 //   subprocess::Popen(full_command, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} ) :
+//     auto p = subprocess::Popen(command, subprocess::error{subprocess::STDOUT} );
+    
 
-    // int index=0;
-    // while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-    //     std::cout << index++ << ": " << buffer.data() << std::endl;
-    //     result += buffer.data();
-    // }
-    return result;
-}
+//     auto output = p.output();
+//     size_t count = 0;
+//     do {
+//         if (output != nullptr)
+//         {
+//             if ((count = fread(buffer.data(), 1, buffer.size(), output)) > 0) {
+//                 result += buffer.data();
+//             }
+//         }
+//     } while(count > 0);
+
+//     p.wait();
+//     return result;
+//     #endif
+// return {};
+// }
+
+// template<typename Functor>
+// void exec( const std::string_view command_text, const std::string_view& arg_text, Functor function)
+// {
+//     std::array<char, 64> buffer;
+//     std::string full_command { command_text };
+
+//     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+//     // std::replace(full_command.begin(), full_command.end(), '/', '\\');
+//     // if (!arg_text.empty())
+//     // {
+//         full_command.insert(0, "\"");
+//         full_command.append("\"");
+//     // }
+//     #endif
+
+//     if (!arg_text.empty())
+//     {
+//         full_command.append(" ");
+//         full_command.append(arg_text);
+//     }
+
+//     // full_command.append(" 2>&1");
+//     std::clog << "exec: " << full_command << "\n";
+
+//     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+//     auto p = subprocess::Popen(full_command, subprocess::error{subprocess::STDOUT});
+//     #else
+//         // auto p = (command_text.find("git") != command_text.npos) ?
+//                 //   subprocess::Popen(full_command, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} ) :
+//     auto p =subprocess::Popen(command, subprocess::error{subprocess::STDOUT} );
+//     #endif
+
+//     auto output = p.output();
+
+//     size_t count = 0;
+//     do {
+//         if (output != nullptr)
+//         {
+//             if ((count = fread(buffer.data(), 1, buffer.size(), output)) > 0) {
+//                 function( std::string(buffer.data()) );
+//             }
+//         }
+//     } while(count > 0);
+
+//     p.wait();
+// }
 }

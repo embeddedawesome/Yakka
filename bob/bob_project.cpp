@@ -467,7 +467,7 @@ namespace bob
             std::string temp = command.begin( )->second.as<std::string>( );
             captured_output = inja_env.render( temp, generated_json );
             //std::replace( captured_output.begin( ), captured_output.end( ), '/', '\\' );
-            std::clog << "Executing '" << captured_output << "'\n";
+            // std::clog << "Executing '" << captured_output << "'\n";
             captured_output = exec( captured_output, std::string( "" ) );
 
             if ( captured_output.length( ) != 0 )
