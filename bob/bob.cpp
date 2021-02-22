@@ -236,8 +236,14 @@ std::string exec( const std::string& command_text, const std::string& arg_text)
 {
     std::clog << command_text << " " << arg_text << "\n";
     try {
-        std::string command = command_text + " " + arg_text;
+        std::string command = command_text;
+        if (!arg_text.empty()) 
+            command += " " + arg_text;
+        #if defined(__USING_WINDOWS__)
         auto p = subprocess::Popen(command, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} );
+        #else
+        auto p = subprocess::Popen(command, subprocess::shell{true}, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} );
+        #endif
         auto output = p.output();
         std::array<char, 512> buffer;
         std::string result;
