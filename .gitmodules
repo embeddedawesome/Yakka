@@ -19,7 +19,7 @@
 	url = https://github.com/embeddedawesome/yaml-cpp.git
 [submodule "components/cpp-subprocess/master"]
 	path = components/cpp-subprocess/master
-	url = https://github.com/arun11299/cpp-subprocess.git
+	url = https://github.com/embeddedawesome/cpp-subprocess.git
 [submodule "components/json/master"]
 	path = components/json/master
 	url = https://github.com/embeddedawesome/json.git
