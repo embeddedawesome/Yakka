@@ -26,11 +26,15 @@ namespace bob
         // Add known information
         this->id = file_path.stem().string();
         yaml["bob_file"] = path_string;
-        path_string = file_path.parent_path().generic_string();
+
+        if (file_path.has_parent_path())
+            path_string = file_path.parent_path().generic_string();
+        else
+            path_string = ".";
         yaml["directory"] = path_string;
-        std::replace(path_string.begin(), path_string.end(), '/', '.');
-        path_string = path_string.substr(path_string.find_first_not_of('.'));
-        yaml["dot_name"] = path_string;
+        // std::replace(path_string.begin(), path_string.end(), '/', '.');
+        // path_string = path_string.substr(path_string.find_first_not_of('.'));
+        // yaml["dot_name"] = path_string;
 
         // Ensure certain nodes are sequences
         if (yaml["requires"]["components"].IsScalar())
@@ -81,7 +85,7 @@ namespace bob
 
         if (node["requires"].IsScalar() || node["requires"].IsSequence())
         {
-            std::cerr << yaml["dot_name"] << ": 'requires' entry is malformed: \n'" << node["requires"] << "'\n\n";
+            std::cerr << yaml["name"] << ": 'requires' entry is malformed: \n'" << node["requires"] << "'\n\n";
             return;
         }
 
@@ -97,7 +101,7 @@ namespace bob
                     for (auto& i: node["requires"]["components"])
                         new_components.insert(i.as<std::string>());
                 else
-                    std::cerr << "Node '" << yaml["dot_name"].as<std::string>() << "' has invalid 'requires'\n";
+                    std::cerr << "Node '" << yaml["name"].as<std::string>() << "' has invalid 'requires'\n";
             }
 
 
@@ -113,12 +117,12 @@ namespace bob
                     for ( auto& i : node["requires"]["features"] )
                         new_features.push_back( i.as<std::string>( ) );
                 else
-                    std::cerr << "Node '" << yaml["dot_name"].as<std::string>() << "' has invalid 'requires'\n";
+                    std::cerr << "Node '" << yaml["name"].as<std::string>() << "' has invalid 'requires'\n";
             }
         }
         catch (YAML::Exception &e)
         {
-            std::cerr << "Failed to process requirements for '" << yaml["dot_name"] << "'\n";
+            std::cerr << "Failed to process requirements for '" << yaml["name"] << "'\n";
             std::cerr << e.msg << "\n";
         }
     }

@@ -77,7 +77,7 @@ namespace bob
 
         if (node["requires"].IsScalar() || node["requires"].IsSequence())
         {
-            std::cerr /*<< yaml["dot_name"]*/ << ": 'requires' entry is malformed: \n'" << node["requires"] << "'\n\n";
+            std::cerr /*<< yaml["name"]*/ << ": 'requires' entry is malformed: \n'" << node["requires"] << "'\n\n";
             return;
         }
 
@@ -93,7 +93,7 @@ namespace bob
                     for (auto& i: node["requires"]["components"])
                         unprocessed_components.push_back(i.as<std::string>());
                 else
-                    std::cerr << "Node '" /*<< yaml["dot_name"].as<std::string>() */ <<"' has invalid 'requires'\n";
+                    std::cerr << "Node '" /*<< yaml["name"].as<std::string>() */ <<"' has invalid 'requires'\n";
             }
 
             // Process required features
@@ -108,12 +108,12 @@ namespace bob
                     for ( auto& i : node["requires"]["features"] )
                         unprocessed_features.push_back( i.as<std::string>( ) );
                 else
-                    std::cerr << "Node '" /*<< yaml["dot_name"].as<std::string>()*/ << "' has invalid 'requires'\n";
+                    std::cerr << "Node '" /*<< yaml["name"].as<std::string>()*/ << "' has invalid 'requires'\n";
             }
         }
         catch (YAML::Exception &e)
         {
-            std::cerr << "Failed to process requirements for '" /*<< yaml["dot_name"] */<< "'\n";
+            std::cerr << "Failed to process requirements for '" /*<< yaml["name"] */<< "'\n";
             std::cerr << e.msg << "\n";
         }
     }
@@ -133,42 +133,44 @@ namespace bob
             for ( auto i = 0; i < unprocessed_components.size(); ++i )
             {
                 // Convert string to id
-                auto c = bob::component_dotname_to_id(unprocessed_components[i]);
-                
+                const auto c = bob::component_dotname_to_id(unprocessed_components[i]);
+
+                // Find the component in the project component database
+                auto component_path = find_component(c);
+                if ( !component_path )
+                {
+                    unknown_components.insert(c);
+                    continue;
+                }
+
                 // Add component to the required list and continue if this is not a new component
                 if ( required_components.insert( c ).second == false )
                     continue;
 
+                std::shared_ptr<bob::component> new_component;
                 try
                 {
-                    // Find the component in the project component database
-                    auto component_path = find_component(c);
-                    if ( !component_path )
-                    {
-                        unknown_components.insert(c);
-                        continue;
-                    }
-
-                    auto new_component = std::make_shared<bob::component>( component_path.value() );
+                    new_component = std::make_shared<bob::component>( component_path.value() );
                     components.push_back( new_component );
-
-                    // Add all the required components into the unprocessed list
-                    for (const auto& r : new_component->yaml["requires"]["components"])
-                        unprocessed_components.push_back(r.Scalar());
-
-                    // Add all the required features into the unprocessed list
-                    for (const auto& f : new_component->yaml["requires"]["features"])
-                        unprocessed_features.push_back(f.Scalar());
-
-                    // Process all the supported features currently required. Note new feature will be processed in the features pass
-                    for ( auto& f : required_features )
-                        if ( new_component->yaml["supports"][f] )
-                            process_requirements( new_component->yaml["supports"][f] );   
                 }
-                catch ( ... )
+                catch ( std::exception e )
                 {
-                    unknown_components.insert(c);
+                    std::cerr << "Failed to parse: " << c << "\n" << e.what() << std::endl;
+                    //unknown_components.insert(c);
                 }
+                
+                // Add all the required components into the unprocessed list
+                for (const auto& r : new_component->yaml["requires"]["components"])
+                    unprocessed_components.push_back(r.Scalar());
+
+                // Add all the required features into the unprocessed list
+                for (const auto& f : new_component->yaml["requires"]["features"])
+                    unprocessed_features.push_back(f.Scalar());
+
+                // Process all the supported features currently required. Note new feature will be processed in the features pass
+                for ( auto& f : required_features )
+                    if ( new_component->yaml["supports"][f] )
+                        process_requirements( new_component->yaml["supports"][f] );   
             }
             unprocessed_components.clear();
 
@@ -820,7 +822,7 @@ namespace bob
                 // Update the modified times of the construction items
                 for (auto a = running_tasks.begin(); a != running_tasks.end();)
                 {
-                    if ( a->get()->thread_result.wait_for(0ms) == std::future_status::ready )
+                    if ( a->get()->thread_result.wait_for(2ms) == std::future_status::ready )
                     {
                         std::clog << a->get()->blueprint->target << ": Done\n";
                         a->get()->blueprint->last_modified = construction_start_time;

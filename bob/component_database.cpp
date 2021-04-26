@@ -60,9 +60,11 @@ namespace bob
         if ( fs::exists( path ) )
         {
             const auto component_id   = path.filename().replace_extension().generic_string();
-            const auto& temp = (*this)[component_id];
-            ( *this )[component_id].push_back( path.generic_string() );
-            database_is_dirty = true;
+            if (!( *this )[component_id] && ( *this )[component_id].size() == 0)
+            {
+                ( *this )[component_id].push_back( path.generic_string() );
+                database_is_dirty = true;
+            }
         }
     }
 

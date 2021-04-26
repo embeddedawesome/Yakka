@@ -21,54 +21,6 @@ int main(int argc, char **argv)
     std::ofstream log_file( "bob.log" );
     auto clog_backup = std::clog.rdbuf( log_file.rdbuf( ) );
 
-#if 0
-
-    ProgressBar temp_git_bar{option::BarWidth{50}, option::ShowElapsedTime{false}, option::PrefixText{"Fetching "}, option::SavedStartTime{true}};
-    DynamicProgress<ProgressBar> temp_bars(temp_git_bar);
-    temp_bars.set_option(option::HideBarWhenComplete{false});
-    temp_bars.print_progress();
-
-    enum {
-        GIT_COUNTING    = 0,
-        GIT_COMPRESSING = 1,
-        GIT_RECEIVING   = 2,
-    } phase = GIT_COUNTING;
-    static const int phase_rates[] = {0, 20, 40, 100};
-#if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-    bob::exec("c:\\silabs\\apps\\git\\bin\\git", "clone --progress ssh://git@stash.silabs.com/gos/sl_wifi.git", [&temp_git_bar, &phase, &temp_bars](std::string& data) -> void {
-        std::smatch s;
-        //std::clog << "[[ " << data << " ]]\n";
-
-        // Determine phase
-        // if ( data.find("Coun") != data.npos ) phase = GIT_COUNTING;//std::clog << "Counting...\n";
-        if ( data.find("Comp" ) != data.npos ) phase = GIT_COMPRESSING;//std::clog << "Compressing...\n";
-        if ( data.find("Rece") != data.npos ) phase = GIT_RECEIVING;//std::clog << "Receiving...\n";
-        
-        if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
-        {
-            int phase_progress = std::stoi( s[1] );
-            int end_value = std::stoi( s[2] );
-            float progress = phase_rates[phase] + (phase_rates[phase+1]-phase_rates[phase])*phase_progress/end_value;
-            temp_git_bar.set_progress(progress);
-            temp_bars.print_progress();
-            std::clog << "Got " << s[1] << " of " << s[2] << ".. Calculated " << progress << "%" << std::endl;
-        }
-        // Determine progress
-        // auto left  = data.find("(");
-        // auto right = data.find(")", left);
-        // if (left != data.npos && right != data.npos)
-        // {
-            
-        // }
-    });
-#else
-    std::clog << bob::exec("git", "clone --progress ssh://git@stash.silabs.com/gos/sl_wifi.git");
-#endif
-    std::clog.flush();
-    std::clog.rdbuf( clog_backup );
-    exit(0);
-#endif
-
     cxxopts::Options options("bob", "BOB the universal builder");
     options.add_options()
         ("h,help", "Print usage")
@@ -105,30 +57,85 @@ int main(int argc, char **argv)
 
     auto t1 = std::chrono::high_resolution_clock::now();
 
+    DynamicProgress<ProgressBar> bars;
+    std::vector<std::shared_ptr<ProgressBar>> progress_bars;
+
     bob::project project(result.unmatched());
 
     project.load_component_registries();
 
+    
+    std::vector<std::pair<std::string, std::future<void>>> git_fetching_list;
     do {
+        project.unknown_components.clear();
         project.evaluate_dependencies();
+        int found_components = 0;
+
+        std::clog << "Unknown components: ";
+        for (const auto u: project.unknown_components)
+            std::clog << u << ", ";
+        std::clog << "\n";
 
         if ( project.unknown_components.size( ) != 0 )
+        {
+            // Check whether any of the unknown components are in registries.
+            for ( auto r : project.registries )
+            {
+                for (const auto& c: project.unknown_components)
+                {
+                    if ( r.second["provides"]["components"][c].IsDefined( ) )
+                    {
+                        if (result["fetch"].as<bool>())
+                        {
+                            ++found_components;
+                            progress_bars.push_back(std::make_shared<ProgressBar>(option::BarWidth{50}, option::ShowPercentage{true}, option::PrefixText{"Fetching " + c + " "}, option::SavedStartTime{true}));
+                            auto id = bars.push_back(*progress_bars.back());
+                            // auto id = bars.push_back(ProgressBar{option::BarWidth{50}, option::ShowPercentage{true}, option::PrefixText{"Fetching " + c + " "}, option::SavedStartTime{true}});
+                            bars.print_progress();
+                            git_fetching_list.push_back( {c, std::async(std::launch::async, [&](size_t bar_id){
+                                bob::fetch_component(c, r.second["provides"]["components"][c], [&](size_t number) {bars[bar_id].set_progress(number);});
+                                bars[bar_id].mark_as_completed();
+                            }, id)});
+                        }
+                        else
+                            std::cerr << "Component '" << c << "' can be fetched from the '" << r.second["name"] << "' registry" << std::endl;
+                    }
+                }
+            }
+        }  
+        
+        // Wait for all the fetching to complete
+        if (git_fetching_list.size() != 0)
+        {
+            decltype(git_fetching_list)::iterator completed_fetch;
+            do {
+                completed_fetch = std::find_if(git_fetching_list.begin(), git_fetching_list.end(), [](decltype(git_fetching_list)::value_type& f){ return f.second.wait_for(100ms) == std::future_status::ready; });
+            } while (completed_fetch == git_fetching_list.end());
+            std::clog << completed_fetch->first << " finished\n";
+            project.unprocessed_components.push_back(completed_fetch->first);
+            project.component_database.scan_for_components("./components/" + completed_fetch->first);
+            git_fetching_list.erase(completed_fetch);
+            continue;
+        }
+
+        if (git_fetching_list.size() == 0 && project.unknown_components.size( ) != 0)
         {
             std::cerr << "Failed to find the following components:" << std::endl;
             for (const auto& c: project.unknown_components)
                 std::cerr << " - " << c << std::endl;
-            
-            // Check whether any of the unknown components are in registries.
-            for ( auto r : project.registries )
-                for (const auto& c: project.unknown_components)
-                    if ( r.second["provides"]["components"][c].IsDefined( ) )
-                    {
-                        std::cerr << "Component '" << c << "' can be fetched from the '" << r.second["name"] << "' registry" << std::endl;
-                    }
-            
-            exit(0);
+            return 0;
         }
-    } while(0);
+
+        // for( const auto& f: git_fetching_list)
+        // {
+        //     f.wait();
+        // }
+
+        // Scan to find the new components. Ideally we just insert the components as they are downloaded. Note that a component download may contain multiple components.
+        // project.component_database.save();
+        
+        // return 0;
+    } while(project.unknown_components.size( ) != 0 || git_fetching_list.size() != 0);
 
     auto t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
@@ -153,9 +160,9 @@ int main(int argc, char **argv)
 
     project.load_common_commands();
 
-    ProgressBar bar1{option::BarWidth{50}, option::ShowElapsedTime{false}, option::PrefixText{"Building "}, option::SavedStartTime{true}};
+    ProgressBar bar1{option::BarWidth{50}, option::ShowPercentage{true}, option::PrefixText{"Building "}};
 
-    DynamicProgress<ProgressBar> bars(bar1);
+    bars.push_back(bar1);
     bars.set_option(option::HideBarWhenComplete{false});
     bars.print_progress();
 //    std::clog << project.project_summary_json << std::endl;
@@ -189,49 +196,73 @@ int main(int argc, char **argv)
 }
 
 namespace bob {
-
-// static std::string make_command(const std::string_view command_text, const std::string_view& arg_text)
-// {
-//     std::string full_command { command_text };
-
-//     // #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-
-//     // #endif
-
-//     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-//         // std::replace(full_command.begin(), full_command.end(), '/', '\\');
-//         // if (!arg_text.empty())
-//         // {
-//             full_command.insert(0, "\"");
-//             full_command.append("\"");
-//         // }
-//     #endif
-
-//        if (!arg_text.empty())
-//         {
-//             full_command.append(" ");
-//             full_command.append(arg_text);
-//         }
-
-//         // full_command.append(" 2>&1");
-//         std::clog << "exec: " << full_command << "\n";
-//     return full_command;
-// }
-
-#if 0//defined(__USING_WINDOWS__)
-std::string exec( const std::string& command_text, const std::string& arg_text)
+using namespace std::string_literals;
+template<typename Functor>
+void fetch_component(const std::string& name, YAML::Node node, Functor set_progress)
 {
-    std::clog << command_text << " " << arg_text << "\n";
-    try {
-        auto output = subprocess::check_output({command_text, arg_text}, subprocess::error{subprocess::STDOUT});
-        return output.buf.data();
-    } catch (std::exception e)
-    {
-        std::clog << e.what();
-        return {};
-    }
-}
+    enum {
+        GIT_COUNTING    = 0,
+        GIT_COMPRESSING = 1,
+        GIT_RECEIVING   = 2,
+    } phase = GIT_COUNTING;
+
+    // Of the total time to fetch a Git repo, 10% is allocated to counting, 10% to compressing, and 80% to receiving.
+    static const int phase_rates[] = {0, 10, 20, 90};
+
+    std::string url    = node["packages"]["default"]["url"].as<std::string>();
+    std::string branch = node["packages"]["default"]["branch"].as<std::string>();
+    const std::string fetch_string = "-C "s + ".bob"s + "/repos/ clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
+
+#if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+# define GIT_STRING  "c:/silabs/apps/git/bin/git"
 #else
+# define GIT_STRING  "git"
+#endif
+    auto t1 = std::chrono::high_resolution_clock::now();
+    bob::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
+        std::smatch s;
+        // std::clog << "[[ " << data << " ]]\n";
+
+        // Determine phase
+        // if ( data.find("Coun") != data.npos ) phase = GIT_COUNTING;//std::clog << "Counting...\n";
+        if ( phase < GIT_COMPRESSING && data.find("Comp" ) != data.npos ) {phase = GIT_COMPRESSING; /*progress_bar.set_option(indicators::option::PostfixText{"Compressing"});*/ }
+        if ( phase < GIT_RECEIVING && data.find("Rece") != data.npos ) { phase = GIT_RECEIVING; /*progress_bar.set_option(indicators::option::PostfixText{"Receiving"});*/ }
+        
+        if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
+        {
+            int phase_progress = std::stoi( s[1] );
+            int end_value = std::stoi( s[2] );
+            float progress = phase_rates[phase] + (phase_rates[phase+1]-phase_rates[phase])*phase_progress/end_value;
+            set_progress(progress);
+        }
+    });
+    // auto t2 = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+    // std::clog << duration << " milliseconds to download: " << name << "\n";
+    // t1 = t2;
+
+    if (!fs::exists("components/" + name))
+        fs::create_directories("components/" + name);
+    const std::string checkout_string     = "--git-dir "s + ".bob"s + "/repos/" + name + "/.git --work-tree components/" + name + " checkout " + branch + " --force";
+    const std::string lfs_checkout_string = "--git-dir "s + ".bob"s + "/repos/" + name + "/.git --work-tree components/" + name + " lfs checkout";
+    
+    // Checkout isntance
+    auto result = bob::exec(GIT_STRING, checkout_string);
+    // std::clog << result << std::endl;
+    // t2 = std::chrono::high_resolution_clock::now();
+    // duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+    // std::clog << duration << " milliseconds to checkout: " << name << "\n";
+    // t1 = t2;
+    set_progress(90);
+
+    result = bob::exec(GIT_STRING, lfs_checkout_string);
+    // std::clog << result << std::endl;
+    // t2 = std::chrono::high_resolution_clock::now();
+    // duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+    // std::clog << duration << " milliseconds to LFS: " << name << "\n";
+    set_progress(100);
+}
+
 std::string exec( const std::string& command_text, const std::string& arg_text)
 {
     std::clog << command_text << " " << arg_text << "\n";
@@ -251,8 +282,13 @@ std::string exec( const std::string& command_text, const std::string& arg_text)
         do {
             if (output != nullptr)
             {
-                if ((count = fread(buffer.data(), 1, buffer.size(), output)) > 0) {
+                if ((count = fread(buffer.data(), 1, buffer.size(), output)) > 0)
                     result += buffer.data();
+
+                if (count != buffer.size())
+                {
+                    if (ferror(output))
+                        count = 0;
                 }
             }
         } while(count > 0);
@@ -265,114 +301,36 @@ std::string exec( const std::string& command_text, const std::string& arg_text)
         return {};
     }
 }
-#endif
 
-//     std::array<char, 512> buffer;
-//     std::string result = "";
-//     std::string full_command { command_text };
-
-//     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-//     // std::replace(full_command.begin(), full_command.end(), '/', '\\');
-//     // if (!arg_text.empty())
-//     // {
-//         full_command.insert(0, "\"");
-//         full_command.append("\"");
-//     // }
-//     #endif
-
-//     if (!arg_text.empty())
-//     {
-//         full_command.append(" ");
-//         full_command.append(arg_text);
-//     }
-
-//     // full_command.append(" 2>&1");
-//     std::clog << "exec: " << full_command << "\n";
-
-//     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-//     // auto out = subprocess::check_output(full_command, subprocess::error{subprocess::STDOUT});
-//     // return out.buf.data();
-//     auto p = subprocess::Popen(full_command, subprocess::error{subprocess::STDOUT} );
-//     auto output = p.output();
-//     size_t count = 0;
-//     do {
-//         if (output != nullptr)
-//         {
-//             if ((count = fread(buffer.data(), 1, buffer.size(), output)) > 0) {
-//                 result += buffer.data();
-//             }
-//         }
-//     } while(count > 0);
-
-//     p.wait();
-//     return result;
-//     #else
-//         // auto p = (command_text.find("git") != command_text.npos) ?
-//                 //   subprocess::Popen(full_command, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} ) :
-//     auto p = subprocess::Popen(command, subprocess::error{subprocess::STDOUT} );
-    
-
-//     auto output = p.output();
-//     size_t count = 0;
-//     do {
-//         if (output != nullptr)
-//         {
-//             if ((count = fread(buffer.data(), 1, buffer.size(), output)) > 0) {
-//                 result += buffer.data();
-//             }
-//         }
-//     } while(count > 0);
-
-//     p.wait();
-//     return result;
-//     #endif
-// return {};
-// }
-
-// template<typename Functor>
-// void exec( const std::string_view command_text, const std::string_view& arg_text, Functor function)
-// {
-//     std::array<char, 64> buffer;
-//     std::string full_command { command_text };
-
-//     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-//     // std::replace(full_command.begin(), full_command.end(), '/', '\\');
-//     // if (!arg_text.empty())
-//     // {
-//         full_command.insert(0, "\"");
-//         full_command.append("\"");
-//     // }
-//     #endif
-
-//     if (!arg_text.empty())
-//     {
-//         full_command.append(" ");
-//         full_command.append(arg_text);
-//     }
-
-//     // full_command.append(" 2>&1");
-//     std::clog << "exec: " << full_command << "\n";
-
-//     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-//     auto p = subprocess::Popen(full_command, subprocess::error{subprocess::STDOUT});
-//     #else
-//         // auto p = (command_text.find("git") != command_text.npos) ?
-//                 //   subprocess::Popen(full_command, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} ) :
-//     auto p =subprocess::Popen(command, subprocess::error{subprocess::STDOUT} );
-//     #endif
-
-//     auto output = p.output();
-
-//     size_t count = 0;
-//     do {
-//         if (output != nullptr)
-//         {
-//             if ((count = fread(buffer.data(), 1, buffer.size(), output)) > 0) {
-//                 function( std::string(buffer.data()) );
-//             }
-//         }
-//     } while(count > 0);
-
-//     p.wait();
-// }
+template<typename Functor>
+void exec( const std::string& command_text, const std::string& arg_text, Functor function)
+{
+    std::clog << command_text << " " << arg_text << "\n";
+    try {
+        std::string command = command_text;
+        if (!arg_text.empty()) 
+            command += " " + arg_text;
+        #if defined(__USING_WINDOWS__)
+        auto p = subprocess::Popen(command, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} );
+        #else
+        auto p = subprocess::Popen(command, subprocess::shell{true}, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} );
+        #endif
+        auto output = p.output();
+        std::array<char, 32> buffer;
+        size_t count = 0;
+        do {
+            if (output != nullptr)
+            {
+                if ((count = fread(buffer.data(), 1, buffer.size(), output)) > 0) {
+                    std::string temp(buffer.data());
+                    function( temp );
+                }
+            }
+        } while(count > 0);
+        p.wait();
+    } catch (std::exception e)
+    {
+        std::clog << e.what();;
+    }
+}
 }

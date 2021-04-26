@@ -1,5 +1,7 @@
 #pragma once
 
+#include "yaml-cpp/yaml.h"
+#include "indicators/progress_bar.hpp"
 #include <set>
 #include <string>
 #include <functional>
@@ -15,8 +17,10 @@ namespace bob {
         return dotname.find_last_of(".") != std::string::npos ? dotname.substr(dotname.find_last_of(".")+1) : dotname;
     }
 
+    template<typename Functor>
+    void fetch_component(const std::string& name, YAML::Node node, Functor set_progress);
     std::string exec( const std::string& command_text, const std::string& arg_text);
 
     template<typename Functor>
-    void exec( const std::string_view command_text, const std::string_view& arg_text, Functor function);
+    void exec( const std::string& command_text, const std::string& arg_text, Functor function);
 }
