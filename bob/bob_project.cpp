@@ -1098,7 +1098,7 @@ namespace bob
         do
         {
             std::getline(infile, line);
-        } while(line.find(':') == std::string::npos);
+        } while(line.length() > 0 && line.find(':') == std::string::npos);
 
         while (std::getline(infile, line, ' '))
         {
