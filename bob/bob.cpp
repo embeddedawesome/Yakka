@@ -263,12 +263,12 @@ void fetch_component(const std::string& name, YAML::Node node, Functor set_progr
     set_progress(100);
 }
 
-std::string exec( const std::string& command_text, const std::string& arg_text)
+std::pair<std::string, int> exec( const std::string& command_text, const std::string& arg_text)
 {
     std::clog << command_text << " " << arg_text << "\n";
     try {
         std::string command = command_text;
-        if (!arg_text.empty()) 
+        if (!arg_text.empty())
             command += " " + arg_text;
         #if defined(__USING_WINDOWS__)
         auto p = subprocess::Popen(command, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} );
@@ -294,7 +294,8 @@ std::string exec( const std::string& command_text, const std::string& arg_text)
         } while(count > 0);
 
         p.wait();
-        return result;
+        ;
+        return {result,p.retcode()};
     } catch (std::exception e)
     {
         std::clog << e.what();
@@ -308,7 +309,7 @@ void exec( const std::string& command_text, const std::string& arg_text, Functor
     std::clog << command_text << " " << arg_text << "\n";
     try {
         std::string command = command_text;
-        if (!arg_text.empty()) 
+        if (!arg_text.empty())
             command += " " + arg_text;
         #if defined(__USING_WINDOWS__)
         auto p = subprocess::Popen(command, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} );

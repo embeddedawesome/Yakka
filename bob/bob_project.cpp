@@ -121,10 +121,10 @@ namespace bob
     /**
      * @brief Processes all the @ref unprocessed_components and @ref unprocessed_features, adding items to @ref unknown_components if they are not in the component database
      *        It is assumed the caller will process the @ref unknown_components before adding them back to @ref unprocessed_component and calling this again.
-     * @return project::state 
+     * @return project::state
      */
     project::state project::evaluate_dependencies()
-    {        
+    {
         // Start processing all the required components and features
         while ( !unprocessed_components.empty( ) || !unprocessed_features.empty( ))
         {
@@ -158,7 +158,7 @@ namespace bob
                     std::cerr << "Failed to parse: " << c << "\n" << e.what() << std::endl;
                     //unknown_components.insert(c);
                 }
-                
+
                 // Add all the required components into the unprocessed list
                 for (const auto& r : new_component->yaml["requires"]["components"])
                     unprocessed_components.push_back(r.Scalar());
@@ -170,7 +170,7 @@ namespace bob
                 // Process all the supported features currently required. Note new feature will be processed in the features pass
                 for ( auto& f : required_features )
                     if ( new_component->yaml["supports"][f] )
-                        process_requirements( new_component->yaml["supports"][f] );   
+                        process_requirements( new_component->yaml["supports"][f] );
             }
             unprocessed_components.clear();
 
@@ -236,7 +236,7 @@ namespace bob
         	project_summary["features"].push_back(i);
 
         project_summary_json = project_summary.as<nlohmann::json>();
-        project_summary_json["data"] = nlohmann::json::object();   
+        project_summary_json["data"] = nlohmann::json::object();
     }
 
     std::optional<fs::path> project::find_component(const std::string component_dotname)
@@ -282,7 +282,7 @@ namespace bob
         std::unordered_set<std::string> new_targets;
         std::unordered_set<std::string> processed_targets;
         std::unordered_set<std::string> unprocessed_targets = commands;
-        
+
         while (!unprocessed_targets.empty())
         {
             for (auto& t: unprocessed_targets)
@@ -316,7 +316,7 @@ namespace bob
             std::cerr << "Data path does not start with '/'" << std::endl;
             return;
         }
-        
+
         for (const auto& c: project_summary_json["components"])
         {
             try {
@@ -447,7 +447,7 @@ namespace bob
             else
                 std::clog << "No blueprint for '" << target << "'" << std::endl;
         }
-            
+
         return blueprint_matches;
     }
 
@@ -470,12 +470,14 @@ namespace bob
             captured_output = inja_env.render( temp, generated_json );
             //std::replace( captured_output.begin( ), captured_output.end( ), '/', '\\' );
             // std::clog << "Executing '" << captured_output << "'\n";
-            captured_output = exec( captured_output, std::string( "" ) );
+            auto [temp_output, retcode] = exec( captured_output, std::string( "" ) );
 
-            if ( captured_output.length( ) != 0 )
-                std::clog << captured_output << "\n";
+            if (retcode < 0 && temp_output.length( ) != 0)
+                std::cerr << temp_output << "\n";
+            else if ( temp_output.length( ) != 0 )
+                std::clog << temp_output << "\n";
 
-            return captured_output;
+            return temp_output;
         };
 
         blueprint_commands["fix_slashes"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
@@ -492,11 +494,25 @@ namespace bob
                 std::string line;
                 captured_output = "";
                 int count = 0;
+                YAML::Node yaml;
 
                 while (std::getline(ss, line))
                 {
-                    std::string r = std::regex_replace(line, regex_search, command["replace"].as<std::string>(), std::regex_constants::format_no_copy);
-                    captured_output.append(r);
+                    if (command["replace"])
+                    {
+                      std::string r = std::regex_replace(line, regex_search, command["replace"].as<std::string>(), std::regex_constants::format_no_copy);
+                      captured_output.append(r);
+                    }
+                    else if (command["to_yaml"])
+                    {
+                      std::smatch s;
+                      if (!std::regex_match(line, s, regex_search))
+                        continue;
+
+                      int i=0;
+                      for ( auto& v : command["to_yaml"] )
+                        yaml[v.Scalar()] = s[i++];
+                    }
                 }
             }
             else
@@ -597,7 +613,7 @@ namespace bob
         };
     }
 
-    static void run_command( std::shared_ptr< construction_task> task, const project* project )
+    static std::pair<std::string, int> run_command( std::shared_ptr< construction_task> task, const project* project )
     {
         std::string captured_output;
         inja::Environment inja_env = inja::Environment();
@@ -613,7 +629,7 @@ namespace bob
         if ( !blueprint->blueprint["process"].IsSequence())
         {
             std::cerr << "Error: process nodes must be sequences\n" << blueprint->blueprint["process"] << "\n";
-            return;
+            return {"", -1};
         }
 
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
@@ -643,8 +659,14 @@ namespace bob
                     // Apply template engine
                     arg_text = inja_env.render( arg_text, project->project_summary_json);
 
-                    captured_output = exec(command_text, arg_text);
+                    auto[temp_output, retcode] = exec(command_text, arg_text);
 
+                    if (retcode < 0)
+                    {
+                      std::cerr << temp_output;
+                      return {temp_output, retcode};
+                    }
+                    captured_output = temp_output;
                     // Echo the output of the command
                     // TODO: Note this should be done by the main thread to ensure the outputs from multiple run_command instances don't overlap
                     std::clog << captured_output;
@@ -670,6 +692,7 @@ namespace bob
         std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
         std::clog << duration << " milliseconds for " << blueprint->target << "\n";
+        return {captured_output, 0};
     }
 
     static void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node)
@@ -692,7 +715,7 @@ namespace bob
                         std::cerr << "Cannot merge array into an object" << std::endl; break;
                     case nlohmann::detail::value_t::array:
                         for (auto& i: node)
-                            merge_target.push_back(i); 
+                            merge_target.push_back(i);
                         break;
                     default:
                         merge_target.push_back(node); break;
@@ -701,9 +724,9 @@ namespace bob
             default:
                 switch(merge_target.type())
                 {
-                    case nlohmann::detail::value_t::object: 
+                    case nlohmann::detail::value_t::object:
                         std::cerr << "Cannot merge scalar into an object" << std::endl; break;
-                    case nlohmann::detail::value_t::array:  
+                    case nlohmann::detail::value_t::array:
                     default:
                         merge_target.push_back(node); break;
                 }
@@ -775,7 +798,7 @@ namespace bob
                                   << node << "\n";
                         return;
                     }
-                    auto new_merge = merge_target[item_name]; 
+                    auto new_merge = merge_target[item_name];
                     yaml_node_merge(new_merge, item_node);
                 }
             }
@@ -987,13 +1010,13 @@ namespace bob
 
     /**
      * @brief Save to disk the content of the @ref project_summary to bob_summary.yaml and bob_summary.json
-     * 
+     *
      */
     void project::save_summary()
     {
         if (!fs::exists(project_summary["project_output"].Scalar()))
             fs::create_directories(project_summary["project_output"].Scalar());
-        
+
         std::ofstream summary_file( project_summary["project_output"].Scalar() + "/bob_summary.yaml" );
         summary_file << project_summary;
         summary_file.close();
@@ -1007,7 +1030,7 @@ namespace bob
         // Verify the .bob/registries path exists
     	if (!fs::exists(this->project_directory + "/.bob/registries"))
             return;
-        
+
         for ( const auto& p : fs::recursive_directory_iterator( this->project_directory + "/.bob/registries") )
             if ( p.path().extension().generic_string() == ".yaml" )
                 try
@@ -1031,9 +1054,9 @@ namespace bob
 
     /**
      * @brief Fetches a component from a registry
-     * 
-     * @param name 
-     * @return std::future<void> 
+     *
+     * @param name
+     * @return std::future<void>
      */
     std::future<void> project::fetch_component(const std::string& name, indicators::ProgressBar& bar)
     {
@@ -1080,7 +1103,7 @@ namespace bob
 
     /**
      * @brief Parses dependency files as output by GCC or Clang generating a vector of filenames as found in the named file
-     * 
+     *
      * @param filename  Name of the dependency file. Typically ending in '.d'
      * @return std::vector<std::string>  Vector of files specified as dependencies
      */
@@ -1115,7 +1138,7 @@ namespace bob
     /**
      * @brief Returns the path corresponding to the home directory of BOB
      *        Typically this would be ~/.bob or /Users/<username>/.bob or $HOME/.bob
-     * @return std::string 
+     * @return std::string
      */
     std::string get_bob_home()
     {
