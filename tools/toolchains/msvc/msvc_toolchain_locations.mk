@@ -6,7 +6,7 @@ VISUAL_STUDIO_TOOL_DIR := $(VISUAL_STUDIO_DIR)/$(VISUAL_STUDIO_TYPE)/VC/Tools/MS
 
 
 # Determine latest version of Windows SDK by list directories in the Include path and getting the first one (should be the one with the biggest number)
-WINDOWS_SDK_VERSION         :=$(firstword $(filter 10.%,$(subst /, ,$(wildcard $(WINDOWS_SDK_DIR)/Include/* ))))
+WINDOWS_SDK_VERSION         :=$(lastword $(sort $(filter 10.%,$(subst /, ,$(wildcard $(WINDOWS_SDK_DIR)/Include/* )))))
 # Determine latest version of Visual Studio tools
 VISUAL_STUDIO_TOOLS_VERSION := $(notdir $(lastword $(wildcard $(VISUAL_STUDIO_TOOL_DIR)/*)))
 
