@@ -493,13 +493,14 @@ namespace bob
                 std::string line;
                 captured_output = "";
                 int count = 0;
+                YAML::Node yaml;
 
                 while (std::getline(ss, line))
                 {
                   if (command["replace"])
                   {
-                    std::string r = std::regex_replace(line, regex_search, command["replace"].as<std::string>(), std::regex_constants::format_no_copy);
-                    captured_output.append(r);
+                      std::string r = std::regex_replace(line, regex_search, command["replace"].as<std::string>(), std::regex_constants::format_no_copy);
+                      captured_output.append(r);
                   }
                   else if (command["to_yaml"])
                   {
