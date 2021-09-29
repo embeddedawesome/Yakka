@@ -20,7 +20,7 @@ namespace bob
 {
     const std::string default_output_directory  = "output/";
 
-    #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__) 
+    #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
     const std::string host_os_string  = "windows";
     #elif defined(__APPLE__)
     const std::string host_os_string  = "macos";
@@ -53,7 +53,7 @@ namespace bob
         std::optional<fs::path> find_component(const std::string component_dotname);
         void parse_blueprints();
         void generate_project_summary();
-        
+
         std::vector<std::unique_ptr<blueprint_match>> find_blueprint_match( const std::string target );
         void evaluate_blueprint_dependencies();
         void load_common_commands();
@@ -64,6 +64,7 @@ namespace bob
         std::optional<YAML::Node> find_registry_component(const std::string& name);
         std::future<void> fetch_component(const std::string& name, indicators::ProgressBar& bar);
         void process_data_dependency(const std::string& path);
+        void process_supported_feature(YAML::Node& component, const YAML::Node& node);
 
         // Basic project data
         std::string project_name;
@@ -102,7 +103,7 @@ namespace bob
         void process_aggregate( YAML::Node& aggregate );
     };
 
-    static void run_command( std::shared_ptr< construction_task> task, const project* project );
+    static std::pair<std::string, int> run_command( std::shared_ptr< construction_task> task, const project* project );
     static void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node);
     static void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node);
     static std::vector<std::string> parse_gcc_dependency_file(const std::string filename);

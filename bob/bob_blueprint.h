@@ -33,6 +33,6 @@ namespace bob {
     {
         std::unique_ptr<blueprint_match> blueprint;
         construction_task_state state;
-        std::future<void> thread_result;
+        std::future<std::pair<std::string, int>> thread_result;
     } construction_task;
 } // bob namespace

@@ -51,12 +51,18 @@ int main(int argc, char **argv)
             std::cout << c.first << ":\n  " << c.second << std::endl;
         }
     }
+    if (result["fetch"].as<bool>())
+    {
+      // Ensure the BOB repos directory exists
+      fs::create_directory(".bob/repos");
+    }
 
     if (result.unmatched().empty())
         exit(0);
 
     auto t1 = std::chrono::high_resolution_clock::now();
 
+    show_console_cursor(false);
     DynamicProgress<ProgressBar> bars;
     std::vector<std::shared_ptr<ProgressBar>> progress_bars;
 
@@ -64,8 +70,9 @@ int main(int argc, char **argv)
 
     project.load_component_registries();
 
-    
-    std::vector<std::pair<std::string, std::future<void>>> git_fetching_list;
+
+    std::map<std::string, std::future<void>> git_fetching_list;
+//    std::vector<std::pair<std::string, std::future<void>>> git_fetching_list;
     do {
         project.unknown_components.clear();
         project.evaluate_dependencies();
@@ -83,6 +90,13 @@ int main(int argc, char **argv)
             {
                 for (const auto& c: project.unknown_components)
                 {
+                    // Check if it's already being fetched
+                    std::clog << "Checking for " << c << "\n";
+                    if (git_fetching_list.find(c) != git_fetching_list.end()) {
+                      std::clog << "Already being fetched\n";
+                      continue;
+                    }
+
                     if ( r.second["provides"]["components"][c].IsDefined( ) )
                     {
                         if (result["fetch"].as<bool>())
@@ -92,19 +106,22 @@ int main(int argc, char **argv)
                             auto id = bars.push_back(*progress_bars.back());
                             // auto id = bars.push_back(ProgressBar{option::BarWidth{50}, option::ShowPercentage{true}, option::PrefixText{"Fetching " + c + " "}, option::SavedStartTime{true}});
                             bars.print_progress();
-                            git_fetching_list.push_back( {c, std::async(std::launch::async, [&](size_t bar_id){
+                            git_fetching_list[c] = std::async(std::launch::async, [&](size_t bar_id){
                                 bob::fetch_component(c, r.second["provides"]["components"][c], [&](size_t number) {bars[bar_id].set_progress(number);});
                                 bars[bar_id].mark_as_completed();
-                            }, id)});
+                                // Wait for the operating system to make files appear.
+                                // Occasionally Git checkout is complete but the files don't "exist"
+                                std::this_thread::sleep_for(1000ms);
+                            }, id);
                         }
                         else
                             std::cerr << "Component '" << c << "' can be fetched from the '" << r.second["name"] << "' registry" << std::endl;
                     }
                 }
             }
-        }  
-        
-        // Wait for all the fetching to complete
+        }
+
+        // Wait for one of the fetches to complete
         if (git_fetching_list.size() != 0)
         {
             decltype(git_fetching_list)::iterator completed_fetch;
@@ -133,7 +150,7 @@ int main(int argc, char **argv)
 
         // Scan to find the new components. Ideally we just insert the components as they are downloaded. Note that a component download may contain multiple components.
         // project.component_database.save();
-        
+
         // return 0;
     } while(project.unknown_components.size( ) != 0 || git_fetching_list.size() != 0);
 
@@ -160,38 +177,45 @@ int main(int argc, char **argv)
 
     project.load_common_commands();
 
-    ProgressBar bar1{option::BarWidth{50}, option::ShowPercentage{true}, option::PrefixText{"Building "}};
+    if (project.todo_list.size() != 0)
+    {
+        ProgressBar bar1 {
+            option::BarWidth{ 50 },
+            option::ShowPercentage{ true },
+            option::PrefixText{ "Building " }
+        };
 
-    bars.push_back(bar1);
-    bars.set_option(option::HideBarWhenComplete{false});
-    bars.print_progress();
-//    std::clog << project.project_summary_json << std::endl;
+        bars.push_back(bar1);
+        bars.set_option(option::HideBarWhenComplete{ false });
+        bars.print_progress ();
 
-    auto construction_start_time = fs::file_time_type::clock::now();
+        auto construction_start_time = fs::file_time_type::clock::now();
 
-    auto building_future = std::async(std::launch::async,[&project, &bar1](){
-        project.process_construction(bar1);
-    });
+        auto building_future = std::async(std::launch::async, [&project, &bar1] () {
+            project.process_construction(bar1);
+        });
 
-  // Update bar state
-  size_t previous = 0;
-  do {
-    if (bar1.current() != previous) {
+        // Update bar state
+        size_t previous = 0;
+        do {
+            if (bar1.current() != previous) {
+                bars.print_progress();
+                previous = bar1.current();
+            }
+        } while (building_future.wait_for(200ms) != std::future_status::ready);
+
+        auto construction_end_time = fs::file_time_type::clock::now();
+
         bars.print_progress();
-        previous = bar1.current();
+        std::cout << "Completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(construction_end_time - construction_start_time).count() << " milliseconds" << std::endl;
     }
-  } while ( building_future.wait_for( 200ms ) != std::future_status::ready );
-  
-  auto construction_end_time = fs::file_time_type::clock::now();
-
-  bars.print_progress();
-  std::cout << "Completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(construction_end_time - construction_start_time).count() << " milliseconds" << std::endl;
 
 //    std::cout << "Need to build: " << std::endl;
 //    for (const auto& c: project.construction_list)
 //        std::cout << c.first << std::endl;
-    
+
     std::clog.rdbuf( clog_backup );
+	show_console_cursor(true);
     return 0;
 }
 
@@ -204,6 +228,7 @@ void fetch_component(const std::string& name, YAML::Node node, Functor set_progr
         GIT_COUNTING    = 0,
         GIT_COMPRESSING = 1,
         GIT_RECEIVING   = 2,
+        GIT_LFS_CHECKOUT= 3,
     } phase = GIT_COUNTING;
 
     // Of the total time to fetch a Git repo, 10% is allocated to counting, 10% to compressing, and 80% to receiving.
@@ -218,16 +243,11 @@ void fetch_component(const std::string& name, YAML::Node node, Functor set_progr
 #else
 # define GIT_STRING  "git"
 #endif
-    auto t1 = std::chrono::high_resolution_clock::now();
     bob::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
         std::smatch s;
-        // std::clog << "[[ " << data << " ]]\n";
-
-        // Determine phase
-        // if ( data.find("Coun") != data.npos ) phase = GIT_COUNTING;//std::clog << "Counting...\n";
         if ( phase < GIT_COMPRESSING && data.find("Comp" ) != data.npos ) {phase = GIT_COMPRESSING; /*progress_bar.set_option(indicators::option::PostfixText{"Compressing"});*/ }
         if ( phase < GIT_RECEIVING && data.find("Rece") != data.npos ) { phase = GIT_RECEIVING; /*progress_bar.set_option(indicators::option::PostfixText{"Receiving"});*/ }
-        
+
         if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
         {
             int phase_progress = std::stoi( s[1] );
@@ -236,39 +256,35 @@ void fetch_component(const std::string& name, YAML::Node node, Functor set_progr
             set_progress(progress);
         }
     });
-    // auto t2 = std::chrono::high_resolution_clock::now();
-    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    // std::clog << duration << " milliseconds to download: " << name << "\n";
-    // t1 = t2;
 
     if (!fs::exists("components/" + name))
         fs::create_directories("components/" + name);
     const std::string checkout_string     = "--git-dir "s + ".bob"s + "/repos/" + name + "/.git --work-tree components/" + name + " checkout " + branch + " --force";
     const std::string lfs_checkout_string = "--git-dir "s + ".bob"s + "/repos/" + name + "/.git --work-tree components/" + name + " lfs checkout";
-    
-    // Checkout isntance
+
+    // Checkout instance
     auto result = bob::exec(GIT_STRING, checkout_string);
-    // std::clog << result << std::endl;
-    // t2 = std::chrono::high_resolution_clock::now();
-    // duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    // std::clog << duration << " milliseconds to checkout: " << name << "\n";
-    // t1 = t2;
     set_progress(90);
 
-    result = bob::exec(GIT_STRING, lfs_checkout_string);
-    // std::clog << result << std::endl;
-    // t2 = std::chrono::high_resolution_clock::now();
-    // duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    // std::clog << duration << " milliseconds to LFS: " << name << "\n";
+    bob::exec(GIT_STRING, lfs_checkout_string, [&](std::string& data) -> void {
+        std::smatch s;
+        if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
+        {
+            int phase_progress = std::stoi( s[1] );
+            int end_value = std::stoi( s[2] );
+            float progress = phase_rates[GIT_LFS_CHECKOUT] + (100-phase_rates[GIT_LFS_CHECKOUT])*phase_progress/end_value;
+            set_progress(progress);
+        }
+    });
     set_progress(100);
 }
 
-std::string exec( const std::string& command_text, const std::string& arg_text)
+std::pair<std::string, int> exec( const std::string& command_text, const std::string& arg_text)
 {
     std::clog << command_text << " " << arg_text << "\n";
     try {
         std::string command = command_text;
-        if (!arg_text.empty()) 
+        if (!arg_text.empty())
             command += " " + arg_text;
         #if defined(__USING_WINDOWS__)
         auto p = subprocess::Popen(command, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} );
@@ -294,7 +310,7 @@ std::string exec( const std::string& command_text, const std::string& arg_text)
         } while(count > 0);
 
         p.wait();
-        return result;
+        return {result,p.retcode()};
     } catch (std::exception e)
     {
         std::clog << e.what();
@@ -308,7 +324,7 @@ void exec( const std::string& command_text, const std::string& arg_text, Functor
     std::clog << command_text << " " << arg_text << "\n";
     try {
         std::string command = command_text;
-        if (!arg_text.empty()) 
+        if (!arg_text.empty())
             command += " " + arg_text;
         #if defined(__USING_WINDOWS__)
         auto p = subprocess::Popen(command, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} );
@@ -330,7 +346,7 @@ void exec( const std::string& command_text, const std::string& arg_text, Functor
         p.wait();
     } catch (std::exception e)
     {
-        std::clog << e.what();;
+        std::clog << e.what();
     }
 }
 }
