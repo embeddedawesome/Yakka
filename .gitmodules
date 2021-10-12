@@ -30,3 +30,11 @@
 	path = components/cxxopts/master
 	url = https://github.com/jarro2783/cxxopts.git
 	branch = master
+[submodule "components/spdlog/master"]
+	path = components/spdlog/master
+	url = https://github.com/gabime/spdlog.git
+	branch = master
+[submodule "components/botan/master"]
+	path = components/botan/master
+	url = https://github.com/randombit/botan.git
+	branch = master
