@@ -6,6 +6,7 @@
 #include "component_database.h"
 #include "nlohmann/json.hpp"
 #include "inja.hpp"
+#include "spdlog/spdlog.h"
 #include <indicators/progress_bar.hpp>
 #include <filesystem>
 #include <regex>
@@ -21,11 +22,14 @@ namespace bob
     const std::string default_output_directory  = "output/";
 
     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-    const std::string host_os_string  = "windows";
+    const std::string host_os_string       = "windows";
+    const std::string executable_extension = ".exe";
     #elif defined(__APPLE__)
-    const std::string host_os_string  = "macos";
+    const std::string host_os_string       = "macos";
+    const std::string executable_extension = "";
     #elif defined (__linux__)
-    const std::string host_os_string  = "linux";
+    const std::string host_os_string       = "linux";
+    const std::string executable_extension = "";
     #endif
 
     typedef std::function<std::string(std::string, const YAML::Node&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
@@ -40,8 +44,8 @@ namespace bob
         };
 
     public:
-        project( );
-        project( const std::vector<std::string>& project_string );
+        project( std::shared_ptr<spdlog::logger> log);
+        project( const std::vector<std::string>& project_string, std::shared_ptr<spdlog::logger> log );
 
         virtual ~project( );
 
@@ -65,6 +69,9 @@ namespace bob
         std::future<void> fetch_component(const std::string& name, indicators::ProgressBar& bar);
         void process_data_dependency(const std::string& path);
         void process_supported_feature(YAML::Node& component, const YAML::Node& node);
+
+        // Logging
+        std::shared_ptr<spdlog::logger> log;
 
         // Basic project data
         std::string project_name;

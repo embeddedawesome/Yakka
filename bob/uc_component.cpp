@@ -1,4 +1,5 @@
 #include "bob_component.h"
+#include "spdlog/spdlog.h"
 
 namespace bob
 {
@@ -11,9 +12,10 @@ namespace bob
 
     void slcc::parse_file( fs::path file_path )
     {
+        auto boblog = spdlog::get("boblog");
         this->file_path = file_path;
         std::string path_string = file_path.generic_string( );
-        std::clog << "Parsing '" << path_string << "'\n";
+        boblog->info( "Parsing '{}", path_string);
 
         try
         {
@@ -36,7 +38,7 @@ namespace bob
         }
         catch ( ... )
         {
-            std::clog << "Failed to load file: " << path_string << "\n";
+            boblog->error("Failed to load file: '{}'", path_string);
             return;
         }
 

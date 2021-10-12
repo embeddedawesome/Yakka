@@ -1,4 +1,5 @@
 #include "bob_component.h"
+#include "spdlog/spdlog.h"
 
 namespace bob
 {
@@ -9,9 +10,10 @@ namespace bob
 
     void component::parse_file( fs::path file_path )
     {
+        auto boblog = spdlog::get("boblog");
         this->file_path = file_path;
         std::string path_string = file_path.generic_string();
-        std::clog << "Parsing '" << path_string << "'\n";
+        boblog->info( "Parsing '{}'", path_string);
 
         try
         {
@@ -19,7 +21,7 @@ namespace bob
         }
         catch ( ... )
         {
-            std::cerr << "Failed to load file: " << path_string << "\n";
+            boblog->error( "Failed to load file: '{}'", path_string);
             return;
         }
 
@@ -80,12 +82,13 @@ namespace bob
 
     void component::process_requirements(const YAML::Node& node, component_list_t& new_components, feature_list_t& new_features )
     {
+        auto boblog = spdlog::get("boblog");
         if (!node["requires"])
             return;
 
         if (node["requires"].IsScalar() || node["requires"].IsSequence())
         {
-            std::cerr << yaml["name"] << ": 'requires' entry is malformed: \n'" << node["requires"] << "'\n\n";
+            boblog->error( "{}: 'requires' entry is malformed: \n'{}'", yaml["name"].as<std::string>(), node["requires"].as<std::string>());
             return;
         }
 
@@ -101,7 +104,7 @@ namespace bob
                     for (auto& i: node["requires"]["components"])
                         new_components.insert(i.as<std::string>());
                 else
-                    std::cerr << "Node '" << yaml["name"].as<std::string>() << "' has invalid 'requires'\n";
+                    boblog->error( "Node '{}' has invalid 'requires'", yaml["name"].as<std::string>());
             }
 
 
@@ -117,13 +120,12 @@ namespace bob
                     for ( auto& i : node["requires"]["features"] )
                         new_features.push_back( i.as<std::string>( ) );
                 else
-                    std::cerr << "Node '" << yaml["name"].as<std::string>() << "' has invalid 'requires'\n";
+                    boblog->error("Node '{}' has invalid 'requires'", yaml["name"].as<std::string>());
             }
         }
         catch (YAML::Exception &e)
         {
-            std::cerr << "Failed to process requirements for '" << yaml["name"] << "'\n";
-            std::cerr << e.msg << "\n";
+            boblog->error( "Failed to process requirements for '{}'\n{}", yaml["name"].as<std::string>(), e.msg);
         }
     }
 

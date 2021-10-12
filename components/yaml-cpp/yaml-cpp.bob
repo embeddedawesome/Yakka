@@ -2,7 +2,7 @@ name: YAML
 
 includes:
   local:
-    - master/src 
+    - master/src
   global:
     - master/include
 

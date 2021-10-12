@@ -20,5 +20,6 @@ $(NAME)_REQUIRED_COMPONENTS := yaml-cpp \
                                json \
                                semver \
                                indicators \
-                               cxxopts
+                               cxxopts \
+							   spdlog
 

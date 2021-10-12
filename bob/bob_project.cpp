@@ -1,6 +1,5 @@
 #include "bob_project.h"
-// #include <indicators/dynamic_progress.hpp>
-// #include <indicators/progress_bar.hpp>
+#include "spdlog/spdlog.h"
 #include <fstream>
 #include <chrono>
 #include <thread>
@@ -9,10 +8,12 @@ namespace bob
 {
     using namespace std::chrono_literals;
 
-    project::project( ) : project_directory("."), bob_home_directory("/.bob")
+    project::project( std::shared_ptr<spdlog::logger> log ) : project_directory("."), bob_home_directory("/.bob")
     {
+        this->log = log;
         load_config_file("config.yaml");
-        configuration_json["host_os"] = host_os_string;
+        project_summary["configuration"]["host_os"] = host_os_string;
+        project_summary["configuration"]["executable_extension"] = executable_extension;
     }
 
     project::~project( )
@@ -20,10 +21,12 @@ namespace bob
     }
 
 
-    project::project( const std::vector<std::string>& project_string ) : project_directory("."), bob_home_directory("/.bob")
+    project::project( const std::vector<std::string>& project_string, std::shared_ptr<spdlog::logger> log ) : project_directory("."), bob_home_directory("/.bob")
     {
+        this->log = log;
         load_config_file("config.yaml");
-        configuration_json["host_os"] = host_os_string;
+        project_summary["configuration"]["host_os"] = host_os_string;
+        project_summary["configuration"]["executable_extension"] = executable_extension;
         parse_project_string(project_string);
     }
 
@@ -41,15 +44,19 @@ namespace bob
     void project::parse_project_string( const std::vector<std::string>& project_string )
     {
         project_name = "";
-        for ( auto& s : project_string )
+
+        // First string is interpreted as a command
+        auto s = project_string.begin();
+        commands.insert(*s++);
+        for ( ; s != project_string.end(); ++s)
         {
             // Identify features, commands, and components
-            if ( s.front( ) == '+' )
-                unprocessed_features.push_back( s.substr(1) );
-            else if ( s.back( ) == '!' )
-                commands.insert( s.substr(0, s.size()-1) );
+            if ( s->front( ) == '+' )
+                unprocessed_features.push_back( s->substr(1) );
+            else if ( s->back( ) == '!' )
+                commands.insert( s->substr(0, s->size()-1) );
             else
-                unprocessed_components.push_back( s );
+                unprocessed_components.push_back( *s );
         }
 
         // Generate the project name from the project string
@@ -74,7 +81,7 @@ namespace bob
     {
         if (node.IsScalar () || node.IsSequence ())
         {
-            std::cerr /*<< yaml["name"]*/<< ": 'requires' entry is malformed: \n'" << node << "'\n\n";
+            log->error("Node 'requires' entry is malformed: '{}'", node.Scalar());
             return;
         }
 
@@ -90,7 +97,7 @@ namespace bob
                     for (auto &i : node["components"])
                         unprocessed_components.push_back (i.as<std::string> ());
                 else
-                    std::cerr << "Node '" /*<< yaml["name"].as<std::string>() */<< "' has invalid 'requires'\n";
+                    log->error("Node '{}' has invalid 'requires'", node.Scalar());
             }
 
             // Process required features
@@ -105,13 +112,12 @@ namespace bob
                     for (auto &i : node["features"])
                         unprocessed_features.push_back (i.as<std::string> ());
                 else
-                    std::cerr << "Node '" /*<< yaml["name"].as<std::string>()*/<< "' has invalid 'requires'\n";
+                    log->error("Node '{}' has invalid 'requires'", node.Scalar());
             }
         }
         catch (YAML::Exception &e)
         {
-            std::cerr << "Failed to process requirements for '" /*<< yaml["name"] */<< "'\n";
-            std::cerr << e.msg << "\n";
+            log->error("Failed to process requirements for '{}'\n{}", node.Scalar(), e.msg);
         }
     }
 
@@ -149,13 +155,17 @@ namespace bob
                 auto component_path = find_component(c);
                 if ( !component_path )
                 {
+                    // log->info("{}: Couldn't find it", c);
                     unknown_components.insert(c);
                     continue;
                 }
 
                 // Add component to the required list and continue if this is not a new component
                 if ( required_components.insert( c ).second == false )
+                {
+                    log->info("{}: Unprocessed component already required", c);
                     continue;
+                }
 
                 std::shared_ptr<bob::component> new_component;
                 try
@@ -165,7 +175,8 @@ namespace bob
                 }
                 catch ( std::exception e )
                 {
-                    std::cerr << "Failed to parse: " << c << "\n" << e.what() << std::endl;
+                    log->error("Failed to parse: {}\n{}", c, e.what());
+                    required_components.erase(c);
                     //unknown_components.insert(c);
                 }
 
@@ -209,6 +220,9 @@ namespace bob
 
     void project::generate_project_summary()
     {
+        if (!project_summary["tools"])
+          project_summary["tools"] = YAML::Node();
+
         // Put all YAML nodes into the summary
         for (const auto& c: components)
         {
@@ -217,8 +231,8 @@ namespace bob
             {
                 inja::Environment inja_env = inja::Environment();
                 inja_env.add_callback("curdir", 0, [&c](const inja::Arguments& args) { return c->yaml["directory"].Scalar();});
-                
-                auto new_tool = inja_env.render(project_summary["tools"][tool.first.Scalar()].Scalar(), configuration_json);
+
+                project_summary["tools"][tool.first.Scalar()] = inja_env.render(tool.second.Scalar(), configuration_json);
             }
         }
 
@@ -236,6 +250,8 @@ namespace bob
 
         project_summary_json = project_summary.as<nlohmann::json>();
         project_summary_json["data"] = nlohmann::json::object();
+        project_summary_json["host"] = nlohmann::json::object();
+        project_summary_json["host"]["name"] = host_os_string;
     }
 
     std::optional<fs::path> project::find_component(const std::string component_dotname)
@@ -259,7 +275,7 @@ namespace bob
                     return c[0].Scalar( );
             }
             else
-                std::cerr << "TODO: Parse multiple matches to the same component ID: " << component_id << std::endl;
+                log->error("TODO: Parse multiple matches to the same component ID: '{}'", component_id);
         }
         return {};
     }
@@ -267,10 +283,10 @@ namespace bob
     void project::parse_blueprints()
     {
         for ( auto c: project_summary["components"])
-            for ( auto b : c.second["blueprints"] )
+            for ( auto b: c.second["blueprints"] )
             {
                 std::string blueprint_string = inja_environment.render( b.second["regex"] ? b.second["regex"].Scalar() : b.first.Scalar( ), project_summary_json );
-                std::clog << "Blueprint: " << blueprint_string << std::endl;
+                log->info("Blueprint: {}", blueprint_string);
                 b.second["bob_parent_path"] = c.second["directory"];
                 blueprint_list.insert( blueprint_list.end( ), { blueprint_string, b.second } );
             }
@@ -312,7 +328,7 @@ namespace bob
         if (path.front() != '/')
         {
             // TODO: Throw exception
-            std::cerr << "Data path does not start with '/'" << std::endl;
+            log->error( "Data path does not start with '/'");
             return;
         }
 
@@ -370,13 +386,15 @@ namespace bob
                         return match->regex_matches[ args[0]->get<int>() ];
                     });
 
+            local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match->blueprint["bob_parent_path"].Scalar();});
+
             // Run template engine on dependencies
             for ( auto d : b.second["depends"] )
             {
                 // Check for special dependency_file condition
                 if ( d.IsMap( ) )
                 {
-                    if ( d.begin()->first.Scalar() ==  "dependency_file" )
+                    if ( d.begin()->first.Scalar() == "dependency_file" )
                     {
                         const std::string generated_dependency_file = local_inja_env.render( d.begin()->second.Scalar(), project_summary_json );
                         auto dependencies = parse_gcc_dependency_file(generated_dependency_file);
@@ -393,7 +411,7 @@ namespace bob
                 // Verify validity of dependency
                 else if ( !d.IsScalar( ) )
                 {
-                    std::cerr << "Dependencies only support Scalar entries\n";
+                    log->error("Dependencies only support Scalar entries");
                     return {};
                 }
 
@@ -407,7 +425,7 @@ namespace bob
                 }
                 catch ( std::exception& e )
                 {
-                    std::cerr << "Couldn't apply template: '" << depend_string << "'" << std::endl;
+                    log->error("Couldn't apply template: '{}'", depend_string);
                     return {};
                 }
 
@@ -441,10 +459,9 @@ namespace bob
                 match->blueprint     = YAML::Node();
                 match->last_modified = fs::last_write_time( target );
                 blueprint_matches.push_back( std::move( match ) );
-                // std::clog << "Found non-blueprint dependency '" << target << "'" << std::endl;
             }
             else
-                std::clog << "No blueprint for '" << target << "'" << std::endl;
+                log->info("No blueprint for '{}'", target);
         }
 
         return blueprint_matches;
@@ -456,7 +473,8 @@ namespace bob
             if (!command.begin()->second.IsNull())
                 captured_output = inja_env.render(command.begin()->second.as<std::string>(), generated_json);
 
-            std::cout << captured_output << "\n";
+            auto console = spdlog::get("bobconsole");
+            console->info("{}", captured_output);
             return captured_output;
         };
 
@@ -464,19 +482,29 @@ namespace bob
         blueprint_commands["execute"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
             if (command.begin()->second.IsNull())
                 return "";
-
+            auto boblog = spdlog::get("boblog");
+            auto console = spdlog::get("bobconsole");
             std::string temp = command.begin( )->second.as<std::string>( );
-            captured_output = inja_env.render( temp, generated_json );
-            //std::replace( captured_output.begin( ), captured_output.end( ), '/', '\\' );
-            // std::clog << "Executing '" << captured_output << "'\n";
-            auto [temp_output, retcode] = exec( captured_output, std::string( "" ) );
+            try {
+                captured_output = inja_env.render( temp, generated_json );
+                //std::replace( captured_output.begin( ), captured_output.end( ), '/', '\\' );
+                boblog->info("Executing '{}'", captured_output);
+                auto [temp_output, retcode] = exec( captured_output, std::string( "" ) );
 
-            if (retcode < 0 && temp_output.length( ) != 0)
-                std::cerr << "\n\n" << captured_output << " returned " << retcode << "\n" << temp_output << "\n";
-            else if ( temp_output.length( ) != 0 )
-                std::clog << temp_output << "\n";
-
-            return temp_output;
+                if (retcode < 0 && temp_output.length( ) != 0) {
+                    console->error( temp_output );
+                    boblog->error( "\n{} returned {}\n{}", captured_output, retcode, temp_output);
+                }
+                else if ( temp_output.length( ) != 0 )
+                    boblog->info("{}", temp_output);
+                return temp_output;
+            }
+            catch (std::exception& e)
+            {
+                boblog->error( "Failed to execute: {}", temp);
+                captured_output = "";
+                return "";
+            }
         };
 
         blueprint_commands["fix_slashes"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
@@ -493,7 +521,6 @@ namespace bob
                 std::string line;
                 captured_output = "";
                 int count = 0;
-                YAML::Node yaml;
 
                 while (std::getline(ss, line))
                 {
@@ -527,6 +554,7 @@ namespace bob
 
 
         blueprint_commands["inja"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
+            auto boblog = spdlog::get("boblog");
             try
             {
                 if (command["file"])
@@ -534,7 +562,7 @@ namespace bob
                     std::string filename = inja_env.render(command["file"].as<std::string>(), generated_json);
 
                     if (!fs::exists(filename))
-                        std::cerr << filename << " not found when trying to apply template engine\n";
+                        boblog->error( "{} not found when trying to apply template engine", filename);
                     else
                         captured_output = inja_env.render_file(filename, generated_json);
                 }
@@ -546,14 +574,14 @@ namespace bob
             }
             catch (std::exception &e)
             {
-                std::cerr << "Failed to apply template\n";
-                std::cerr << e.what() << "\n";
+                boblog->error("Failed to apply template: {}\n{}", command.Scalar(), e.what());
             }
             return captured_output;
         };
 
         blueprint_commands["save"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
             std::string save_filename;
+            auto boblog = spdlog::get("boblog");
 
             if (command.begin()->second.IsNull())
                 save_filename = target;
@@ -572,13 +600,14 @@ namespace bob
             }
             catch (std::exception& e)
             {
-                std::cerr << "Failed to save file: " << save_filename << "\n";
+                boblog->error("Failed to save file: '{}'", save_filename);
                 captured_output = "";
             }
             return captured_output;
         };
 
         blueprint_commands["create_directory"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
+            auto boblog = spdlog::get("boblog");
             if (!command.begin()->second.IsNull())
             {
                 std::string filename = "";
@@ -594,7 +623,7 @@ namespace bob
                 }
                 catch ( std::exception e )
                 {
-                    std::cerr << "Couldn't create directory for '" << filename << "'\n";
+                    boblog->error( "Couldn't create directory for '{}'", filename);
                 }
             }
             return "";
@@ -603,10 +632,11 @@ namespace bob
         blueprint_commands["verify"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
             std::string filename = command.begin()->second.as<std::string>( );
             filename = inja_env.render(filename, generated_json);
+            auto boblog = spdlog::get("boblog");
             if (fs::exists(filename))
-                std::clog << filename << " exists\n";
+                boblog->info("{} exists", filename);
             else
-                std::clog << "BAD!! " << filename << " doesn't exist\n";
+                boblog->info("BAD!! {} doesn't exist", filename);
             return captured_output;
         };
 
@@ -616,10 +646,25 @@ namespace bob
             fs::remove(filename);
             return captured_output;
         };
+
+        blueprint_commands["pack"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
+            std::string format = command["format"].as<std::string>();
+            format = inja_env.render(format, generated_json);
+
+            std::string pack_arguments = "-ie pack(\"" + format + "\"";
+
+            for (const auto& v: command["values"])
+              pack_arguments += ", " + inja_env.render(v.as<std::string>(), generated_json);
+
+            // auto output, ret = bob::exec("perl", pack_arguments);
+
+            return captured_output;
+        };
     }
 
     static std::pair<std::string, int> run_command( std::shared_ptr< construction_task> task, const project* project )
     {
+        auto boblog = spdlog::get("boblog");
         std::string captured_output;
         inja::Environment inja_env = inja::Environment();
         auto& blueprint = task->blueprint;
@@ -629,11 +674,12 @@ namespace bob
         });
 
         inja_env.add_callback("curdir", 0, [&blueprint](const inja::Arguments& args) { return blueprint->blueprint["bob_parent_path"].Scalar();});
+        inja_env.add_callback("filesize", 1, [&blueprint](const inja::Arguments& args) { return fs::file_size(args[0]->get<std::string>());});
 
 
         if ( !blueprint->blueprint["process"].IsSequence())
         {
-            std::cerr << "Error: process nodes must be sequences\n" << blueprint->blueprint["process"] << "\n";
+            boblog->error("Error: process nodes must be sequences: {}", blueprint->blueprint["process"].Scalar());
             return {"", -1};
         }
 
@@ -649,7 +695,7 @@ namespace bob
             try
             {
                 // Verify tool exists
-                if (project->project_summary["tools"][command_name])
+                if (project->project_summary["tools"][command_name].IsDefined())
                 {
                     YAML::Node tool = project->project_summary["tools"][command_name];
                     std::string command_text = "";
@@ -668,13 +714,13 @@ namespace bob
 
                     if (retcode < 0)
                     {
-                      std::cerr << temp_output;
+                      boblog->error(temp_output);
                       return {temp_output, retcode};
                     }
                     captured_output = temp_output;
                     // Echo the output of the command
                     // TODO: Note this should be done by the main thread to ensure the outputs from multiple run_command instances don't overlap
-                    std::clog << captured_output;
+                    boblog->info(captured_output);
                 }
                 else if (project->blueprint_commands.at(command_name))
                 {
@@ -682,26 +728,27 @@ namespace bob
                 }
                 else
                 {
-                    std::cerr << command_name << " tool doesn't exist\n";
+                    boblog->error("{} tool doesn't exist", command_name);
                 }
 
             }
             catch ( std::exception& e )
             {
-                std::cerr << "Failed to run command: '" << command_name << "' as part of " << blueprint->target << "\n";
-                std::cerr << command_entry << "\n";
+                boblog->error("Failed to run command: '{}' as part of {}", command_name, blueprint->target);
+                boblog->info( "Failed to run: {}", command_entry.Scalar());
                 throw e;
             }
         }
 
         std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-        std::clog << duration << " milliseconds for " << blueprint->target << "\n";
+        boblog->info( "{}: {} milliseconds", blueprint->target, duration);
         return {captured_output, 0};
     }
 
     static void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node)
     {
+        auto boblog = spdlog::get("boblog");
         switch(node.type())
         {
             case nlohmann::detail::value_t::object:
@@ -710,14 +757,14 @@ namespace bob
                     case nlohmann::detail::value_t::object:
                     case nlohmann::detail::value_t::array:
                     default:
-                        std::cerr << "Currently not supported" << std::endl; break;
+                        boblog->error("Currently not supported"); break;
                 }
                 break;
             case nlohmann::detail::value_t::array:
                 switch(merge_target.type())
                 {
                     case nlohmann::detail::value_t::object:
-                        std::cerr << "Cannot merge array into an object" << std::endl; break;
+                        boblog->error("Cannot merge array into an object"); break;
                     case nlohmann::detail::value_t::array:
                         for (auto& i: node)
                             merge_target.push_back(i);
@@ -730,7 +777,7 @@ namespace bob
                 switch(merge_target.type())
                 {
                     case nlohmann::detail::value_t::object:
-                        std::cerr << "Cannot merge scalar into an object" << std::endl; break;
+                        boblog->error("Cannot merge scalar into an object"); break;
                     case nlohmann::detail::value_t::array:
                     default:
                         merge_target.push_back(node); break;
@@ -741,6 +788,7 @@ namespace bob
 
     static void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node)
     {
+        auto boblog = spdlog::get("boblog");
         for (const auto& i : node)
         {
             const std::string item_name = i.first.as<std::string>();
@@ -767,9 +815,7 @@ namespace bob
                     }
                     else
                     {
-                        std::cerr << "Cannot merge scalar and map\n";
-                        std::cerr << "Scalar: " << i.first << "\n"
-                                  << "map: " << merge_target[item_name] << "\n";
+                        boblog->error("Cannot merge scalar and map\nScalar: {}\nMap: {}", i.first.as<std::string>(), merge_target[item_name].as<std::string>());
                         return;
                     }
                 }
@@ -777,9 +823,7 @@ namespace bob
                 {
                     if (merge_target[item_name].IsMap())
                     {
-                        std::cerr << "Cannot merge sequence and map\n";
-                        std::cerr << merge_target << "\n"
-                                  << node << "\n";
+                        boblog->error("Cannot merge sequence and map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
                         return;
                     }
                     if (merge_target[item_name].IsScalar())
@@ -798,9 +842,7 @@ namespace bob
                 {
                     if (!merge_target[item_name].IsMap())
                     {
-                        std::cerr << "Cannot merge map and non-map\n";
-                        std::cerr << merge_target << "\n"
-                                  << node << "\n";
+                        boblog->error("Cannot merge map and non-map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
                         return;
                     }
                     auto new_merge = merge_target[item_name];
@@ -812,6 +854,7 @@ namespace bob
 
     void project::process_construction(indicators::ProgressBar& bar)
     {
+        auto boblog = spdlog::get("boblog");
         typedef enum
         {
             nothing_to_do,
@@ -831,8 +874,8 @@ namespace bob
         std::vector<std::shared_ptr<construction_task>> running_tasks;
 
         // Process all the stuff to be built
-        std::clog << "------ Building ------\n";
-        std::clog << todo_list.size() << " items left to construct\n";
+        boblog->info("------ Building ------");
+        boblog->info("{} items left to construct", todo_list.size());
 
     #if defined(CONSTRUCTION_LIST_DUMP)
         for (auto a: construction_list) std::cout << "- " << a.first << "\n";
@@ -840,6 +883,7 @@ namespace bob
 
         // loop through list
         int loop = 0;
+        int last_progress_update = 0;
         auto i = todo_list.begin();
         while ( todo_list.size() != 0 )
         {
@@ -852,7 +896,7 @@ namespace bob
                 {
                     if ( a->get()->thread_result.wait_for(2ms) == std::future_status::ready )
                     {
-                        std::clog << a->get()->blueprint->target << ": Done\n";
+                        boblog->info( "{}: Done", a->get()->blueprint->target);
                         a->get()->blueprint->last_modified = construction_start_time;
                         a->get()->state = bob_task_complete;
                         a = running_tasks.erase( a );
@@ -865,7 +909,11 @@ namespace bob
             // } while ;
 
             int progress = (100 * completed_tasks)/starting_size;
-            bar.set_progress(progress);
+            if (progress != last_progress_update)
+            {
+                bar.set_progress(progress);
+                last_progress_update = progress;
+            }
 
             // Check if we've done a pass through all the items in the construction list
             if ( i == todo_list.end( ) )
@@ -878,7 +926,7 @@ namespace bob
                 {
                     if ( a->get()->thread_result.wait_for(0ms) == std::future_status::ready )
                     {
-                        std::clog << a->get()->blueprint->target << ": Done\n";
+                        boblog->info( "{}: Done", a->get()->blueprint->target);
                         a->get()->blueprint->last_modified = construction_start_time;
                         a->get()->state = bob_task_complete;
                         a = running_tasks.erase( a );
@@ -891,8 +939,6 @@ namespace bob
                 // Reset iterator back to the start of the list and continue
                 i = todo_list.begin( );
                 something_updated = false;
-
-                // std::clog << "Completed " << completed_tasks << " out of " << starting_size << "\n";
             }
 
             auto task_list = construction_list.equal_range(*i);
@@ -900,7 +946,7 @@ namespace bob
             // Check validity of task_list
             if ( task_list.first == construction_list.cend( ) )
             {
-                std::clog << "Couldn't find '" << *i << "' in construction list" << std::endl;
+                boblog->info("Couldn't find '{}' in construction list", *i);
                 i = todo_list.erase(i);
                 continue;
             }
@@ -942,7 +988,6 @@ namespace bob
                     switch ( get_task_status( *(t->second) ) )
                     {
                         case set_to_complete:
-                            // std::clog << t->second->blueprint->target << ": Nothing to do" << std::endl;
                             t->second->state = bob_task_complete;
                             if (starting_size > 1) --starting_size;
                             something_updated = true;
@@ -951,7 +996,7 @@ namespace bob
                             something_updated = true;
                             if ( t->second->blueprint->blueprint["process"])
                             {
-                                std::clog << t->second->blueprint->target << ": Executing blueprint" << std::endl;
+                                boblog->info( "{}: Executing blueprint", t->second->blueprint->target);
                                 t->second->thread_result = std::async(std::launch::async | std::launch::deferred, run_command, t->second, this);
                                 running_tasks.push_back(t->second);
                                 t->second->state = bob_task_executing;
@@ -968,19 +1013,19 @@ namespace bob
         }
 
         bar.set_progress(100);
-        bar.mark_as_completed();
+        // bar.mark_as_completed();
 
         for (auto& a: todo_list )
         {
-            std::clog << "Couldn't build: " << a << std::endl;
+            boblog->info( "Couldn't build: {}", a);
             for (auto entries = this->construction_list.equal_range(a); entries.first != entries.second; ++entries.first)
                 for (auto b: entries.first->second->blueprint->dependencies)
-                    std::clog << "\t" << b << std::endl;
+                    boblog->info( "\t{}", b);
         }
 
         for (auto a: construction_list)
             if (a.second->state == bob_task_to_be_done )
-                std::clog << a.first << std::endl;
+                boblog->info("{}", a.first);
     }
 
     void project::load_config_file(const std::string config_filename)
@@ -1006,7 +1051,7 @@ namespace bob
         }
         catch ( std::exception &e )
         {
-            std::cerr << "Couldn't read " << config_filename << std::endl << e.what( );
+            log->error("Couldn't read '{}'\n{}", config_filename, e.what( ));
             project_summary["configuration"];
             project_summary["tools"] = "";
         }
@@ -1044,7 +1089,7 @@ namespace bob
                 }
                 catch (...)
                 {
-                    std::cerr << "Could not parse component registry: '" << p.path().generic_string() << "'" << std::endl;
+                    log->error("Could not parse component registry: '{}'", p.path().generic_string());
                 }
     }
 
@@ -1054,55 +1099,6 @@ namespace bob
         for ( auto r : registries )
             if ( r.second["provides"]["components"][name].IsDefined( ) )
                 return r.second["provides"]["components"][name];
-        return {};
-    }
-
-    /**
-     * @brief Fetches a component from a registry
-     *
-     * @param name
-     * @return std::future<void>
-     */
-    std::future<void> project::fetch_component(const std::string& name, indicators::ProgressBar& bar)
-    {
-        // Ensure source and destination directories exist. create_directories() automatically checks for existence
-        fs::create_directories(bob_home_directory + "/repos/" + name);
-        fs::create_directories("components/" + name);
-
-        // Determine type of fetch
-        // Currently on Git fetch is supported
-
-        const std::string git_path = project_summary["tools"]["git"].Scalar( );
-        const auto result = find_registry_component(name);
-        if (!result)
-        {
-            std::clog << "Could not find component '" << name << "'" << std::endl;
-            return {};
-        }
-
-        auto node = result.value();
-        // Get the URL of the git repo
-        auto url    = node["packages"]["default"]["url"].Scalar();
-        auto branch = node["packages"]["default"]["branch"].IsDefined() ? node["packages"]["default"]["branch"].Scalar() : "master";
-
-        branch = inja_environment.render(branch, configuration_json);
-
-        // Check if the repo already exists
-        if (fs::exists(bob_home_directory + "/repos/" + name + ".git"))
-        {
-            // Defer an update
-//                std::clog << exec( project_summary["tools"]["git"].Scalar(), "-C " + bob_home_directory + "/repos/" + name + " pull" );
-        }
-        else
-        {
-            // Clone it
-            const std::string fetch_string = "-C " + bob_home_directory + "/repos/ clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout 2 >& 1";
-            return std::async(std::launch::async | std::launch::deferred, [git_path, fetch_string]() {
-                exec(git_path, fetch_string);
-            });
-
-        }
-
         return {};
     }
 

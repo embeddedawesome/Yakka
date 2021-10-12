@@ -1,4 +1,5 @@
 name: semver
 
 includes:
-  global: master/include
+  global: 
+    - master/include

@@ -1,4 +1,5 @@
 name: cpp-subprocess
 
 includes:
-  global: master
+  global:
+    - master

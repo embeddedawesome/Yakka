@@ -1,5 +1,6 @@
 #include "component_database.h"
 #include "bob_component.h"
+#include "spdlog/spdlog.h"
 #include <iostream>
 #include <fstream>
 
@@ -27,6 +28,7 @@ namespace bob
 
     void component_database::load( fs::path project_home )
     {
+        auto boblog = spdlog::get("boblog");
         if ( !fs::exists( database_filename ) )
         {
             scan_for_components( project_home );
@@ -40,7 +42,7 @@ namespace bob
             }
             catch(...)
             {
-                std::cerr << "Could not load component database" << std::endl;
+                boblog->error("Could not load component database");
             }
         }
     }
@@ -70,11 +72,16 @@ namespace bob
 
     void component_database::scan_for_components( fs::path path )
     {
+        auto boblog = spdlog::get("boblog");
         std::vector<std::future<slcc>> parsed_slcc_files;
 
         // add_component(path);
 
-        if (!fs::exists(path)) return;
+        if (!fs::exists(path))
+        {
+          boblog->error( "Cannot scan for components. Path does not exist: '{}'", path.generic_string());
+          return;
+        }
 
         for ( const auto& p : fs::recursive_directory_iterator( path ) )
         {
