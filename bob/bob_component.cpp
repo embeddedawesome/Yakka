@@ -64,70 +64,72 @@ namespace bob
                     n.first = n.as<std::string>().insert(0, path_string);
     }
 
-    void component::apply_feature( std::string feature_name, component_list_t& new_components, feature_list_t& new_features )
-    {
-        if ( yaml["supports"][feature_name] )
-        {
-            process_requirements( yaml["supports"][feature_name], new_components, new_features );
-        }
+    // std::tuple<component_list_t&, feature_list_t&> component::apply_feature( std::string feature_name)
+    // {
+    //     if ( yaml["supports"][feature_name] )
+    //     {
+    //         return process_requirements( yaml["supports"][feature_name] );
+    //     }
+    //     return {component_list_t(), feature_list_t()};
+    //     // if ( yaml["provides"][feature_name] )
+    //     // {
+    //     //     if ( yaml["provides"][feature_name].IsScalar( ) )
+    //     //         new_features.insert( yaml["provides"][feature_name].as<std::string>( ) );
+    //     //     else
+    //     //         process_requirements( yaml["provides"][feature_name], new_components, new_features );
+    //     // }
+    // }
 
-        // if ( yaml["provides"][feature_name] )
-        // {
-        //     if ( yaml["provides"][feature_name].IsScalar( ) )
-        //         new_features.insert( yaml["provides"][feature_name].as<std::string>( ) );
-        //     else
-        //         process_requirements( yaml["provides"][feature_name], new_components, new_features );
-        // }
-    }
+    // std::tuple<component_list_t&, feature_list_t&> component::process_requirements(const YAML::Node& node)
+    // {
+    //     component_list_t new_components;
+    //     feature_list_t new_features;
+    //     auto boblog = spdlog::get("boblog");
+    //     if (!node["requires"])
+    //         return {std::move(new_components), std::move(new_features)};
 
-    void component::process_requirements(const YAML::Node& node, component_list_t& new_components, feature_list_t& new_features )
-    {
-        auto boblog = spdlog::get("boblog");
-        if (!node["requires"])
-            return;
+    //     if (node["requires"].IsScalar() || node["requires"].IsSequence())
+    //     {
+    //         boblog->error( "{}: 'requires' entry is malformed: \n'{}'", yaml["name"].as<std::string>(), node["requires"].as<std::string>());
+    //         return {std::move(new_components), std::move(new_features)};
+    //     }
 
-        if (node["requires"].IsScalar() || node["requires"].IsSequence())
-        {
-            boblog->error( "{}: 'requires' entry is malformed: \n'{}'", yaml["name"].as<std::string>(), node["requires"].as<std::string>());
-            return;
-        }
-
-        try
-        {
-            // Process required components
-            if (node["requires"]["components"])
-            {
-                // Add the item/s to the new_component list
-                if (node["requires"]["components"].IsScalar())
-                    new_components.insert(node["requires"]["components"].as<std::string>());
-                else if (node["requires"]["components"].IsSequence())
-                    for (auto& i: node["requires"]["components"])
-                        new_components.insert(i.as<std::string>());
-                else
-                    boblog->error( "Node '{}' has invalid 'requires'", yaml["name"].as<std::string>());
-            }
+    //     try
+    //     {
+    //         // Process required components
+    //         if (node["requires"]["components"])
+    //         {
+    //             // Add the item/s to the new_component list
+    //             if (node["requires"]["components"].IsScalar())
+    //                 new_components.insert(node["requires"]["components"].as<std::string>());
+    //             else if (node["requires"]["components"].IsSequence())
+    //                 for (auto& i: node["requires"]["components"])
+    //                     new_components.insert(i.as<std::string>());
+    //             else
+    //                 boblog->error( "Node '{}' has invalid 'requires'", yaml["name"].as<std::string>());
+    //         }
 
 
-            // Process required features
-            if (node["requires"]["features"])
-            {
-                std::vector<std::string> new_features;
+    //         // Process required features
+    //         if (node["requires"]["features"])
+    //         {
+    //             // Add the item/s to the new_features list
+    //             if ( node["requires"]["features"].IsScalar( ) )
+    //                 new_features.insert( node["requires"]["features"].as<std::string>( ) );
+    //             else if ( node["requires"]["features"].IsSequence( ) )
+    //                 for ( auto& i : node["requires"]["features"] )
+    //                     new_features.insert( i.as<std::string>( ) );
+    //             else
+    //                 boblog->error("Node '{}' has invalid 'requires'", yaml["name"].as<std::string>());
+    //         }
+    //     }
+    //     catch (YAML::Exception &e)
+    //     {
+    //         boblog->error( "Failed to process requirements for '{}'\n{}", yaml["name"].as<std::string>(), e.msg);
+    //     }
 
-                // Add the item/s to the new_features list
-                if ( node["requires"]["features"].IsScalar( ) )
-                    new_features.push_back( node["requires"]["features"].as<std::string>( ) );
-                else if ( node["requires"]["features"].IsSequence( ) )
-                    for ( auto& i : node["requires"]["features"] )
-                        new_features.push_back( i.as<std::string>( ) );
-                else
-                    boblog->error("Node '{}' has invalid 'requires'", yaml["name"].as<std::string>());
-            }
-        }
-        catch (YAML::Exception &e)
-        {
-            boblog->error( "Failed to process requirements for '{}'\n{}", yaml["name"].as<std::string>(), e.msg);
-        }
-    }
+    //     return {std::move(new_components), std::move(new_features)};
+    // }
 
     component_list_t component::get_required_components( )
     {

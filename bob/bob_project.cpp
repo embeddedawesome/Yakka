@@ -12,22 +12,10 @@ namespace bob
     {
         this->log = log;
         load_config_file("config.yaml");
-        project_summary["configuration"]["host_os"] = host_os_string;
-        project_summary["configuration"]["executable_extension"] = executable_extension;
     }
 
     project::~project( )
     {
-    }
-
-
-    project::project( const std::vector<std::string>& project_string, std::shared_ptr<spdlog::logger> log ) : project_directory("."), bob_home_directory("/.bob")
-    {
-        this->log = log;
-        load_config_file("config.yaml");
-        project_summary["configuration"]["host_os"] = host_os_string;
-        project_summary["configuration"]["executable_extension"] = executable_extension;
-        parse_project_string(project_string);
     }
 
     void project::set_project_directory(const std::string path)
@@ -35,46 +23,39 @@ namespace bob
         project_directory = path;
     }
 
+    void project::init_project()
+    {
+        project_name = bob::generate_project_name(this->unprocessed_components, this->unprocessed_features);
+        output_path  = bob::default_output_directory;
+        project_summary_file = "output/" + project_name + "/bob_summary.yaml";
+        previous_summary["components"] = YAML::Node();
+
+        if (fs::exists(project_summary_file))
+        {
+            project_summary_last_modified = fs::last_write_time(project_summary_file);
+            project_summary = YAML::LoadFile(project_summary_file);
+
+            // Remove the known components from unprocessed_components
+            component_list_t temp_components;
+            for (const auto& c: unprocessed_components)
+                if (!project_summary["components"][c])
+                    temp_components.insert(c);
+            feature_list_t temp_features;
+            // for (const auto& c: unprocessed_features)
+            //     if (!project_summary["features"][c])
+            //         temp_features.insert(c);
+            unprocessed_components = std::move(temp_components);
+            // unprocessed_features = std::move(temp_features);
+
+            update_summary();
+        }
+        else
+            fs::create_directories(output_path);
+    }
 
     YAML::Node project::get_project_summary()
     {
         return project_summary;
-    }
-
-    void project::parse_project_string( const std::vector<std::string>& project_string )
-    {
-        project_name = "";
-
-        // First string is interpreted as a command
-        auto s = project_string.begin();
-        commands.insert(*s++);
-        for ( ; s != project_string.end(); ++s)
-        {
-            // Identify features, commands, and components
-            if ( s->front( ) == '+' )
-                unprocessed_features.push_back( s->substr(1) );
-            else if ( s->back( ) == '!' )
-                commands.insert( s->substr(0, s->size()-1) );
-            else
-                unprocessed_components.push_back( *s );
-        }
-
-        // Generate the project name from the project string
-        for ( const auto& i : unprocessed_components )
-            project_name += i + "-";
-
-        if (!unprocessed_components.empty())
-            project_name.pop_back( );
-
-        for ( const auto& i : unprocessed_features )
-            project_name += "-" + i;
-
-        if (project_name.empty())
-            project_name = "none";
-
-        // Add standard information into the project summary
-        project_summary["project_name"]   = project_name;
-        project_summary["project_output"] = default_output_directory + project_name;
     }
 
     void project::process_requirements(const YAML::Node& node)
@@ -91,11 +72,11 @@ namespace bob
             if (node["components"])
             {
                 // Add the item/s to the new_component list
-                if (node["components"].IsScalar ())
-                    unprocessed_components.push_back (node["components"].as<std::string> ());
-                else if (node["components"].IsSequence ())
+                if (node["components"].IsScalar())
+                    unprocessed_components.insert(node["components"].as<std::string>());
+                else if (node["components"].IsSequence())
                     for (auto &i : node["components"])
-                        unprocessed_components.push_back (i.as<std::string> ());
+                        unprocessed_components.insert(i.as<std::string>());
                 else
                     log->error("Node '{}' has invalid 'requires'", node.Scalar());
             }
@@ -106,11 +87,11 @@ namespace bob
                 std::vector<std::string> new_features;
 
                 // Add the item/s to the new_features list
-                if (node["features"].IsScalar ())
-                    unprocessed_features.push_back (node["features"].as<std::string> ());
-                else if (node["features"].IsSequence ())
+                if (node["features"].IsScalar())
+                    unprocessed_features.insert(node["features"].as<std::string>());
+                else if (node["features"].IsSequence())
                     for (auto &i : node["features"])
-                        unprocessed_features.push_back (i.as<std::string> ());
+                        unprocessed_features.insert(i.as<std::string>());
                 else
                     log->error("Node '{}' has invalid 'requires'", node.Scalar());
             }
@@ -121,18 +102,32 @@ namespace bob
         }
     }
 
-    void project::process_supported_feature(YAML::Node& component, const YAML::Node& node)
+
+    void project::update_summary()
     {
-        // Process all the "requires"
-        if (node["requires"])
+        // Check if any component files have been modified
+        for (const auto& c: project_summary["components"])
         {
-            process_requirements (node["requires"]);
+            auto bob_file = c.second["bob_file"].as<std::string>();
+            const auto name = c.first.as<std::string>();
+            if ( fs::last_write_time(bob_file) > project_summary_last_modified)
+            {
+                // If so, move existing data to previous summary
+                previous_summary["components"][name] = std::move(c.second); // TODO: Verify this is correct way to do this efficiently
+                project_summary["components"][name] = {};
+                unprocessed_components.insert(name);
+            }
+            else
+            {
+                // Previous summary should point to the same object
+                previous_summary["components"][name] = c.second;
+
+                auto a = previous_summary["components"][name];
+                auto b = project_summary["components"][name];
+
+            }
         }
-
-        // Merge all nodes of this feature to the parent component
-//        bob::yaml_node_merge(component, node);
     }
-
 
     /**
      * @brief Processes all the @ref unprocessed_components and @ref unprocessed_features, adding items to @ref unknown_components if they are not in the component database
@@ -146,10 +141,11 @@ namespace bob
         {
             // Loop through the list of unprocessed components.
             // Note: Items will be added to unprocessed_components during processing
-            for ( auto i = 0; i < unprocessed_components.size(); ++i )
+            std::unordered_set<std::string> temp_component_list = std::move(unprocessed_components);
+            for (const auto& i: temp_component_list)
             {
                 // Convert string to id
-                const auto c = bob::component_dotname_to_id(unprocessed_components[i]);
+                const auto c = bob::component_dotname_to_id(i);
 
                 // Find the component in the project component database
                 auto component_path = find_component(c);
@@ -161,9 +157,9 @@ namespace bob
                 }
 
                 // Add component to the required list and continue if this is not a new component
-                if ( required_components.insert( c ).second == false )
+                if ( project_summary["components"][c] && !project_summary["components"][c].IsNull())
                 {
-                    log->info("{}: Unprocessed component already required", c);
+                    log->info("{}: Component already processed", c);
                     continue;
                 }
 
@@ -176,41 +172,39 @@ namespace bob
                 catch ( std::exception e )
                 {
                     log->error("Failed to parse: {}\n{}", c, e.what());
-                    required_components.erase(c);
+                    project_summary["components"].remove(c);
                     //unknown_components.insert(c);
                 }
 
                 // Add all the required components into the unprocessed list
                 for (const auto& r : new_component->yaml["requires"]["components"])
-                    unprocessed_components.push_back(r.Scalar());
+                    unprocessed_components.insert(r.Scalar());
 
                 // Add all the required features into the unprocessed list
                 for (const auto& f : new_component->yaml["requires"]["features"])
-                    unprocessed_features.push_back(f.Scalar());
+                    unprocessed_features.insert(f.Scalar());
 
                 // Process all the currently required features. Note new feature will be processed in the features pass
                 for ( auto& f : required_features )
-                    if ( new_component->yaml["supports"][f] )
-                        process_supported_feature( new_component->yaml, new_component->yaml["supports"][f] );
+                    if ( new_component->yaml["supports"][f] && new_component->yaml["supports"][f]["requires"] )
+                        process_requirements(new_component->yaml["supports"][f]["requires"]);
             }
-            unprocessed_components.clear();
+
 
             // Process all the new features
             // Note: Items will be added to unprocessed_features during processing
-            for ( auto i = 0; i < unprocessed_features.size(); ++i )
+            std::unordered_set<std::string> temp_feature_list = std::move(unprocessed_features);
+            for (const auto& f: temp_feature_list)
             {
-                const auto f = unprocessed_features[i];
-
                 // Insert feature and continue if this is not a new feature
                 if ( required_features.insert( f ).second == false )
                     continue;
 
                 // Update each component with the new feature
                 for ( auto& c : components )
-                    if ( c->yaml["supports"][f] )
-                        process_supported_feature( c->yaml, c->yaml["supports"][f] );
+                    if ( c->yaml["supports"][f] && c->yaml["supports"][f]["requires"])
+                        process_requirements(c->yaml["supports"][f]["requires"]);
             }
-            unprocessed_features.clear();
         };
 
         if (unknown_components.size() != 0) return project::state::PROJECT_HAS_UNKNOWN_COMPONENTS;
@@ -220,6 +214,12 @@ namespace bob
 
     void project::generate_project_summary()
     {
+        // Add standard information into the project summary
+        project_summary["project_name"]   = project_name;
+        project_summary["project_output"] = default_output_directory + project_name;
+        project_summary["configuration"]["host_os"] = host_os_string;
+        project_summary["configuration"]["executable_extension"] = executable_extension;
+
         if (!project_summary["tools"])
           project_summary["tools"] = YAML::Node();
 
@@ -296,7 +296,7 @@ namespace bob
     {
         std::unordered_set<std::string> new_targets;
         std::unordered_set<std::string> processed_targets;
-        std::unordered_set<std::string> unprocessed_targets = commands;
+        std::unordered_set<std::string> unprocessed_targets = std::move(this->commands);
 
         while (!unprocessed_targets.empty())
         {
@@ -323,21 +323,53 @@ namespace bob
         }
     }
 
-    void project::process_data_dependency(const std::string& path)
+    void project::process_data_dependency(const YAML::Node& node, inja::Environment& inja_env)
     {
-        if (path.front() != '/')
+        std::vector<std::pair<YAML::Node,YAML::Node>> changed_nodes;
+        std::vector<std::string> data_paths;
+
+        // If there is a 'component', look that up in the previous_summary and see if it has changed
+        if (node["component"])
         {
-            // TODO: Throw exception
-            log->error( "Data path does not start with '/'");
-            return;
+            const auto& component_name = inja_env.render( node["component"].as<std::string>(), project_summary_json );
+            if (!(previous_summary["components"][component_name] == project_summary["components"][component_name] ))
+                changed_nodes.push_back({project_summary["components"][component_name], previous_summary["components"][component_name]});
+        }
+        else
+        {
+            // Otherwise we are doing a global compare between any component that has changed
+            for (const auto& i: project_summary["components"])
+            {
+                const auto& component_name = i.first.as<std::string>();
+                if (!(previous_summary["components"][component_name] == project_summary["components"][component_name] ))
+                    changed_nodes.push_back({project_summary["components"][component_name], previous_summary["components"][component_name]});
+            }
         }
 
-        for (const auto& c: project_summary_json["components"])
+        // Check if we have any nodes that have changed
+        if (changed_nodes.size() == 0)
+            return;
+
+        // Make a list of all the paths that need to be checked
+        if (node["data"].IsScalar())
+            data_paths.push_back(inja_env.render( node.Scalar(), project_summary_json ));
+        else if (node["data"].IsSequence())
+            for (const auto& i: node["data"])
+                data_paths.push_back( inja_env.render( i.Scalar(), project_summary_json ));
+
+        // Check every data path for every changed node
+        for (const auto& n: changed_nodes)
         {
-            try {
-                json_node_merge(project_summary_json[nlohmann::json::json_pointer("/data" + path)], c.at(nlohmann::json::json_pointer(path)));
+            for (const auto& d: data_paths)
+            {
+                auto first = yaml_path(n.first, d);
+                auto second = yaml_path(n.second, d);
+                if (yaml_diff(first, second))
+                {
+                    std::cout << "YAML changed: " << d << std::endl;
+                    std::cout << first << "\n" << second << std::endl;
+                }
             }
-            catch (...) {}
         }
     }
 
@@ -394,18 +426,16 @@ namespace bob
                 // Check for special dependency_file condition
                 if ( d.IsMap( ) )
                 {
-                    if ( d.begin()->first.Scalar() == "dependency_file" )
+                    if ( d["dependency_file"] )
                     {
                         const std::string generated_dependency_file = local_inja_env.render( d.begin()->second.Scalar(), project_summary_json );
                         auto dependencies = parse_gcc_dependency_file(generated_dependency_file);
                         match->dependencies.insert( std::end( match->dependencies ), std::begin( dependencies ), std::end( dependencies ) );
                         continue;
                     }
-                    else if (d.begin()->first.Scalar().compare( "data" ) == 0)
+                    else if (d["data"] )
                     {
-                        const std::string data_path = local_inja_env.render( d.begin()->second.Scalar(), project_summary_json );
-                        required_data.insert(data_path);
-                        process_data_dependency(data_path);
+                        process_data_dependency(d, local_inja_env);
                     }
                 }
                 // Verify validity of dependency
@@ -714,7 +744,7 @@ namespace bob
 
                     if (retcode < 0)
                     {
-                      boblog->error(temp_output);
+                      boblog->error("Returned {}\n{}",retcode, temp_output);
                       return {temp_output, retcode};
                     }
                     captured_output = temp_output;
@@ -722,7 +752,7 @@ namespace bob
                     // TODO: Note this should be done by the main thread to ensure the outputs from multiple run_command instances don't overlap
                     boblog->info(captured_output);
                 }
-                else if (project->blueprint_commands.at(command_name))
+                else if (project->blueprint_commands.find(command_name) != project->blueprint_commands.end()) // To be replaced with .contains() once C++20 is available
                 {
                     captured_output = project->blueprint_commands.at(command_name)( blueprint->target, command_entry, captured_output, project->project_summary_json, inja_env );
                 }
@@ -906,7 +936,6 @@ namespace bob
                         ++a;
                 }
             }
-            // } while ;
 
             int progress = (100 * completed_tasks)/starting_size;
             if (progress != last_progress_update)
@@ -1075,32 +1104,6 @@ namespace bob
 		json_file.close();
     }
 
-    void project::load_component_registries()
-    {
-        // Verify the .bob/registries path exists
-    	if (!fs::exists(this->project_directory + "/.bob/registries"))
-            return;
-
-        for ( const auto& p : fs::recursive_directory_iterator( this->project_directory + "/.bob/registries") )
-            if ( p.path().extension().generic_string() == ".yaml" )
-                try
-                {
-                    registries[p.path().filename().replace_extension().generic_string()] = YAML::LoadFile(p.path().generic_string());
-                }
-                catch (...)
-                {
-                    log->error("Could not parse component registry: '{}'", p.path().generic_string());
-                }
-    }
-
-    std::optional<YAML::Node> project::find_registry_component(const std::string& name)
-    {
-        // Look for component in registries
-        for ( auto r : registries )
-            if ( r.second["provides"]["components"][name].IsDefined( ) )
-                return r.second["provides"]["components"][name];
-        return {};
-    }
 
     /**
      * @brief Parses dependency files as output by GCC or Clang generating a vector of filenames as found in the named file

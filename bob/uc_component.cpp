@@ -1,4 +1,5 @@
 #include "bob_component.h"
+#include "yaml-cpp/yaml.h"
 #include "spdlog/spdlog.h"
 
 namespace bob
@@ -44,15 +45,15 @@ namespace bob
 
     }
 
-    void slcc::apply_feature( std::string feature_name, component_list_t& new_components, feature_list_t& new_features )
-    {
-        // Nothing to do
-    }
+    // void slcc::apply_feature( std::string feature_name, component_list_t& new_components, feature_list_t& new_features )
+    // {
+    //     // Nothing to do
+    // }
 
-    void slcc::process_requirements(const YAML::Node& node, component_list_t& new_components, feature_list_t& new_features )
-    {
+    // void slcc::process_requirements(const YAML::Node& node, component_list_t& new_components, feature_list_t& new_features )
+    // {
 
-    }
+    // }
 
     component_list_t slcc::get_required_components( )
     {
@@ -87,12 +88,12 @@ namespace bob
 
         // Process 'requires'
         {
-            YAML::Node requires;
+            YAML::Node temp;
             for ( const auto& p : yaml["requires"] )
             {
-                requires["features"].push_back( p["name"] );
+                temp["features"].push_back( p["name"] );
             }
-            yaml["requires"] = requires;
+            yaml["requires"] = temp;
         }
 
         // Process 'source'

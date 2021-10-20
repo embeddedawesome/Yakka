@@ -1,14 +1,16 @@
 #pragma once
 
 #include "yaml-cpp/yaml.h"
-#include "indicators/progress_bar.hpp"
+// #include "indicators/progress_bar.hpp"
 #include <set>
 #include <string>
 #include <functional>
+#include <unordered_set>
 
 namespace bob {
-    typedef std::set<std::string> component_list_t;
-    typedef std::set<std::string> feature_list_t;
+    using component_list_t = std::unordered_set<std::string>;
+    using feature_list_t = std::unordered_set<std::string>;
+    using command_list_t = std::unordered_set<std::string>;
 
     const std::string bob_component_extension   = ".bob";
 
@@ -23,4 +25,9 @@ namespace bob {
 
     template<typename Functor>
     void exec( const std::string& command_text, const std::string& arg_text, Functor function);
+
+    bool yaml_diff(const YAML::Node& node1, const YAML::Node& node2);
+    YAML::Node yaml_path(const YAML::Node& node, std::string path);
+    std::tuple<component_list_t, feature_list_t, command_list_t> parse_arguments( const std::vector<std::string>& argument_string );
+    std::string generate_project_name(const component_list_t& components, const feature_list_t& features);
 }

@@ -3,6 +3,7 @@ NAME := BOB
 $(NAME)_SOURCES := bob.cpp \
                    bob_project.cpp \
                    bob_component.cpp \
+                   bob_workspace.cpp \
                    component_database.cpp \
                    uc_component.cpp
 
