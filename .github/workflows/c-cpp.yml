@@ -1,0 +1,23 @@
+name: BOB Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: build_linux
+      if: runner.os == 'Linux'
+      run: make bob clang link!
+    - name: build_windows
+      if: runner.os == 'Windows'
+      run: make bob msvc link!
+    - name: build_macos
+      if: runner.os == 'MacOS'
+      run: make bob clang link!
