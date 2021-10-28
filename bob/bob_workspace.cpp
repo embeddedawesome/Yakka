@@ -15,6 +15,7 @@ namespace bob
     workspace::workspace() : workspace_directory(".")
     {
         log = spdlog::get("boblog");
+        init();
     }
 
     void workspace::init()
