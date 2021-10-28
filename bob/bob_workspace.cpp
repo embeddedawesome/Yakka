@@ -30,6 +30,9 @@ namespace bob
         {
             // Load registries
         }
+
+        if (!fs::exists(".bob/repos"))
+            fs::create_directories(".bob/repos");
     }
 
     void workspace::load_component_registries()

@@ -5,27 +5,27 @@ Many modern programming languages recognize that writing source code is only a s
 
 ## Design
 BOB defines a language for software developers to describe a software component and how it relates to other components.
-It uses YAML, Jinja templating, and regular expressions to provide a flexible environment to succincly describe each component and the actions to perform transformations on those components.
+It uses YAML, Jinja-like templating, and regular expressions to provide a flexible environment to succincly describe each component and the actions to perform transformations on those components.
 
 ## Concepts
 ### Components
-A YAML files that describe something. Components could represent specific piece of software or a toolchain or could be a meta component that describes a concept or group of functionality.
+Components are an abstract concept that contain data and describe their relationship to other components or features.
+A component may represent a specific piece of software or library, or a toolchain with binaries and blueprints on how to perform transforms, or it may be a meta component that describes a concept or group of functionality.
 
-Components can have a relationship to other components or features
+A component may contain any YAML data and BOB defines a minimal set of entries to be considered a valid BOB component.
+The definition and structure of additional data is to be provided by agreed standards. For example, the C/C++ language extension defines the use of "sources", "includes", and "defines" as a way to describe a C/C++ software component.
 
 ### Features
-A feature is a unique name that represents a concept that is not tied to a specific component. It is an orthogonal concept to components that are represent a specific piece of software
+A feature is a unique name that represents a concept that may apply to one or many components. A component can have a three different relationships to a feature; it can require it, support it, or provide it.
+Features provide a mechanism whereby a component can alter it's behaviour depending on the requirements of the system around it. This removes the need to sub-divide a single component into multiple sub-components to support different aspects of functionality.
 
-Human readable and relatable
-
-### Data
-Data has no particular structure and can be part of the root node of any component
-
-Data can be required but not provided or supported. Provide functionality is done by simply having the data as part of your YAML doc.
+Feature names are abritrary and aim to be human readable and relatable
 
 ### Blueprint
-Named set of instructions that perform actions and have their own set of dependencies.
-A blueprint can be matched by its name or via a regex.
+Blueprints are similar in concept to Makefile recipes where a target is related to its dependencies and describes a list of shell commands that are to be executed to update the target.
+BOB blueprint targets can be a simple string, a templated string, or a complicated regex with capture groups. They can depend on other blueprints, files, or specific data in any component.
+
+See [Blueprints](docs/blueprints.md) for further details.
 
 ### Relationships
 *Requires*
@@ -44,7 +44,7 @@ A "provides" relationship indicates that the required feature will be fulfilled.
 TBD
 
 ## Component Descriptor Specification
-Components are defined by a YAML file. BOB has a minimal set of reserved elements/keywords but expects that the development community will define extensions used by tool components such as toolchains.
+Components are defined using YAML. BOB has a minimal set of reserved elements/keywords but expects that the development community will define extensions used by tool components such as toolchains.
 
 Each descriptor must have a 'name' element that defines a human readable name. This is used to name build outputs and so is constrained by standard operating system naming restrictions.
 The forbidden characters are:
@@ -52,8 +52,8 @@ The forbidden characters are:
 - / (forward slas
 - < (less than)
 - > (greater than)
-- : (colon - sometimes works, but is actually NTFS Alternate Data Streams)
-- " (double quot))))e)
+- : (colon)
+- " (double quote)
 - / (forward slash)
 - \ (backslash)
 - | (vertical bar or pipe)
@@ -65,15 +65,12 @@ Note: Names cannot end in a space or dot.
 
 ### Keywords
 
-1. 'requires'
-
-2. 'supports'
-
-3. 'provides'
-
-4. 'blueprints'
-
-5. 'tools'
+1. 'name'
+2. 'requires'
+3. 'supports'
+4. 'provides'
+5. 'blueprints'
+6. 'tools'
 
 ## Descriptor Extensions
 BOB has support for components to define their own standard set of YAML elements for use by their blueprints.
@@ -84,13 +81,9 @@ BOB has support for components to define their own standard set of YAML elements
 
 2. 'includes'
 
-3. 'flags'
-Specifically 'flags/c', 'flags/c++', 'flags/S', 'flags/linker' which comes with '/local' and '/global' sections
+3. 'defines'
 
-4. 'libraries'
+4. 'flags'
+Specifically 'flags/c', 'flags/c++', 'flags/S', 'flags/linker' which comes with '/local' and '/global' sub-sections
 
-## Blueprints
-Blueprints objects can have the following entries:
-"supports": optional dependencies
-"requires": Dependencies that must be fulfilled
-"process": Sequence of actions for the blueprint
+5. 'libraries'
