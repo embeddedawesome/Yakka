@@ -11,7 +11,7 @@ namespace bob
     public:
         workspace();
         void init();
-        std::optional<std::future<void>> fetch_component(std::string component_name);
+        std::future<void> fetch_component(const std::string& name, YAML::Node node, std::function<void(size_t)> progress_handler);
         void load_component_registries();
         std::optional<YAML::Node> find_registry_component(const std::string& name);
 

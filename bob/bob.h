@@ -21,12 +21,10 @@ namespace bob {
         return dotname.find_last_of(".") != std::string::npos ? dotname.substr(dotname.find_last_of(".")+1) : dotname;
     }
 
-    template<typename Functor>
-    void fetch_component(const std::string& name, YAML::Node node, Functor set_progress);
+    void fetch_component(const std::string& name, YAML::Node node, std::function<void(size_t)> progress_handler);
     std::pair<std::string, int> exec( const std::string& command_text, const std::string& arg_text);
 
-    template<typename Functor>
-    void exec( const std::string& command_text, const std::string& arg_text, Functor function);
+    void exec( const std::string& command_text, const std::string& arg_text, std::function<void(std::string&)> function);
 
     bool yaml_diff(const YAML::Node& node1, const YAML::Node& node2);
     YAML::Node yaml_path(const YAML::Node& node, std::string path);

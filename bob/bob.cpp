@@ -106,69 +106,83 @@ int main(int argc, char **argv)
 
     project.evaluate_dependencies();
 
-#if FETCHING_SUPPORT
-    show_console_cursor(false);
-    DynamicProgress<ProgressBar> fetch_progress_ui;
-    std::vector<std::shared_ptr<ProgressBar>> fetch_progress_bars;
-    workspace.load_component_registries();
+    // Check if the project depends on components we don't have yet 
+    if (!project.unknown_components.empty())
+    {
+        workspace.load_component_registries();
 
-    // The following code needs to be cleaned up
+        show_console_cursor(false);
+        DynamicProgress<ProgressBar> fetch_progress_ui;
+        std::vector<std::shared_ptr<ProgressBar>> fetch_progress_bars;
 
-    std::vector<std::future<void>> fetch_list;
-    do {
-//        for (const auto& c: project.unknown_components)
-//            project.unprocessed_components.push_back(c);
-//        project.unknown_components.clear();
-
-        project.evaluate_dependencies();
-
-        int found_components = 0;
-
-        if ( project.unknown_components.size( ) != 0 )
+        std::map<std::string, std::future<void>> fetch_list;
+        do
         {
+            // Ask the workspace to fetch them
+            for (const auto& i: project.unknown_components)
+            {
+                if (fetch_list.find(i) != fetch_list.end())
+                    continue;
+                
+                // Check if component is in the registry
+                auto node = workspace.find_registry_component(i);
+                if (node)
+                {
+                    std::shared_ptr<ProgressBar> new_progress_bar = std::make_shared<ProgressBar>(option::BarWidth{ 50 }, option::ShowPercentage{ true }, option::PrefixText{ "Fetching " + i + " " }, option::SavedStartTime{ true });
+                    fetch_progress_bars.push_back(new_progress_bar);
+                    size_t id = fetch_progress_ui.push_back(*new_progress_bar);
+                    fetch_progress_ui.print_progress();
+                    auto result = workspace.fetch_component(i, *node, [&fetch_progress_ui,id](size_t number) {
+                            if (number >= 100)
+                            {
+                                fetch_progress_ui[id].set_progress(100);
+                                fetch_progress_ui[id].mark_as_completed();
+                            }
+                            else
+                                fetch_progress_ui[id].set_progress(number);
+                        });
+                    if (result.valid())
+                        fetch_list.insert({i, std::move(result)});
+                }
+            }
 
-        }
+            // Check if we haven't been able to fetch any of the unknown components
+            if (fetch_list.empty())
+            {
+                for (const auto& i: project.unknown_components)
+                    console->error("Cannot fetch {}", i);
+                return 0;
+            }
 
-        decltype(fetch_list)::iterator completed_fetch;
-        do {
-            completed_fetch = std::find_if(fetch_list.begin(), fetch_list.end(), [](std::future<void>& f){ return f.wait_for(100ms) == std::future_status::ready; } );
-        } while (completed_fetch == fetch_list.end());
+            // Wait for one of the components to be complete
+            decltype(fetch_list)::iterator completed_fetch;
+            do {
+                completed_fetch = std::find_if(fetch_list.begin(), fetch_list.end(), [](auto& fetch_item){ return fetch_item.second.wait_for(100ms) == std::future_status::ready; } );
+            } while (completed_fetch == fetch_list.end());
 
-        // Wait for one of the fetches to complete
-//        if (git_fetching_list.size() != 0)
-//        {
-//            decltype(git_fetching_list)::iterator completed_fetch;
-//            auto t1 = std::chrono::high_resolution_clock::now();
-//            do {
-//                completed_fetch = std::find_if(git_fetching_list.begin(), git_fetching_list.end(), [](decltype(git_fetching_list)::value_type& f){ return f.second.wait_for(100ms) == std::future_status::ready; });
-//            } while (completed_fetch == git_fetching_list.end());
-//            auto t2 = std::chrono::high_resolution_clock::now();
-//            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-//            boblog->info("{}: fetched in {}ms", completed_fetch->first, duration);
-//
-//            project.unknown_components.erase(completed_fetch->first);
-//            project.unprocessed_components.push_back(completed_fetch->first);
-//            project.component_database.scan_for_components("./components/" + completed_fetch->first);
-//            git_fetching_list.erase(completed_fetch);
-//            continue;
-//        }
+            // Update the component database
+            project.component_database.scan_for_components("./components/" + completed_fetch->first);
 
-//        if (git_fetching_list.size() == 0 && project.unknown_components.size( ) != 0)
-//        {
-//            console->error("Failed to find the following components:");
-//            for (const auto& c: project.unknown_components)
-//                console->error(" - {}", c);
-//
-//            fs::remove(bob::component_database::database_filename);
-//            std::cout << "Scanning '.' for components" << std::endl;
-//            bob::component_database db;
-//            db.save();
-//
-//            return 0;
-//        }
+            // Check if any of our unknown components have been found
+            for (auto i = project.unknown_components.cbegin(); i != project.unknown_components.cend();)
+            {
+                if (project.component_database[*i])
+                {
+                    // Remove component from the unknown list and add it to the unprocessed list
+                    project.unprocessed_components.insert(*i);
+                    i = project.unknown_components.erase(i);
+                }
+                else
+                    ++i;
+            }
 
-    } while(project.unprocessed_components.size() != 0 || project.unknown_components.size( ) != 0 || fetch_list.size() != 0);
-#endif
+            // Remove the item from the fetch list
+            fetch_list.erase(completed_fetch);
+
+            // Re-evaluate the project dependencies
+            project.evaluate_dependencies();
+        } while(!project.unprocessed_components.empty() || !project.unknown_components.empty( ) || !fetch_list.empty());
+    }
 
     auto t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
@@ -257,8 +271,7 @@ std::pair<std::string, int> exec( const std::string& command_text, const std::st
     }
 }
 
-template<typename Functor>
-void exec( const std::string& command_text, const std::string& arg_text, Functor function)
+void exec( const std::string& command_text, const std::string& arg_text, std::function<void(std::string&)> function)
 {
     auto boblog = spdlog::get("boblog");
     boblog->info("{} {}", command_text, arg_text);

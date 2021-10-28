@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 
 namespace bob
 {
-    workspace::workspace()
+    workspace::workspace() : workspace_directory(".")
     {
         log = spdlog::get("boblog");
     }
@@ -59,39 +59,15 @@ namespace bob
         return {};
     }
 
-    std::optional<std::future<void>> workspace::fetch_component(std::string component_name)
+    std::future<void> workspace::fetch_component(const std::string& name, YAML::Node node, std::function<void(size_t)> progress_handler)
     {
-        return {};
-
-        // Check whether any of the unknown components are in registries.
-        for (const auto & r : registries)
-        {
-            // Check if it's already being fetched
-            if (fetching_list.find(component_name) != fetching_list.end())
-            {
-                continue;
-            }
-
-            if (r.second["provides"]["components"][component_name].IsDefined())
-            {
-//                ++found_components;
-                log->info("Fetching new component: {}", component_name);
-//                fetch_progress_bars.push_back(std::make_shared<ProgressBar>(option::BarWidth{ 50 }, option::ShowPercentage{ true }, option::PrefixText{ "Fetching " + component_name + " " }, option::SavedStartTime{ true }));
-//                auto id = fetch_progress_ui.push_back(*fetch_progress_bars.back());
-//                fetch_progress_ui.print_progress();
-//                fetching_list[c] = std::async(std::launch::async, [&](size_t bar_id) {
-//                        std::string name = component_name; // Make a copy of the name string
-//                        bob::fetch_component(name, r.second["provides"]["components"][name], [&](size_t number)
-//                                             {   fetch_progress_ui[bar_id].set_progress(number);});
-//                        fetch_progress_ui[bar_id].mark_as_completed();
-//                    }, id);
-            }
-        }
+        return std::async(std::launch::async, [=]() {
+                bob::fetch_component(name, node, progress_handler);
+        });
     }
 
     using namespace std::string_literals;
-    template<typename Functor>
-    void fetch_component(const std::string& name, YAML::Node node, Functor set_progress)
+    void fetch_component(const std::string& name, YAML::Node node, std::function<void(size_t)> progress_handler)
     {
         auto boblog = spdlog::get("boblog");
         enum {
@@ -116,7 +92,7 @@ namespace bob
     # define GIT_STRING  "git"
     #endif
         auto t1 = std::chrono::high_resolution_clock::now();
-        bob::exec(GIT_STRING, fetch_string, [&](const std::string& data) -> void {
+        bob::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
             std::smatch s;
             if ( phase < GIT_COMPRESSING && data.find("Comp" ) != data.npos ) {phase = GIT_COMPRESSING; }
             if ( phase < GIT_RECEIVING && data.find("Rece") != data.npos ) { phase = GIT_RECEIVING; }
@@ -131,7 +107,7 @@ namespace bob
                 // if (progress < old_progress)
                 //   boblog->info << name << ": " << "Progress regressed\n" << data << "\n";
                 if (progress != old_progress)
-                    set_progress(progress);
+                    progress_handler(progress);
                 old_progress = progress;
             }
         });
@@ -154,7 +130,7 @@ namespace bob
                 int phase_progress = std::stoi( s[1] );
                 int end_value = std::stoi( s[2] );
                 int progress = phase_rates[GIT_LFS_CHECKOUT] + ((100-phase_rates[GIT_LFS_CHECKOUT])*phase_progress)/end_value;
-                set_progress(progress);
+                progress_handler(progress);
             }
         });
         t2 = std::chrono::high_resolution_clock::now();
@@ -178,7 +154,7 @@ namespace bob
         // t2 = std::chrono::high_resolution_clock::now();
         // duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
         // boblog->info("{}: LFS checkout in {}ms", name, duration);
-        set_progress(100);
+        progress_handler(100);
     }
 
 
