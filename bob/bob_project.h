@@ -60,7 +60,7 @@ namespace bob
         void update_summary();
         void generate_project_summary();
 
-        std::vector<std::unique_ptr<blueprint_match>> find_blueprint_match( const std::string target );
+        void process_blueprint_target( const std::string target );
         void evaluate_blueprint_dependencies();
         void load_common_commands();
         void set_project_file(const std::string filepath);
@@ -69,7 +69,7 @@ namespace bob
         void save_summary();
         std::optional<YAML::Node> find_registry_component(const std::string& name);
         std::future<void> fetch_component(const std::string& name, indicators::ProgressBar& bar);
-        void process_data_dependency(const YAML::Node& node, inja::Environment& inja_env);
+        bool has_data_dependency_changed(std::string data_path);
 
         // Logging
         std::shared_ptr<spdlog::logger> log;
@@ -100,16 +100,12 @@ namespace bob
 
         // Blueprint evaluation
         inja::Environment inja_environment;
+        std::multimap<std::string, std::shared_ptr< blueprint_node > > blueprint_database;
         std::multimap<std::string, std::shared_ptr< construction_task > > construction_list;
         std::vector<std::string> todo_list;
-        std::unordered_set<std::string> required_data;
 
         std::vector< std::pair<std::string, YAML::Node> > blueprint_list;
         std::map< std::string, blueprint_command > blueprint_commands;
-
-
-    private:
-        void process_aggregate( YAML::Node& aggregate );
     };
 
     static std::pair<std::string, int> run_command( std::shared_ptr< construction_task> task, const project* project );

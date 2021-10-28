@@ -48,21 +48,28 @@ blueprints:
     
   global_compiler_options:
     regex: '{{project_output}}/{{project_name}}.global_(cpp|c)_options'
+    depends:
+      - data:
+          - '*.flags.{{$(1)}}.global'
+          - '*.includes.global'
+          - '*.defines.global'
     process:
       - inja: "{% for name,component in components %}
         {% if existsIn(component, \"flags\") and existsIn(component.flags, $(1)) %}{% for flag in at(component.flags, $(1)).global %}{{flag}} {% endfor %}{%endif%}
-        {% for include in component.includes.global %}-I{{component.directory}}/{{include}} {% endfor %}
-        {% for define in component.defines.global %}-D{{define}} {% endfor %}
+        {%- for include in component.includes.global %}-I{{component.directory}}/{{include}} {% endfor %}
+        {%- for define in component.defines.global %}-D{{define}} {% endfor %}
         {%endfor%}
-        {% for feature in features %}-D{{feature}}_FEATURE_REQUIRED {% endfor %}
+        {%- for feature in features %}-D{{feature}}_FEATURE_REQUIRED {% endfor %}
         -I{{project_output}}"
       - save:
       
   compiler_option_files:
     regex: '.+/components/([^/]*)/\1\.(cpp|c)_options'
     depends:
-      - '{{project_output}}/{{project_name}}.global_{{$(2)}}_options'
-      - '{{at(components, $(1)).bob_file}}'
+      - data:
+          - '{{$(1)}}.flags.{{$(2)}}.local'
+          - '{{$(1)}}.includes.local'
+          - '{{$(1)}}.defines.local'
     process:
       - create_directory: '{{$(0)}}'
       - inja: "{% set component=at(components,$(1)) %}

@@ -13,6 +13,8 @@ namespace bob {
     using command_list_t = std::unordered_set<std::string>;
 
     const std::string bob_component_extension   = ".bob";
+    const char data_dependency_identifier = ':';
+    const char data_wildcard_identifier = '*';
 
     static std::string component_dotname_to_id(const std::string dotname)
     {

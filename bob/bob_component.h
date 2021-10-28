@@ -19,7 +19,7 @@ namespace bob {
         std::tuple<component_list_t&, feature_list_t&> process_requirements(const YAML::Node& node);
         component_list_t get_required_components();
         feature_list_t   get_required_features();
-        std::vector< blueprint_match > get_blueprints();
+        std::vector< blueprint_node > get_blueprints();
 
         // Variables
         fs::path file_path;
@@ -35,7 +35,7 @@ namespace bob {
         // std::tuple<component_list_t&, feature_list_t&> process_requirements(const YAML::Node& node);
         component_list_t get_required_components();
         feature_list_t   get_required_features();
-        std::vector< blueprint_match > get_blueprints();
+        std::vector< blueprint_node > get_blueprints();
 
         std::string id;
         YAML::Node yaml;
@@ -52,7 +52,7 @@ namespace bob {
         // std::tuple<component_list_t&, feature_list_t&> process_requirements(const YAML::Node& node);
         component_list_t get_required_components();
         feature_list_t   get_required_features();
-        std::vector< blueprint_match > get_blueprints();
+        std::vector< blueprint_node > get_blueprints();
 
         void convert_to_bob();
 

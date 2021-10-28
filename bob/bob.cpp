@@ -21,7 +21,9 @@ int main(int argc, char **argv)
     auto bob_start_time = std::time(nullptr);
 
     // Setup logging
-    fs::remove("bob.log");
+    std::error_code error_code;
+    fs::remove("bob.log", error_code);
+
     auto console = spdlog::stderr_color_mt("bobconsole");
     console->flush_on(spdlog::level::level_enum::off);
     console->set_pattern("[%^%l%$]: %v");
@@ -251,7 +253,7 @@ std::pair<std::string, int> exec( const std::string& command_text, const std::st
     } catch (std::exception e)
     {
         boblog->error("Exception while executing: {}\n{}", command_text, e.what());
-        return {};
+        return {"", -1};
     }
 }
 

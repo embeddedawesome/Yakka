@@ -69,7 +69,7 @@ namespace bob
         return list;
     }
 
-    std::vector<blueprint_match> slcc::get_blueprints( )
+    std::vector<blueprint_node> slcc::get_blueprints( )
     {
         return {};
     }

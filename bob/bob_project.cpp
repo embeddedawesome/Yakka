@@ -294,111 +294,149 @@ namespace bob
 
     void project::evaluate_blueprint_dependencies()
     {
-        std::unordered_set<std::string> new_targets;
+        std::vector<std::string> new_targets;
         std::unordered_set<std::string> processed_targets;
-        std::unordered_set<std::string> unprocessed_targets = std::move(this->commands);
+        std::vector<std::string> unprocessed_targets;
+
+        for (const auto& c: commands)
+            unprocessed_targets.push_back(c);
 
         while (!unprocessed_targets.empty())
         {
-            for (auto& t: unprocessed_targets)
+            for (const auto& t: unprocessed_targets)
             {
                 // Add to processed targets and check if it's already been processed
                 if (processed_targets.insert(t).second == false)
                     continue;
 
-                auto matches = find_blueprint_match(t);
-                for (auto& match: matches)
+                // Check if target is not in the database. Note blueprint_database is a multimap
+                auto blueprints = blueprint_database.equal_range(t);
+                if (blueprints.first == blueprints.second)
                 {
-                    new_targets.insert(match->dependencies.begin(), match->dependencies.end());
-                    auto new_task = std::make_shared<construction_task>();
-                    new_task->blueprint = std::move(match);
-                    new_task->state = bob_task_to_be_done;
-                    construction_list.insert( std::make_pair(t, new_task ));
+                    // If the target is data, add it to the data dependency list
+                    if (t.front() == data_dependency_identifier)
+                        blueprint_database.insert(std::make_pair(t, std::make_shared<blueprint_node>(t)));
+                    else
+                        process_blueprint_target(t);
+
+                    blueprints = blueprint_database.equal_range(t);
+                }
+
+                for (auto& i = blueprints.first; i != blueprints.second; ++i)
+                {
+                    // Add dependencies of the target to the list of unprocessed targets
+                    new_targets.insert(new_targets.end(), i->second->dependencies.begin(), i->second->dependencies.end());
+
+                    // Create a task it to the list of things to build
+                    auto task = construction_list.insert(std::make_pair(t, std::make_shared<construction_task>()));
+                    task->second->blueprint = i->second;
+
+                    // If a file with the target name exists, get the last modified timestamp
+                    if ( fs::exists( t ) )
+                        task->second->last_modified = fs::last_write_time( t );
                 }
                 todo_list.push_back(t);
             }
 
+            // unprocessed_targets = std::move(new_targets);
             unprocessed_targets.clear();
             unprocessed_targets.swap(new_targets);
         }
     }
 
-    void project::process_data_dependency(const YAML::Node& node, inja::Environment& inja_env)
+    bool project::has_data_dependency_changed(std::string data_path)
     {
         std::vector<std::pair<YAML::Node,YAML::Node>> changed_nodes;
-        std::vector<std::string> data_paths;
 
-        // If there is a 'component', look that up in the previous_summary and see if it has changed
-        if (node["component"])
+        if (data_path.front() != data_dependency_identifier)
+            return false;
+
+        try
         {
-            const auto& component_name = inja_env.render( node["component"].as<std::string>(), project_summary_json );
-            if (!(previous_summary["components"][component_name] == project_summary["components"][component_name] ))
-                changed_nodes.push_back({project_summary["components"][component_name], previous_summary["components"][component_name]});
-        }
-        else
-        {
-            // Otherwise we are doing a global compare between any component that has changed
-            for (const auto& i: project_summary["components"])
+            // Check for wildcard or component name
+            if (data_path[1] == data_wildcard_identifier)
             {
-                const auto& component_name = i.first.as<std::string>();
+                if (data_path[2] != '.')
+                {
+                    log->error("Data dependency malformed: {}", data_path);
+                    return false;
+                }
+
+                for (const auto& i: project_summary["components"])
+                {
+                    std::string component_name = i.first.as<std::string>();
+                    try
+                    {
+                        if (!(previous_summary["components"][component_name] == project_summary["components"][component_name] ))
+                            changed_nodes.push_back({project_summary["components"][component_name], previous_summary["components"][component_name]});
+                    }
+                    catch(std::exception& e)
+                    {
+                        log->error("{} triggered exception checking data dependency", component_name);
+                    }
+                }
+                data_path = data_path.substr(3);
+            }
+            else
+            {
+                std::string component_name = data_path.substr(1, data_path.find_first_of('.')-1);
+                data_path = data_path.substr(data_path.find_first_of('.')+1);
                 if (!(previous_summary["components"][component_name] == project_summary["components"][component_name] ))
                     changed_nodes.push_back({project_summary["components"][component_name], previous_summary["components"][component_name]});
             }
-        }
 
-        // Check if we have any nodes that have changed
-        if (changed_nodes.size() == 0)
-            return;
+            // Check if we have any nodes that have changed
+            if (changed_nodes.size() == 0)
+                return false;
 
-        // Make a list of all the paths that need to be checked
-        if (node["data"].IsScalar())
-            data_paths.push_back(inja_env.render( node.Scalar(), project_summary_json ));
-        else if (node["data"].IsSequence())
-            for (const auto& i: node["data"])
-                data_paths.push_back( inja_env.render( i.Scalar(), project_summary_json ));
-
-        // Check every data path for every changed node
-        for (const auto& n: changed_nodes)
-        {
-            for (const auto& d: data_paths)
+            // Check every data path for every changed node
+            for (const auto& n: changed_nodes)
             {
-                auto first = yaml_path(n.first, d);
-                auto second = yaml_path(n.second, d);
+                auto first = yaml_path(n.first, data_path);
+                auto second = yaml_path(n.second, data_path);
                 if (yaml_diff(first, second))
                 {
-                    std::cout << "YAML changed: " << d << std::endl;
+                    std::cout << "YAML changed: " << data_path << std::endl;
                     std::cout << first << "\n" << second << std::endl;
+                    return true;
                 }
             }
+            return false;
+        }
+        catch(const std::exception& e)
+        {
+            log->error("Failed to determine data dependency: {}", e.what());
+            return false;
         }
     }
 
-    std::vector<std::unique_ptr<blueprint_match>> project::find_blueprint_match( const std::string target )
+    void project::process_blueprint_target( const std::string target )
     {
-        std::vector<std::unique_ptr<blueprint_match>> blueprint_matches;
+        bool blueprint_match_found = false;
 
-        for ( auto& b : blueprint_list )
+        for ( auto& blueprint : blueprint_list )
         {
             std::smatch s;
 
             // Check if rule is a regex, otherwise do a string comparison
-            if ( b.second["regex"] )
+            if ( blueprint.second["regex"] )
             {
-                if ( !std::regex_match(target, s, std::regex { b.first } ) )
+                if (!std::regex_match(target, s, std::regex { blueprint.first } ) )
                     continue;
             }
             else
             {
-                if (target != b.first )
+                if (target != blueprint.first )
                     continue;
             }
 
-            auto match = std::make_unique<blueprint_match>();
-            match->target = target;
-            match->blueprint = b.second;
+            // Found a match. Create a blueprint match object
+            blueprint_match_found = true;
+            auto match = std::make_shared<blueprint_node>(target);
+            match->blueprint = blueprint.second;
 
             // Process match
-            if ( b.second["regex"] )
+            if ( blueprint.second["regex"] )
             {
                 // arg_count starts at 0 as the first match is the entire string
                 int arg_count = 0;
@@ -421,7 +459,7 @@ namespace bob
             local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match->blueprint["bob_parent_path"].Scalar();});
 
             // Run template engine on dependencies
-            for ( auto d : b.second["depends"] )
+            for ( auto d : blueprint.second["depends"] )
             {
                 // Check for special dependency_file condition
                 if ( d.IsMap( ) )
@@ -435,14 +473,21 @@ namespace bob
                     }
                     else if (d["data"] )
                     {
-                        process_data_dependency(d, local_inja_env);
+                        for (const auto& data_item: d["data"])
+                        {
+                            std::string data_name = local_inja_env.render(data_item.as<std::string>(), project_summary_json);
+                            if (data_name.front() != data_dependency_identifier)
+                                data_name.insert(0,1, data_dependency_identifier);
+                            match->dependencies.push_back(data_name);
+                        }
+                        continue;
                     }
                 }
                 // Verify validity of dependency
                 else if ( !d.IsScalar( ) )
                 {
-                    log->error("Dependencies only support Scalar entries");
-                    return {};
+                    log->error("Dependencies should be Scalar");
+                    return;
                 }
 
                 std::string depend_string = d.Scalar( );
@@ -456,7 +501,7 @@ namespace bob
                 catch ( std::exception& e )
                 {
                     log->error("Couldn't apply template: '{}'", depend_string);
-                    return {};
+                    return;
                 }
 
                 // Check if the input was a YAML array construct
@@ -473,28 +518,16 @@ namespace bob
                 }
             }
 
-            // If the file exists, get the last modified timestamp
-            if ( fs::exists( target ) )
-                match->last_modified = fs::last_write_time( target );
-
-            blueprint_matches.push_back( std::move( match ) );
+            blueprint_database.insert(std::make_pair(target, match));
         }
 
-        if (blueprint_matches.empty())
+        if (!blueprint_match_found)
         {
             if (fs::exists( target ))
-            {
-                auto match = std::make_unique<blueprint_match>();
-                match->target        = target;
-                match->blueprint     = YAML::Node();
-                match->last_modified = fs::last_write_time( target );
-                blueprint_matches.push_back( std::move( match ) );
-            }
+                blueprint_database.insert(std::make_pair(target, std::make_shared<blueprint_node>(target)));
             else
                 log->info("No blueprint for '{}'", target);
         }
-
-        return blueprint_matches;
     }
 
     void project::load_common_commands()
@@ -730,9 +763,6 @@ namespace bob
                     YAML::Node tool = project->project_summary["tools"][command_name];
                     std::string command_text = "";
 
-//                    if ( tool["prefix"] )
-//                        command_text.append( tool["prefix"].Scalar() );
-
                     command_text.append( tool.as<std::string>( ) );
 
                     std::string arg_text = command->second.as<std::string>( );
@@ -924,11 +954,11 @@ namespace bob
                 // Update the modified times of the construction items
                 for (auto a = running_tasks.begin(); a != running_tasks.end();)
                 {
-                    if ( a->get()->thread_result.wait_for(2ms) == std::future_status::ready )
+                    if ( a->get()->thread_result.wait_for(0ms) == std::future_status::ready )
                     {
                         boblog->info( "{}: Done", a->get()->blueprint->target);
-                        a->get()->blueprint->last_modified = construction_start_time;
-                        a->get()->state = bob_task_complete;
+                        a->get()->last_modified = construction_start_time;
+                        a->get()->state = bob_task_up_to_date;
                         a = running_tasks.erase( a );
                         ++completed_tasks;
                     }
@@ -956,8 +986,8 @@ namespace bob
                     if ( a->get()->thread_result.wait_for(0ms) == std::future_status::ready )
                     {
                         boblog->info( "{}: Done", a->get()->blueprint->target);
-                        a->get()->blueprint->last_modified = construction_start_time;
-                        a->get()->state = bob_task_complete;
+                        a->get()->last_modified = construction_start_time;
+                        a->get()->state = bob_task_up_to_date;
                         a = running_tasks.erase( a );
                         ++completed_tasks;
                     }
@@ -982,23 +1012,24 @@ namespace bob
 
             auto is_task_complete = [task_list]() -> bool {
                 for(auto i = task_list.first; i != task_list.second; ++i)
-                    if (i->second->state != bob_task_complete)
+                    if (i->second->state != bob_task_up_to_date)
                         return false;
                 return true;
             };
 
             auto get_task_status = [this](construction_task& task) -> blueprint_status {
-                blueprint_status status = task.blueprint->last_modified.time_since_epoch().count() == 0 ? execute_process : set_to_complete;
-                for ( const auto& d: task.blueprint->dependencies )
-                {
-                    for (auto [start,end] = this->construction_list.equal_range(d); start != end; ++start)
+                blueprint_status status = task.last_modified.time_since_epoch().count() == 0 ? execute_process : set_to_complete;
+                if (task.blueprint)
+                    for ( const auto& d: task.blueprint->dependencies )
                     {
-                        if ( start->second->state != bob_task_complete)
-                            return dependency_not_ready;
-                        if ( (start->second->blueprint->last_modified > task.blueprint->last_modified ) && ( task.blueprint->blueprint["process"]) )
-                            status = execute_process;
+                        for (auto [start,end] = this->construction_list.equal_range(d); start != end; ++start)
+                        {
+                            if ( start->second->state != bob_task_up_to_date)
+                                return dependency_not_ready;
+                            if ( (start->second->last_modified > task.last_modified ) && ( task.blueprint->blueprint["process"]) )
+                                status = execute_process;
+                        }
                     }
-                }
                 return status;
             };
 
@@ -1013,29 +1044,40 @@ namespace bob
 
             for (auto t=task_list.first; t != task_list.second; ++t)
             {
-                if (t->second->state == bob_task_to_be_done)
-                    switch ( get_task_status( *(t->second) ) )
-                    {
-                        case set_to_complete:
-                            t->second->state = bob_task_complete;
-                            if (starting_size > 1) --starting_size;
-                            something_updated = true;
-                            break;
-                        case execute_process:
-                            something_updated = true;
-                            if ( t->second->blueprint->blueprint["process"])
-                            {
-                                boblog->info( "{}: Executing blueprint", t->second->blueprint->target);
-                                t->second->thread_result = std::async(std::launch::async | std::launch::deferred, run_command, t->second, this);
-                                running_tasks.push_back(t->second);
-                                t->second->state = bob_task_executing;
-                            }
-                            else
-                                t->second->state = bob_task_complete;
-                            break;
-                        default:
-                        	break;
-                    }
+                if (t->second->state != bob_task_to_be_done)
+                    continue;
+
+                // Check if this task is a data dependency target
+                if (t->first.front() == data_dependency_identifier)
+                {
+                    if (has_data_dependency_changed(t->first))
+                        t->second->last_modified = construction_start_time;
+                    t->second->state = bob_task_up_to_date;
+                    continue;
+                }
+
+                switch ( get_task_status( *(t->second) ) )
+                {
+                    case set_to_complete:
+                        t->second->state = bob_task_up_to_date;
+                        if (starting_size > 1) --starting_size;
+                        something_updated = true;
+                        break;
+                    case execute_process:
+                        something_updated = true;
+                        if ( t->second->blueprint->blueprint["process"])
+                        {
+                            boblog->info( "{}: Executing blueprint", t->second->blueprint->target);
+                            t->second->thread_result = std::async(std::launch::async | std::launch::deferred, run_command, t->second, this);
+                            running_tasks.push_back(t->second);
+                            t->second->state = bob_task_executing;
+                        }
+                        else
+                            t->second->state = bob_task_up_to_date;
+                        break;
+                    default:
+                        break;
+                }
             }
 
             i++;
@@ -1048,7 +1090,7 @@ namespace bob
         {
             boblog->info( "Couldn't build: {}", a);
             for (auto entries = this->construction_list.equal_range(a); entries.first != entries.second; ++entries.first)
-                for (auto b: entries.first->second->blueprint->dependencies)
+                for (const auto& b: entries.first->second->blueprint->dependencies)
                     boblog->info( "\t{}", b);
         }
 
@@ -1136,7 +1178,7 @@ namespace bob
             dependencies.push_back(line);
         }
 
-        return dependencies;
+        return std::move(dependencies);
     }
 
     /**
