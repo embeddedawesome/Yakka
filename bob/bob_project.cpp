@@ -365,15 +365,8 @@ namespace bob
                 for (const auto& i: project_summary["components"])
                 {
                     std::string component_name = i.first.as<std::string>();
-                    try
-                    {
-                        if (!(previous_summary["components"][component_name] == project_summary["components"][component_name] ))
-                            changed_nodes.push_back({project_summary["components"][component_name], previous_summary["components"][component_name]});
-                    }
-                    catch(std::exception& e)
-                    {
-                        log->error("{} triggered exception checking data dependency", component_name);
-                    }
+                    if (!(previous_summary["components"][component_name] == project_summary["components"][component_name] ))
+                        changed_nodes.push_back({project_summary["components"][component_name], previous_summary["components"][component_name]});
                 }
                 data_path = data_path.substr(3);
             }
@@ -395,11 +388,7 @@ namespace bob
                 auto first = yaml_path(n.first, data_path);
                 auto second = yaml_path(n.second, data_path);
                 if (yaml_diff(first, second))
-                {
-                    std::cout << "YAML changed: " << data_path << std::endl;
-                    std::cout << first << "\n" << second << std::endl;
                     return true;
-                }
             }
             return false;
         }
