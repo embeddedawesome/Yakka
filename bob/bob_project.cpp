@@ -8,6 +8,7 @@ namespace bob
 {
     using namespace std::chrono_literals;
 
+
     project::project( std::shared_ptr<spdlog::logger> log ) : project_directory("."), bob_home_directory("/.bob")
     {
         this->log = log;
@@ -232,7 +233,7 @@ namespace bob
                 inja::Environment inja_env = inja::Environment();
                 inja_env.add_callback("curdir", 0, [&c](const inja::Arguments& args) { return c->yaml["directory"].Scalar();});
 
-                project_summary["tools"][tool.first.Scalar()] = inja_env.render(tool.second.Scalar(), configuration_json);
+                project_summary["tools"][tool.first.Scalar()] = try_render(inja_env, tool.second.Scalar(), configuration_json, log);
             }
         }
 
@@ -285,7 +286,7 @@ namespace bob
         for ( auto c: project_summary["components"])
             for ( auto b: c.second["blueprints"] )
             {
-                std::string blueprint_string = inja_environment.render( b.second["regex"] ? b.second["regex"].Scalar() : b.first.Scalar( ), project_summary_json );
+                std::string blueprint_string = try_render(inja_environment,  b.second["regex"] ? b.second["regex"].Scalar() : b.first.Scalar( ), project_summary_json, log);
                 log->info("Blueprint: {}", blueprint_string);
                 b.second["bob_parent_path"] = c.second["directory"];
                 blueprint_list.insert( blueprint_list.end( ), { blueprint_string, b.second } );
@@ -455,7 +456,7 @@ namespace bob
                 {
                     if ( d["dependency_file"] )
                     {
-                        const std::string generated_dependency_file = local_inja_env.render( d.begin()->second.Scalar(), project_summary_json );
+                        const std::string generated_dependency_file = try_render(local_inja_env,  d.begin()->second.Scalar(), project_summary_json, log );
                         auto dependencies = parse_gcc_dependency_file(generated_dependency_file);
                         match->dependencies.insert( std::end( match->dependencies ), std::begin( dependencies ), std::end( dependencies ) );
                         continue;
@@ -464,7 +465,7 @@ namespace bob
                     {
                         for (const auto& data_item: d["data"])
                         {
-                            std::string data_name = local_inja_env.render(data_item.as<std::string>(), project_summary_json);
+                            std::string data_name = try_render(local_inja_env, data_item.as<std::string>(), project_summary_json, log);
                             if (data_name.front() != data_dependency_identifier)
                                 data_name.insert(0,1, data_dependency_identifier);
                             match->dependencies.push_back(data_name);
@@ -522,10 +523,11 @@ namespace bob
     void project::load_common_commands()
     {
         blueprint_commands["echo"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
-            if (!command.begin()->second.IsNull())
-                captured_output = inja_env.render(command.begin()->second.as<std::string>(), generated_json);
-
             auto console = spdlog::get("bobconsole");
+            auto boblog = spdlog::get("boblog");
+            if (!command.begin()->second.IsNull())
+                captured_output = try_render(inja_env, command.begin()->second.as<std::string>(), generated_json, boblog);
+
             console->info("{}", captured_output);
             return captured_output;
         };
@@ -611,17 +613,24 @@ namespace bob
             {
                 if (command["file"])
                 {
-                    std::string filename = inja_env.render(command["file"].as<std::string>(), generated_json);
+                    std::string filename = try_render(inja_env, command["file"].as<std::string>(), generated_json, boblog);
 
                     if (!fs::exists(filename))
                         boblog->error( "{} not found when trying to apply template engine", filename);
                     else
-                        captured_output = inja_env.render_file(filename, generated_json);
+                        try
+                        {
+                            captured_output = inja_env.render_file(filename, generated_json);
+                        }
+                        catch(std::exception&e )
+                        {
+                            boblog->error("Template error in {}: {}", filename, e.what());
+                        }
                 }
                 else
                 {
                     const auto& node = (command["template"]) ? command["template"] : command["inja"];
-                    captured_output = inja_env.render(node.Scalar(), generated_json);
+                    captured_output = try_render(inja_env, node.Scalar(), generated_json, boblog);
                 }
             }
             catch (std::exception &e)
@@ -638,7 +647,7 @@ namespace bob
             if (command.begin()->second.IsNull())
                 save_filename = target;
             else
-                save_filename = inja_env.render(command.begin()->second.as<std::string>(), generated_json);
+                save_filename = try_render(inja_env, command.begin()->second.as<std::string>(), generated_json, boblog);
 
             try
             {
@@ -666,7 +675,7 @@ namespace bob
                 try
                 {
                     filename = command.begin()->second.as<std::string>( );
-                    filename = inja_env.render(filename, generated_json);
+                    filename = try_render(inja_env, filename, generated_json, boblog);
                     if ( !filename.empty( ) )
                     {
                         fs::path p( filename );
@@ -682,9 +691,9 @@ namespace bob
         };
 
         blueprint_commands["verify"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
-            std::string filename = command.begin()->second.as<std::string>( );
-            filename = inja_env.render(filename, generated_json);
             auto boblog = spdlog::get("boblog");
+            std::string filename = command.begin()->second.as<std::string>( );
+            filename = try_render(inja_env, filename, generated_json, boblog);
             if (fs::exists(filename))
                 boblog->info("{} exists", filename);
             else
@@ -693,20 +702,22 @@ namespace bob
         };
 
         blueprint_commands["rm"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
+            auto boblog = spdlog::get("boblog");
             std::string filename = command.begin()->second.as<std::string>( );
-            filename = inja_env.render(filename, generated_json);
+            filename = try_render(inja_env, filename, generated_json, boblog);
             fs::remove(filename);
             return captured_output;
         };
 
         blueprint_commands["pack"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
+            auto boblog = spdlog::get("boblog");
             std::string format = command["format"].as<std::string>();
-            format = inja_env.render(format, generated_json);
+            format = try_render(inja_env, format, generated_json, boblog);
 
             std::string pack_arguments = "-ie pack(\"" + format + "\"";
 
             for (const auto& v: command["values"])
-              pack_arguments += ", " + inja_env.render(v.as<std::string>(), generated_json);
+              pack_arguments += ", " + try_render(inja_env, v.as<std::string>(), generated_json, boblog);
 
             // auto output, ret = bob::exec("perl", pack_arguments);
 
@@ -757,7 +768,7 @@ namespace bob
                     std::string arg_text = command->second.as<std::string>( );
 
                     // Apply template engine
-                    arg_text = inja_env.render( arg_text, project->project_summary_json);
+                    arg_text = try_render(inja_env, arg_text, project->project_summary_json, boblog);
 
                     auto[temp_output, retcode] = exec(command_text, arg_text);
 
@@ -1135,6 +1146,18 @@ namespace bob
 		json_file.close();
     }
 
+    std::string try_render(inja::Environment& env, const std::string& input, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log)
+    {
+        try
+        {
+            return env.render(input, data);
+        }
+        catch(std::exception& e)
+        {
+            log->error("Template error: {}\n{}", input, e.what());
+            return "";
+        }
+    }
 
     /**
      * @brief Parses dependency files as output by GCC or Clang generating a vector of filenames as found in the named file
