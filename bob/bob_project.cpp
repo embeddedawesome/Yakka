@@ -35,6 +35,10 @@ namespace bob
         {
             project_summary_last_modified = fs::last_write_time(project_summary_file);
             project_summary = YAML::LoadFile(project_summary_file);
+            
+            // Fill required_features with features from project summary
+            for (const auto& f: project_summary["features"])
+                required_features.insert(f.as<std::string>());
 
             // Remove the known components from unprocessed_components
             component_list_t temp_components;
@@ -42,11 +46,11 @@ namespace bob
                 if (!project_summary["components"][c])
                     temp_components.insert(c);
             feature_list_t temp_features;
-            // for (const auto& c: unprocessed_features)
-            //     if (!project_summary["features"][c])
-            //         temp_features.insert(c);
+            for (const auto& c: unprocessed_features)
+                if (!project_summary["features"][c])
+                    temp_features.insert(c);
             unprocessed_components = std::move(temp_components);
-            // unprocessed_features = std::move(temp_features);
+            unprocessed_features = std::move(temp_features);
 
             update_summary();
         }
@@ -655,7 +659,7 @@ namespace bob
                 fs::path p(save_filename);
                 if (!p.parent_path().empty())
                   fs::create_directories(p.parent_path());
-                save_file.open(save_filename);
+                save_file.open(save_filename, std::ios_base::binary);
                 save_file << captured_output;
                 save_file.close();
             }
@@ -722,6 +726,14 @@ namespace bob
             // auto output, ret = bob::exec("perl", pack_arguments);
 
             return captured_output;
+        };
+
+        blueprint_commands["copy"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
+            auto boblog = spdlog::get("boblog");
+            std::string source      = try_render(inja_env, command["source"].as<std::string>( ), generated_json, boblog);
+            std::string destination = try_render(inja_env, command["destination"].as<std::string>( ), generated_json, boblog);
+            std::filesystem::copy(source, destination);
+            return "";
         };
     }
 
@@ -924,7 +936,7 @@ namespace bob
         } blueprint_status;
         int loop_count = 0;
         bool something_updated = true;
-        auto construction_start_time = fs::file_time_type::clock::now();
+        const auto construction_start_time = fs::file_time_type::clock::now();
         int starting_size = todo_list.size( );
         int completed_tasks = 0;
 
@@ -1018,7 +1030,7 @@ namespace bob
             };
 
             auto get_task_status = [this](construction_task& task) -> blueprint_status {
-                blueprint_status status = task.last_modified.time_since_epoch().count() == 0 ? execute_process : set_to_complete;
+                blueprint_status status = task.last_modified == fs::file_time_type::min() ? execute_process : set_to_complete;
                 if (task.blueprint)
                     for ( const auto& d: task.blueprint->dependencies )
                     {
@@ -1027,7 +1039,10 @@ namespace bob
                             if ( start->second->state != bob_task_up_to_date)
                                 return dependency_not_ready;
                             if ( (start->second->last_modified > task.last_modified ) && ( task.blueprint->blueprint["process"]) )
+                            {
+//                                log->info("{} needs to be updated because of {} at time {} vs {}", task.blueprint->target, start->second->blueprint->target, start->second->last_modified.time_since_epoch().count(), task.last_modified.time_since_epoch().count());
                                 status = execute_process;
+                            }
                         }
                     }
                 return status;
@@ -1053,6 +1068,7 @@ namespace bob
                     if (has_data_dependency_changed(t->first))
                         t->second->last_modified = construction_start_time;
                     t->second->state = bob_task_up_to_date;
+                    something_updated = true;
                     continue;
                 }
 
@@ -1090,8 +1106,11 @@ namespace bob
         {
             boblog->info( "Couldn't build: {}", a);
             for (auto entries = this->construction_list.equal_range(a); entries.first != entries.second; ++entries.first)
+            {
+                boblog->info( "\tstate={}", entries.first->second->state);
                 for (const auto& b: entries.first->second->blueprint->dependencies)
                     boblog->info( "\t{}", b);
+            }
         }
 
         for (auto a: construction_list)
@@ -1116,6 +1135,20 @@ namespace bob
                 bob_home_directory =  configuration["bob_home"].Scalar();
                 if (!fs::exists(bob_home_directory + "/repos"))
                     fs::create_directories(bob_home_directory + "/repos");
+            }
+
+            if (configuration["path"].IsDefined())
+            {
+                std::string path = std::getenv("PATH");
+                for (const auto& p: configuration["path"])
+                {
+                    path += host_os_path_seperator + p.as<std::string>();
+                }
+                #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+                _putenv_s("PATH", path.c_str());
+                #else
+                std::setenv("PATH", path.c_str(), 1);
+                #endif
             }
 
             configuration_json = configuration.as<nlohmann::json>();

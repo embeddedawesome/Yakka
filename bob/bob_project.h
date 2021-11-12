@@ -24,12 +24,18 @@ namespace bob
     #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
     const std::string host_os_string       = "windows";
     const std::string executable_extension = ".exe";
+    const std::string host_os_path_seperator = ";";
+    const auto async_launch_option = std::launch::async|std::launch::deferred;
     #elif defined(__APPLE__)
     const std::string host_os_string       = "macos";
     const std::string executable_extension = "";
+    const std::string host_os_path_seperator = ":";
+    const auto async_launch_option = std::launch::async|std::launch::deferred; // Unsure
     #elif defined (__linux__)
     const std::string host_os_string       = "linux";
     const std::string executable_extension = "";
+    const std::string host_os_path_seperator = ":";
+    const auto async_launch_option = std::launch::deferred;
     #endif
 
     typedef std::function<std::string(std::string, const YAML::Node&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
