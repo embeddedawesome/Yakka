@@ -245,24 +245,19 @@ std::pair<std::string, int> exec( const std::string& command_text, const std::st
         auto p = subprocess::Popen(command, subprocess::shell{true}, subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT} );
         #endif
         auto output = p.output();
-        std::array<char, 512> buffer;
         std::string result;
-        size_t count = 0;
-        do {
-            if (output != nullptr)
-            {
-                if ((count = fread(buffer.data(), 1, buffer.size(), output)) > 0)
-                    result += buffer.data();
-
-                if (count != buffer.size())
-                {
-                    if (ferror(output))
-                        count = 0;
-                }
-            }
-        } while(count > 0);
+        if (output != nullptr)
+        {
+            while(1) {
+                int c = fgetc(output);
+                if (c == EOF)
+                    break;
+                result += (char)c;
+            };
+        }
 
         p.wait();
+        p.poll();
         return {result,p.retcode()};
     } catch (std::exception e)
     {
@@ -305,6 +300,7 @@ void exec( const std::string& command_text, const std::string& arg_text, std::fu
             };
         }
         p.wait();
+        p.poll();
     } catch (std::exception e)
     {
         boblog->error("Exception while executing: {}\n{}", command_text, e.what());
