@@ -33,11 +33,13 @@ namespace bob {
         bob_task_failed
     } construction_task_state;
 
-    typedef struct
+    typedef struct construction_task
     {
         std::shared_ptr<const blueprint_node> blueprint;
         fs::file_time_type last_modified;
         construction_task_state state;
         std::future<std::pair<std::string, int>> thread_result;
+
+        construction_task() : last_modified(fs::file_time_type::min()), state(bob_task_to_be_done) {}
     } construction_task;
 } // bob namespace
