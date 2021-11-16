@@ -58,7 +58,7 @@ namespace bob
         void init_project();
         YAML::Node get_project_summary();
         void parse_project_string( const std::vector<std::string>& project_string );
-        void process_requirements(const YAML::Node& node);
+        void process_requirements(YAML::Node& node, const std::string feature);
         state evaluate_dependencies();
         std::optional<fs::path> find_component(const std::string component_dotname);
 

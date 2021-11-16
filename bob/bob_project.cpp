@@ -63,47 +63,58 @@ namespace bob
         return project_summary;
     }
 
-    void project::process_requirements(const YAML::Node& node)
+    void project::process_requirements(YAML::Node& component, const std::string feature)
     {
-        if (node.IsScalar () || node.IsSequence ())
+        log->info("Processing requirement {} for {}", feature, component["name"].as<std::string>());
+
+        // Merge the feature values into the parent component
+        yaml_node_merge( component, component["supports"][feature] );
+
+        // If the feature has no requires we stop here
+        if ( !component["supports"][feature]["requires"] )
+            return;
+
+        // Process all the requires for this feature
+        auto feature_node_requirements = component["supports"][feature]["requires"];
+        if (feature_node_requirements.IsScalar () || feature_node_requirements.IsSequence ())
         {
-            log->error("Node 'requires' entry is malformed: '{}'", node.Scalar());
+            log->error("Node 'requires' entry is malformed: '{}'", feature_node_requirements.Scalar());
             return;
         }
 
         try
         {
             // Process required components
-            if (node["components"])
+            if (feature_node_requirements["components"])
             {
                 // Add the item/s to the new_component list
-                if (node["components"].IsScalar())
-                    unprocessed_components.insert(node["components"].as<std::string>());
-                else if (node["components"].IsSequence())
-                    for (auto &i : node["components"])
+                if (feature_node_requirements["components"].IsScalar())
+                    unprocessed_components.insert(feature_node_requirements["components"].as<std::string>());
+                else if (feature_node_requirements["components"].IsSequence())
+                    for (const auto &i : feature_node_requirements["components"])
                         unprocessed_components.insert(i.as<std::string>());
                 else
-                    log->error("Node '{}' has invalid 'requires'", node.Scalar());
+                    log->error("Node '{}' has invalid 'requires'", feature_node_requirements.Scalar());
             }
 
             // Process required features
-            if (node["features"])
+            if (feature_node_requirements["features"])
             {
                 std::vector<std::string> new_features;
 
                 // Add the item/s to the new_features list
-                if (node["features"].IsScalar())
-                    unprocessed_features.insert(node["features"].as<std::string>());
-                else if (node["features"].IsSequence())
-                    for (auto &i : node["features"])
+                if (feature_node_requirements["features"].IsScalar())
+                    unprocessed_features.insert(feature_node_requirements["features"].as<std::string>());
+                else if (feature_node_requirements["features"].IsSequence())
+                    for (const auto &i : feature_node_requirements["features"])
                         unprocessed_features.insert(i.as<std::string>());
                 else
-                    log->error("Node '{}' has invalid 'requires'", node.Scalar());
+                    log->error("Node '{}' has invalid 'requires'", feature_node_requirements.Scalar());
             }
         }
         catch (YAML::Exception &e)
         {
-            log->error("Failed to process requirements for '{}'\n{}", node.Scalar(), e.msg);
+            log->error("Failed to process requirements for '{}'\n{}", feature_node_requirements.Scalar(), e.msg);
         }
     }
 
@@ -191,8 +202,8 @@ namespace bob
 
                 // Process all the currently required features. Note new feature will be processed in the features pass
                 for ( auto& f : required_features )
-                    if ( new_component->yaml["supports"][f] && new_component->yaml["supports"][f]["requires"] )
-                        process_requirements(new_component->yaml["supports"][f]["requires"]);
+                    if ( new_component->yaml["supports"][f] )
+                        process_requirements(new_component->yaml, f);
             }
 
 
@@ -207,8 +218,8 @@ namespace bob
 
                 // Update each component with the new feature
                 for ( auto& c : components )
-                    if ( c->yaml["supports"][f] && c->yaml["supports"][f]["requires"])
-                        process_requirements(c->yaml["supports"][f]["requires"]);
+                    if ( c->yaml["supports"][f] )
+                        process_requirements(c->yaml, f);
             }
         };
 
@@ -240,14 +251,6 @@ namespace bob
                 project_summary["tools"][tool.first.Scalar()] = try_render(inja_env, tool.second.Scalar(), configuration_json, log);
             }
         }
-
-        // Process all the supported features by merging their content with the parent component
-        for ( auto c : project_summary["components"] )
-        	if (c.second["supports"].IsDefined())
-				for ( auto f : this->required_features )
-					if ( c.second["supports"][f].IsDefined() )
-						yaml_node_merge( c.second, c.second["supports"][f] );
-
 
         project_summary["features"] = {};
         for (const auto& i: this->required_features)
