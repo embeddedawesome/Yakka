@@ -86,8 +86,8 @@ namespace bob
         std::string bob_home_directory;
 
         // Component processing
-        std::unordered_set<std::string> unprocessed_components;
-        std::unordered_set<std::string> unprocessed_features;
+        std::set<std::string> unprocessed_components;
+        std::set<std::string> unprocessed_features;
         std::unordered_set<std::string> required_features;
         std::unordered_set<std::string> commands;
         std::unordered_set<std::string> unknown_components;

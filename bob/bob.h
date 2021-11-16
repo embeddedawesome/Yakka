@@ -8,8 +8,8 @@
 #include <unordered_set>
 
 namespace bob {
-    using component_list_t = std::unordered_set<std::string>;
-    using feature_list_t = std::unordered_set<std::string>;
+    using component_list_t = std::set<std::string>;
+    using feature_list_t = std::set<std::string>;
     using command_list_t = std::unordered_set<std::string>;
 
     const std::string bob_component_extension   = ".bob";

@@ -146,7 +146,7 @@ namespace bob
         {
             // Loop through the list of unprocessed components.
             // Note: Items will be added to unprocessed_components during processing
-            std::unordered_set<std::string> temp_component_list = std::move(unprocessed_components);
+            component_list_t temp_component_list = std::move(unprocessed_components);
             for (const auto& i: temp_component_list)
             {
                 // Convert string to id
@@ -198,7 +198,7 @@ namespace bob
 
             // Process all the new features
             // Note: Items will be added to unprocessed_features during processing
-            std::unordered_set<std::string> temp_feature_list = std::move(unprocessed_features);
+            feature_list_t temp_feature_list = std::move(unprocessed_features);
             for (const auto& f: temp_feature_list)
             {
                 // Insert feature and continue if this is not a new feature
