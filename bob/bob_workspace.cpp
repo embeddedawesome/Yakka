@@ -3,12 +3,14 @@
  */
 #include "bob.h"
 #include "bob_workspace.h"
-#include "example_registry.h"
+// #include "example_registry.h"
 #include <filesystem>
 #include <fstream>
 #include <regex>
 
 namespace fs = std::filesystem;
+
+std::string example_registry = "";
 
 namespace bob
 {
