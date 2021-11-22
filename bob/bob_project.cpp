@@ -1150,7 +1150,7 @@ namespace bob
                 #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
                 _putenv_s("PATH", path.c_str());
                 #else
-                std::setenv("PATH", path.c_str(), 1);
+                setenv("PATH", path.c_str(), 1);
                 #endif
             }
 

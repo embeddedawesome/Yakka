@@ -18,7 +18,7 @@ using namespace std::chrono_literals;
 
 int main(int argc, char **argv)
 {
-    auto bob_start_time = std::time(nullptr);
+    auto bob_start_time = fs::file_time_type::clock::now();
 
     // Setup logging
     std::error_code error_code;
@@ -215,14 +215,17 @@ int main(int argc, char **argv)
             option::PrefixText{ "Building " }
         };
 
-        auto construction_start_time = fs::file_time_type::clock::now();
+        // auto construction_start_time = fs::file_time_type::clock::now();
 
         project.process_construction(building_bar);
 
-        auto construction_end_time = fs::file_time_type::clock::now();
+        // auto construction_end_time = fs::file_time_type::clock::now();
 
-        std::cout << "Building complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(construction_end_time - construction_start_time).count() << " milliseconds" << std::endl;
+        // std::cout << "Building complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(construction_end_time - construction_start_time).count() << " milliseconds" << std::endl;
     }
+
+    auto bob_end_time = fs::file_time_type::clock::now();
+    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(bob_end_time - bob_start_time).count() << " milliseconds" << std::endl;
 
     console->flush();
     show_console_cursor(true);
