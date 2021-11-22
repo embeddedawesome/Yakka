@@ -126,7 +126,8 @@ namespace bob
         {
             auto bob_file = c.second["bob_file"].as<std::string>();
             const auto name = c.first.as<std::string>();
-            if ( fs::last_write_time(bob_file) > project_summary_last_modified)
+
+            if ( !fs::exists(bob_file) || fs::last_write_time(bob_file) > project_summary_last_modified)
             {
                 // If so, move existing data to previous summary
                 previous_summary["components"][name] = std::move(c.second); // TODO: Verify this is correct way to do this efficiently
@@ -552,7 +553,7 @@ namespace bob
                 boblog->info("Executing '{}'", captured_output);
                 auto [temp_output, retcode] = exec( captured_output, std::string( "" ) );
 
-                if (retcode < 0 && temp_output.length( ) != 0) {
+                if (retcode != 0 && temp_output.length( ) != 0) {
                     console->error( temp_output );
                     boblog->error( "\n{} returned {}\n{}", captured_output, retcode, temp_output);
                 }
@@ -787,7 +788,7 @@ namespace bob
 
                     auto[temp_output, retcode] = exec(command_text, arg_text);
 
-                    if (retcode < 0)
+                    if (retcode != 0)
                     {
                       boblog->error("Returned {}\n{}",retcode, temp_output);
                       return {temp_output, retcode};
@@ -864,6 +865,12 @@ namespace bob
     static void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node)
     {
         auto boblog = spdlog::get("boblog");
+        if (!node.IsMap())
+        {
+            boblog->error("Invalid feature node {}", node.as<std::string>());
+            return;
+        }
+
         for (const auto& i : node)
         {
             const std::string item_name = i.first.as<std::string>();
@@ -934,6 +941,7 @@ namespace bob
         {
             nothing_to_do,
             dependency_not_ready,
+            dependency_failed,
             set_to_complete,
             execute_process,
         } blueprint_status;
@@ -971,9 +979,18 @@ namespace bob
                 {
                     if ( a->get()->thread_result.wait_for(0ms) == std::future_status::ready )
                     {
-                        boblog->info( "{}: Done", a->get()->blueprint->target);
-                        a->get()->last_modified = construction_start_time;
-                        a->get()->state = bob_task_up_to_date;
+                        auto result = a->get()->thread_result.get();
+                        if (result.second == 0)
+                        {
+                            boblog->info( "{}: Done with {}", a->get()->blueprint->target, result.second);
+                            a->get()->last_modified = construction_start_time;
+                            a->get()->state = bob_task_up_to_date;
+                        }
+                        else
+                        {
+                            boblog->error( "{}: Failed", a->get()->blueprint->target);
+                            a->get()->state = bob_task_failed;
+                        }
                         a = running_tasks.erase( a );
                         ++completed_tasks;
                     }
@@ -1000,9 +1017,18 @@ namespace bob
                 {
                     if ( a->get()->thread_result.wait_for(0ms) == std::future_status::ready )
                     {
-                        boblog->info( "{}: Done", a->get()->blueprint->target);
-                        a->get()->last_modified = construction_start_time;
-                        a->get()->state = bob_task_up_to_date;
+                        auto result = a->get()->thread_result.get();
+                        if (result.second == 0)
+                        {
+                            boblog->info( "{}: Done with result {}", a->get()->blueprint->target, result.second);
+                            a->get()->last_modified = construction_start_time;
+                            a->get()->state = bob_task_up_to_date;
+                        }
+                        else
+                        {
+                            boblog->error( "{}: Failed", a->get()->blueprint->target);
+                            a->get()->state = bob_task_failed;
+                        }
                         a = running_tasks.erase( a );
                         ++completed_tasks;
                     }
@@ -1027,8 +1053,12 @@ namespace bob
 
             auto is_task_complete = [task_list]() -> bool {
                 for(auto i = task_list.first; i != task_list.second; ++i)
+                {
+                    if (i->second->state == bob_task_failed)
+                        return true;
                     if (i->second->state != bob_task_up_to_date)
                         return false;
+                }
                 return true;
             };
 
@@ -1039,6 +1069,8 @@ namespace bob
                     {
                         for (auto [start,end] = this->construction_list.equal_range(d); start != end; ++start)
                         {
+                            if ( start->second->state == bob_task_failed)
+                                return dependency_failed;
                             if ( start->second->state != bob_task_up_to_date)
                                 return dependency_not_ready;
                             if ( (start->second->last_modified > task.last_modified ) && ( task.blueprint->blueprint["process"]) )
@@ -1093,6 +1125,10 @@ namespace bob
                         }
                         else
                             t->second->state = bob_task_up_to_date;
+                        break;
+                    case dependency_failed:
+                        t->second->state = bob_task_failed;
+                        if (starting_size > 1) --starting_size;
                         break;
                     default:
                         break;
