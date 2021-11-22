@@ -257,7 +257,9 @@ std::pair<std::string, int> exec( const std::string& command_text, const std::st
         }
 
         p.wait();
+#if defined(__USING_WINDOWS__)
         p.poll();
+#endif
         return {result,p.retcode()};
     } catch (std::exception e)
     {
