@@ -89,6 +89,7 @@ namespace bob
             {
                 add_component(p.path());
             }
+#ifdef SLCC_SUPPORT
             else if (p.path().filename().extension() == ".slcc")
             {
                 parsed_slcc_files.push_back( std::async(std::launch::async, [](fs::path path) {
@@ -104,6 +105,7 @@ namespace bob
                         }
                     }, p.path()));
             }
+#endif
         }
 
         // TODO: SLCC database should be initialized elsewhere
