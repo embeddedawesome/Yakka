@@ -455,6 +455,31 @@ namespace bob
                     });
 
             local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match->blueprint["bob_parent_path"].Scalar();});
+            local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return local_inja_env.render(args[0]->get<std::string>(), this->project_summary_json);});
+            local_inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
+                YAML::Node aggregate;
+                const std::string path = args[0]->get<std::string>();
+                // Loop through components, check if object path exists, if so add it to the aggregate
+                for (const auto& c: this->project_summary["components"])
+                {
+                    auto v = yaml_path(c.second, path);
+                    if (!v)
+                        continue;
+                    
+                    if (v.IsMap())
+                        for (auto i: v)
+                            aggregate[i.first] = i.second; //local_inja_env.render(i.second.as<std::string>(), this->project_summary_json);
+                    else if (v.IsSequence())
+                        for (auto i: v)
+                            aggregate.push_back(local_inja_env.render(i.as<std::string>(), this->project_summary_json));
+                    else
+                        aggregate.push_back(local_inja_env.render(v.as<std::string>(), this->project_summary_json));
+                }
+                if (aggregate.IsNull())
+                    return nlohmann::json();
+                else
+                    return aggregate.as<nlohmann::json>();
+                });
 
             // Run template engine on dependencies
             for ( auto d : blueprint.second["depends"] )
@@ -754,6 +779,31 @@ namespace bob
 
         inja_env.add_callback("curdir", 0, [&blueprint](const inja::Arguments& args) { return blueprint->blueprint["bob_parent_path"].Scalar();});
         inja_env.add_callback("filesize", 1, [&blueprint](const inja::Arguments& args) { return fs::file_size(args[0]->get<std::string>());});
+        inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return inja_env.render(args[0]->get<std::string>(), project->project_summary_json);});
+        inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
+            YAML::Node aggregate;
+            const std::string path = args[0]->get<std::string>();
+            // Loop through components, check if object path exists, if so add it to the aggregate
+            for (const auto& c: project->project_summary["components"])
+            {
+                auto v = yaml_path(c.second, path);
+                if (!v)
+                    continue;
+                
+                if (v.IsMap())
+                    for (auto i: v)
+                        aggregate[i.first] = i.second; //inja_env.render(i.second.as<std::string>(), project->project_summary_json);
+                else if (v.IsSequence())
+                    for (auto i: v)
+                        aggregate.push_back(inja_env.render(i.as<std::string>(), project->project_summary_json));
+                else
+                    aggregate.push_back(inja_env.render(v.as<std::string>(), project->project_summary_json));
+            }
+            if (aggregate.IsNull())
+                return nlohmann::json();
+            else
+                return aggregate.as<nlohmann::json>();
+            });
 
 
         if ( !blueprint->blueprint["process"].IsSequence())
