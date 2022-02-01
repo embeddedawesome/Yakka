@@ -528,12 +528,16 @@ namespace bob
                 }
 
                 // Check if the input was a YAML array construct
-                if ( depend_string.front( ) == '[' && depend_string.back( ) == ']' )
+                if ( generated_depend.front( ) == '[' && generated_depend.back( ) == ']' )
                 {
                     // Load the generated dependency string as YAML and push each item individually
-                    YAML::Node generated_node = YAML::Load( generated_depend );
-                    for ( auto i : generated_node )
-                        match->dependencies.push_back( i.Scalar( ) );
+                    try {
+                        auto generated_node = YAML::Load( generated_depend );
+                        for ( auto i : generated_node )
+                            match->dependencies.push_back( i.Scalar( ) );
+                    } catch ( std::exception& e ) {
+                        std::cerr << "Failed to parse dependency: " << depend_string << "\n";
+                    }
                 }
                 else
                 {
