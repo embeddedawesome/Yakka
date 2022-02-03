@@ -38,3 +38,7 @@
 	path = components/botan/master
 	url = https://github.com/randombit/botan.git
 	branch = master
+[submodule "components/taskflow/master"]
+	path = components/taskflow/master
+	url = https://github.com/taskflow/taskflow.git
+	branch = master
