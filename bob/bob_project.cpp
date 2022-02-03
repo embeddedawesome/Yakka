@@ -773,6 +773,7 @@ namespace bob
     static std::pair<std::string, int> run_command( std::shared_ptr< construction_task> task, const project* project )
     {
         auto boblog = spdlog::get("boblog");
+        auto console = spdlog::get("bobconsole");
         std::string captured_output;
         inja::Environment inja_env = inja::Environment();
         auto& blueprint = task->blueprint;
@@ -844,6 +845,7 @@ namespace bob
 
                     if (retcode != 0)
                     {
+                      console->error( temp_output );
                       boblog->error("Returned {}\n{}",retcode, temp_output);
                       return {temp_output, retcode};
                     }
