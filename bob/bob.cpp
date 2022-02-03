@@ -259,9 +259,11 @@ std::pair<std::string, int> exec( const std::string& command_text, const std::st
             };
         }
 
-        p.wait();
-        p.poll();
-        return {result,p.retcode()};
+        auto retcode = p.wait();
+#if defined(__USING_WINDOWS__)
+        retcode = p.poll();
+#endif
+        return {result,retcode};
     } catch (std::exception e)
     {
         boblog->error("Exception while executing: {}\n{}", command_text, e.what());
