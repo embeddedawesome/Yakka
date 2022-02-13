@@ -1,8 +1,8 @@
 /* A BOB workspace is identified by a .bob folder
  * The .bob folder holds information about locally available components, and remote registries
  */
-#include "bob.h"
-#include "bob_workspace.h"
+#include "bob.hpp"
+#include "bob_workspace.hpp"
 // #include "example_registry.h"
 #include <filesystem>
 #include <fstream>

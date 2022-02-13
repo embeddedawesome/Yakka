@@ -1,14 +1,15 @@
-#include "bob_component.h"
+#include "bob_component.hpp"
+#include "blueprint_database.hpp"
 #include "spdlog/spdlog.h"
 
 namespace bob
 {
-    component::component( fs::path file_path )
+    component::component( fs::path file_path, blueprint_database& database )
     {
-        parse_file(file_path);
+        parse_file(file_path, database);
     }
 
-    void component::parse_file( fs::path file_path )
+    void component::parse_file( fs::path file_path, blueprint_database& database )
     {
         auto boblog = spdlog::get("boblog");
         this->file_path = file_path;
@@ -34,22 +35,19 @@ namespace bob
         else
             path_string = ".";
         yaml["directory"] = path_string;
-        // std::replace(path_string.begin(), path_string.end(), '/', '.');
-        // path_string = path_string.substr(path_string.find_first_not_of('.'));
-        // yaml["dot_name"] = path_string;
 
         // Ensure certain nodes are sequences
         if (yaml["requires"]["components"].IsScalar())
         {
             std::string value = yaml["requires"]["components"].Scalar();
-            yaml["requires"]["components"] = YAML::Node();
+            // yaml["requires"]["components"] = YAML::Node();
             yaml["requires"]["components"].push_back(value);
         }
 
         if (yaml["requires"]["features"].IsScalar())
         {
             std::string value = yaml["requires"]["features"].Scalar();
-            yaml["requires"]["features"] = YAML::Node();
+            // yaml["requires"]["features"] = YAML::Node();
             yaml["requires"]["features"].push_back(value);
         }
 

@@ -1,8 +1,12 @@
-#include "bob_project.h"
+#include "bob_project.hpp"
+#include "utilities.hpp"
 #include "spdlog/spdlog.h"
 #include <fstream>
 #include <chrono>
 #include <thread>
+#include <ranges>
+#include <string>
+#include <charconv>
 
 namespace bob
 {
@@ -24,6 +28,30 @@ namespace bob
         project_directory = path;
     }
 
+    void project::process_build_string(const std::string build_string)
+    {
+        // When C++20 ranges are available
+        // for (const auto word: std::views::split(build_string, " ")) {
+
+        std::stringstream ss(build_string);
+        std::string word;
+        while (std::getline(ss, word, ' ')) {
+            // Identify features, commands, and components
+            if (word.front() == '+')
+                this->unprocessed_features.insert(word.substr(1));
+            else if (word.back() == '!')
+                this->commands.insert(word.substr(0, word.size() - 1));
+            else
+                this->unprocessed_components.insert(word);
+        }
+    }
+
+    void project::init_project(const std::string build_string)
+    {
+        process_build_string(build_string);
+        init_project();
+    }
+
     void project::init_project()
     {
         project_name = bob::generate_project_name(this->unprocessed_components, this->unprocessed_features);
@@ -35,7 +63,7 @@ namespace bob
         {
             project_summary_last_modified = fs::last_write_time(project_summary_file);
             project_summary = YAML::LoadFile(project_summary_file);
-            
+
             // Fill required_features with features from project summary
             for (const auto& f: project_summary["features"])
                 required_features.insert(f.as<std::string>());
@@ -124,8 +152,15 @@ namespace bob
         // Check if any component files have been modified
         for (const auto& c: project_summary["components"])
         {
-            auto bob_file = c.second["bob_file"].as<std::string>();
             const auto name = c.first.as<std::string>();
+            if (!c.second["bob_file"]) {
+                log->error("Project summary for component '{}' is missing 'bob_file' entry", name);
+                project_summary["components"].remove(name);
+                unprocessed_components.insert(name);
+                continue;
+             }
+
+            auto bob_file = c.second["bob_file"].as<std::string>();            
 
             if ( !fs::exists(bob_file) || fs::last_write_time(bob_file) > project_summary_last_modified)
             {
@@ -183,7 +218,7 @@ namespace bob
                 std::shared_ptr<bob::component> new_component;
                 try
                 {
-                    new_component = std::make_shared<bob::component>( component_path.value() );
+                    new_component = std::make_shared<bob::component>( component_path.value(), blueprint_database );
                     components.push_back( new_component );
                 }
                 catch ( std::exception e )
@@ -296,12 +331,14 @@ namespace bob
             {
                 std::string blueprint_string = try_render(inja_environment,  b.second["regex"] ? b.second["regex"].Scalar() : b.first.Scalar( ), project_summary_json, log);
                 log->info("Blueprint: {}", blueprint_string);
-                b.second["bob_parent_path"] = c.second["directory"];
-                blueprint_list.insert( blueprint_list.end( ), { blueprint_string, b.second } );
+                blueprint_database.blueprints.insert({blueprint_string, std::make_shared<blueprint>(blueprint_string, b.second, c.second["directory"].Scalar())});
+                
+                // b.second["bob_parent_path"] = c.second["directory"];
+                // blueprint_list.insert( blueprint_list.end( ), { blueprint_string, b.second } );
             }
     }
 
-    void project::evaluate_blueprint_dependencies()
+    void project::generate_target_database()
     {
         std::vector<std::string> new_targets;
         std::unordered_set<std::string> processed_targets;
@@ -318,36 +355,22 @@ namespace bob
                 if (processed_targets.insert(t).second == false)
                     continue;
 
-                // Check if target is not in the database. Note blueprint_database is a multimap
-                auto blueprints = blueprint_database.equal_range(t);
-                if (blueprints.first == blueprints.second)
+                // Do not add to task database if it's a data dependency. There is special processing of these.
+                if (t.front() == data_dependency_identifier)
+                    continue;
+
+                // Check if target is not in the database. Note task_database is a multimap
+                if (target_database.find(t) == target_database.end())
                 {
-                    // If the target is data, add it to the data dependency list
-                    if (t.front() == data_dependency_identifier)
-                        blueprint_database.insert(std::make_pair(t, std::make_shared<blueprint_node>(t)));
-                    else
-                        process_blueprint_target(t);
-
-                    blueprints = blueprint_database.equal_range(t);
+                    add_to_target_database(t);
                 }
+                auto tasks = target_database.equal_range(t);
 
-                for (auto& i = blueprints.first; i != blueprints.second; ++i)
-                {
-                    // Add dependencies of the target to the list of unprocessed targets
-                    new_targets.insert(new_targets.end(), i->second->dependencies.begin(), i->second->dependencies.end());
-
-                    // Create a task it to the list of things to build
-                    auto task = construction_list.insert(std::make_pair(t, std::make_shared<construction_task>()));
-                    task->second->blueprint = i->second;
-
-                    // If a file with the target name exists, get the last modified timestamp
-                    if ( fs::exists( t ) )
-                        task->second->last_modified = fs::last_write_time( t );
-                }
-                todo_list.push_back(t);
+                std::for_each(tasks.first, tasks.second, [&new_targets](auto& i) {
+                    new_targets.insert(new_targets.end(), i.second->dependencies.begin(), i.second->dependencies.end());
+                });
             }
 
-            // unprocessed_targets = std::move(new_targets);
             unprocessed_targets.clear();
             unprocessed_targets.swap(new_targets);
         }
@@ -396,7 +419,7 @@ namespace bob
             {
                 auto first = yaml_path(n.first, data_path);
                 auto second = yaml_path(n.second, data_path);
-                if (yaml_diff(first, second))
+                if (first && second && yaml_diff(first, second))
                     return true;
             }
             return false;
@@ -408,53 +431,43 @@ namespace bob
         }
     }
 
-    void project::process_blueprint_target( const std::string target )
+    void project::add_to_target_database( const std::string target )
     {
         bool blueprint_match_found = false;
 
-        for ( auto& blueprint : blueprint_list )
+        for ( const auto& blueprint : blueprint_database.blueprints )
         {
-            std::smatch s;
+            auto match = std::make_shared<blueprint_match>();
 
             // Check if rule is a regex, otherwise do a string comparison
-            if ( blueprint.second["regex"] )
+            if ( blueprint.second->regex.has_value() )
             {
+                std::smatch s;
                 if (!std::regex_match(target, s, std::regex { blueprint.first } ) )
                     continue;
+
+                // arg_count starts at 0 as the first match is the entire string
+                for ( auto& regex_match : s )
+                    match->regex_matches.push_back(regex_match.str( ));
             }
             else
             {
                 if (target != blueprint.first )
                     continue;
+
+                match->regex_matches.push_back(target);
             }
 
             // Found a match. Create a blueprint match object
             blueprint_match_found = true;
-            auto match = std::make_shared<blueprint_node>(target);
             match->blueprint = blueprint.second;
-
-            // Process match
-            if ( blueprint.second["regex"] )
-            {
-                // arg_count starts at 0 as the first match is the entire string
-                int arg_count = 0;
-                for ( auto& regex_match : s )
-                {
-                    match->regex_matches[arg_count] = regex_match.str( );
-                    ++arg_count;
-                }
-            }
-            else
-            {
-                match->regex_matches[0] = target;
-            }
 
             inja::Environment local_inja_env;
             local_inja_env.add_callback("$", 1, [&match](const inja::Arguments& args) {
                         return match->regex_matches[ args[0]->get<int>() ];
                     });
 
-            local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match->blueprint["bob_parent_path"].Scalar();});
+            local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match->blueprint->parent_path;});
             local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return local_inja_env.render(args[0]->get<std::string>(), this->project_summary_json);});
             local_inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
                 YAML::Node aggregate;
@@ -482,48 +495,38 @@ namespace bob
                 });
 
             // Run template engine on dependencies
-            for ( auto d : blueprint.second["depends"] )
+            for ( auto d : blueprint.second->dependencies )
             {
-                // Check for special dependency_file condition
-                if ( d.IsMap( ) )
+                switch (d.type)
                 {
-                    if ( d["dependency_file"] )
+                    case blueprint::dependency::DEPENDENCY_FILE_DEPENDENCY:
                     {
-                        const std::string generated_dependency_file = try_render(local_inja_env,  d.begin()->second.Scalar(), project_summary_json, log );
+                        const std::string generated_dependency_file = try_render(local_inja_env,  d.name, project_summary_json, log );
                         auto dependencies = parse_gcc_dependency_file(generated_dependency_file);
                         match->dependencies.insert( std::end( match->dependencies ), std::begin( dependencies ), std::end( dependencies ) );
                         continue;
                     }
-                    else if (d["data"] )
+                    case blueprint::dependency::DATA_DEPENDENCY:
                     {
-                        for (const auto& data_item: d["data"])
-                        {
-                            std::string data_name = try_render(local_inja_env, data_item.as<std::string>(), project_summary_json, log);
-                            if (data_name.front() != data_dependency_identifier)
-                                data_name.insert(0,1, data_dependency_identifier);
-                            match->dependencies.push_back(data_name);
-                        }
+                        std::string data_name = try_render(local_inja_env, d.name, project_summary_json, log);
+                        if (data_name.front() != data_dependency_identifier)
+                            data_name.insert(0,1, data_dependency_identifier);
+                        match->dependencies.push_back(data_name);
                         continue;
                     }
+                    default:
+                        break;
                 }
-                // Verify validity of dependency
-                else if ( !d.IsScalar( ) )
-                {
-                    log->error("Dependencies should be Scalar");
-                    return;
-                }
-
-                std::string depend_string = d.Scalar( );
 
                 // Generate full dependency string by applying template engine
                 std::string generated_depend;
                 try
                 {
-                    generated_depend = local_inja_env.render( depend_string, project_summary_json );
+                    generated_depend = local_inja_env.render( d.name, project_summary_json );
                 }
                 catch ( std::exception& e )
                 {
-                    log->error("Couldn't apply template: '{}'", depend_string);
+                    log->error("Couldn't apply template: '{}'", d.name);
                     return;
                 }
 
@@ -536,7 +539,7 @@ namespace bob
                         for ( auto i : generated_node )
                             match->dependencies.push_back( i.Scalar( ) );
                     } catch ( std::exception& e ) {
-                        std::cerr << "Failed to parse dependency: " << depend_string << "\n";
+                        std::cerr << "Failed to parse dependency: " << d.name << "\n";
                     }
                 }
                 else
@@ -545,15 +548,14 @@ namespace bob
                 }
             }
 
-            blueprint_database.insert(std::make_pair(target, match));
+            target_database.insert(std::make_pair(target, match));
         }
 
         if (!blueprint_match_found)
         {
-            if (fs::exists( target ))
-                blueprint_database.insert(std::make_pair(target, std::make_shared<blueprint_node>(target)));
-            else
+            if (!fs::exists( target ))
                 log->info("No blueprint for '{}'", target);
+            // task_database.insert(std::make_pair(target, std::make_shared<blueprint_node>(target)));
         }
     }
 
@@ -748,15 +750,40 @@ namespace bob
 
         blueprint_commands["pack"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
             auto boblog = spdlog::get("boblog");
+            if (!command["data"])
+            {
+                boblog->error("'pack' command requires 'data'\n");
+                return captured_output;
+            } else if (!command["format"])
+            {
+                boblog->error("'pack' command requires 'format'\n");
+                return captured_output;
+            }
             std::string format = command["format"].as<std::string>();
             format = try_render(inja_env, format, generated_json, boblog);
-
-            std::string pack_arguments = "-ie pack(\"" + format + "\"";
-
-            for (const auto& v: command["values"])
-              pack_arguments += ", " + try_render(inja_env, v.as<std::string>(), generated_json, boblog);
-
-            // auto output, ret = bob::exec("perl", pack_arguments);
+            
+            auto i = format.begin();
+            for (auto d: command["data"])
+            {
+                auto v = try_render(inja_env, d.as<std::string>(), generated_json, boblog);
+                const char c = *i++;
+                unsigned long value;
+                const auto result = std::from_chars(v.data(), v.data() + v.size(), value);
+                if (result.ec != std::errc())
+                {
+                    boblog->error("Error converting number\n");
+                }
+                switch(c) {
+                    // case 'L': captured_output.append(d.as<unsigned long>()); break;
+                    case 'l': captured_output.append(( long)value); break;
+                    case 'S': captured_output.append((unsigned short)value); break;
+                    case 's': captured_output.append((short)value); break;
+                    case 'C': captured_output.append((unsigned char)value); break;
+                    case 'c': captured_output.append((char)value); break;
+                    case 'x': captured_output.append('\0'); break;
+                    default: boblog->error("Unknown pack type\n"); break;
+                }
+            }
 
             return captured_output;
         };
@@ -770,19 +797,105 @@ namespace bob
         };
     }
 
-    static std::pair<std::string, int> run_command( std::shared_ptr< construction_task> task, const project* project )
+    void project::create_tasks(const std::string target_name, tf::Task& parent)
+    {
+        auto start_time = fs::file_time_type::clock::now();
+
+        // Check if this target has already been processed
+        const auto& existing_todo = todo_list.equal_range(target_name);
+        if (existing_todo.first != existing_todo.second)
+        {
+            // Add parent to the dependency graph
+            for (auto i=existing_todo.first; i != existing_todo.second; ++i)
+                i->second.task.precede(parent);
+
+            // Nothing else to do
+            return;
+        }
+
+        // Get targets that match the name
+        const auto& targets = target_database.equal_range(target_name);
+
+        // If there is no targets then it must be a leaf node (source file, data dependency, etc)
+        if (targets.first == targets.second)
+        {
+            auto new_todo = todo_list.insert(std::make_pair(target_name, construction_task()));
+            auto task = taskflow.placeholder();
+
+            // Check if target name matches an existing file in filesystem
+            if (fs::exists(target_name))
+            {
+                // Create a new task to retrieve the file timestamp
+                task.data(&new_todo->second).work([=]() {
+                    // log->info("{}: timestamp", target_name);
+                    auto d = *static_cast<construction_task*>(task.data());
+                    d.last_modified = fs::last_write_time(target_name);
+                    if (d.last_modified > start_time)
+                        log->info("{} has been updated", target_name);
+                });
+                
+            }
+            else
+            {
+                task.data(&new_todo->second).work([=]() {
+                    // log->info("{}: data", target_name);
+                    auto d = static_cast<construction_task*>(task.data());
+                    d->last_modified = has_data_dependency_changed(target_name) ? fs::file_time_type::max() : fs::file_time_type::min();
+                    if (d->last_modified > start_time)
+                        log->info("{} has been updated", target_name);
+                });
+            }
+            new_todo->second.task = task;
+            new_todo->second.task.precede(parent);
+            return;
+        }
+
+        for (auto i=targets.first; i != targets.second; ++i)
+        {
+            auto new_todo = todo_list.insert(std::make_pair(target_name, construction_task()));
+            new_todo->second.blueprint_match = i->second;
+            auto task = taskflow.placeholder();
+            task.data(&new_todo->second).work([=]() {
+                // log->info("{}: process", target_name);
+                auto d = static_cast<construction_task*>(task.data());
+                if (d->blueprint_match)
+                    for ( auto j: d->blueprint_match->dependencies)
+                    {
+                        auto temp = todo_list.equal_range(j);
+                        for (auto k = temp.first; k != temp.second; ++k)
+                        {
+                            if (k->second.last_modified > start_time)
+                            {
+                                log->info("{} needs updating because of {}",target_name, j);
+                                run_command(i->first, d, this);
+                                d->last_modified = k->second.last_modified;
+                            }
+                        }
+                    }
+            });
+
+            new_todo->second.task = task;
+            new_todo->second.task.precede(parent);
+
+            // For each dependency described in blueprint, retrieve or create task, add relationship, and add item to todo list 
+            for (auto& dep_target: i->second->dependencies)
+                create_tasks(dep_target, new_todo->second.task);
+        }
+    }
+// #if 0
+    static std::pair<std::string, int> run_command( const std::string target, construction_task* task, const project* project )
     {
         auto boblog = spdlog::get("boblog");
         auto console = spdlog::get("bobconsole");
         std::string captured_output;
         inja::Environment inja_env = inja::Environment();
-        auto& blueprint = task->blueprint;
+        auto& blueprint = task->blueprint_match;
 
         inja_env.add_callback("$", 1, [&blueprint](const inja::Arguments& args) {
             return blueprint->regex_matches[ args[0]->get<int>() ];
         });
 
-        inja_env.add_callback("curdir", 0, [&blueprint](const inja::Arguments& args) { return blueprint->blueprint["bob_parent_path"].Scalar();});
+        inja_env.add_callback("curdir", 0, [&blueprint](const inja::Arguments& args) { return blueprint->blueprint->parent_path;});
         inja_env.add_callback("filesize", 1, [&blueprint](const inja::Arguments& args) { return fs::file_size(args[0]->get<std::string>());});
         inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return inja_env.render(args[0]->get<std::string>(), project->project_summary_json);});
         inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
@@ -808,23 +921,17 @@ namespace bob
                 return nlohmann::json();
             else
                 return aggregate.as<nlohmann::json>();
-            });
+        });
 
-
-        if ( !blueprint->blueprint["process"].IsSequence())
-        {
-            boblog->error("Error: process nodes must be sequences: {}", blueprint->blueprint["process"].Scalar());
-            return {"", -1};
-        }
 
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 
         // Note: A blueprint process is a sequence of maps
-        for ( const auto command_entry : blueprint->blueprint["process"] )
+        for ( const auto command_entry : blueprint->blueprint->process )
         {
             // Take the first entry in the map as the command
             auto        command      = command_entry.begin();
-            std::string command_name = command->first.as<std::string>();
+            const std::string command_name = command->first.as<std::string>();
 
             try
             {
@@ -856,7 +963,7 @@ namespace bob
                 }
                 else if (project->blueprint_commands.find(command_name) != project->blueprint_commands.end()) // To be replaced with .contains() once C++20 is available
                 {
-                    captured_output = project->blueprint_commands.at(command_name)( blueprint->target, command_entry, captured_output, project->project_summary_json, inja_env );
+                    captured_output = project->blueprint_commands.at(command_name)( target, command_entry, captured_output, project->project_summary_json, inja_env );
                 }
                 else
                 {
@@ -866,7 +973,7 @@ namespace bob
             }
             catch ( std::exception& e )
             {
-                boblog->error("Failed to run command: '{}' as part of {}", command_name, blueprint->target);
+                boblog->error("Failed to run command: '{}' as part of {}", command_name, target);
                 boblog->info( "Failed to run: {}", command_entry.Scalar());
                 throw e;
             }
@@ -874,9 +981,10 @@ namespace bob
 
         std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-        boblog->info( "{}: {} milliseconds", blueprint->target, duration);
+        boblog->info( "{}: {} milliseconds", target, duration);
         return {captured_output, 0};
     }
+// #endif
 
     static void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node)
     {
@@ -990,6 +1098,7 @@ namespace bob
         }
     }
 
+#if 0
     void project::process_construction(indicators::ProgressBar& bar)
     {
         auto boblog = spdlog::get("boblog");
@@ -1038,13 +1147,13 @@ namespace bob
                         auto result = a->get()->thread_result.get();
                         if (result.second == 0)
                         {
-                            boblog->info( "{}: Done with {}", a->get()->blueprint->target, result.second);
+                            boblog->info( "{}: Done with {}", a->get()->blueprint->blueprint->target, result.second);
                             a->get()->last_modified = construction_start_time;
                             a->get()->state = bob_task_up_to_date;
                         }
                         else
                         {
-                            boblog->error( "{}: Failed", a->get()->blueprint->target);
+                            boblog->error( "{}: Failed", a->get()->blueprint->blueprint->target);
                             a->get()->state = bob_task_failed;
                         }
                         a = running_tasks.erase( a );
@@ -1076,13 +1185,13 @@ namespace bob
                         auto result = a->get()->thread_result.get();
                         if (result.second == 0)
                         {
-                            boblog->info( "{}: Done with result {}", a->get()->blueprint->target, result.second);
+                            boblog->info( "{}: Done with result {}", a->get()->blueprint->blueprint->target, result.second);
                             a->get()->last_modified = construction_start_time;
                             a->get()->state = bob_task_up_to_date;
                         }
                         else
                         {
-                            boblog->error( "{}: Failed", a->get()->blueprint->target);
+                            boblog->error( "{}: Failed", a->get()->blueprint->blueprint->target);
                             a->get()->state = bob_task_failed;
                         }
                         a = running_tasks.erase( a );
@@ -1129,7 +1238,7 @@ namespace bob
                                 return dependency_failed;
                             if ( start->second->state != bob_task_up_to_date)
                                 return dependency_not_ready;
-                            if ( (start->second->last_modified > task.last_modified ) && ( task.blueprint->blueprint["process"]) )
+                            if ( (start->second->last_modified > task.last_modified ) && ( task.blueprint->blueprint->process.size() != 0) )
                             {
 //                                log->info("{} needs to be updated because of {} at time {} vs {}", task.blueprint->target, start->second->blueprint->target, start->second->last_modified.time_since_epoch().count(), task.last_modified.time_since_epoch().count());
                                 status = execute_process;
@@ -1172,9 +1281,9 @@ namespace bob
                         break;
                     case execute_process:
                         something_updated = true;
-                        if ( t->second->blueprint->blueprint["process"])
+                        if ( t->second->blueprint->blueprint->process.size() != 0)
                         {
-                            boblog->info( "{}: Executing blueprint", t->second->blueprint->target);
+                            boblog->info( "{}: Executing blueprint", t->second->blueprint->blueprint->target);
                             t->second->thread_result = std::async(std::launch::async | std::launch::deferred, run_command, t->second, this);
                             running_tasks.push_back(t->second);
                             t->second->state = bob_task_executing;
@@ -1212,6 +1321,7 @@ namespace bob
             if (a.second->state == bob_task_to_be_done )
                 boblog->info("{}", a.first);
     }
+    #endif
 
     void project::load_config_file(const std::string config_filename)
     {
@@ -1265,6 +1375,8 @@ namespace bob
     {
         if (!fs::exists(project_summary["project_output"].Scalar()))
             fs::create_directories(project_summary["project_output"].Scalar());
+        if (!fs::exists(project_summary["project_generated_output"].Scalar()))
+            fs::create_directories(project_summary["project_generated_output"].Scalar());
 
         std::ofstream summary_file( project_summary["project_output"].Scalar() + "/bob_summary.yaml" );
         summary_file << project_summary;

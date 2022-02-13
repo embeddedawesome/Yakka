@@ -1,0 +1,8 @@
+name: BOB CLI app
+
+sources:
+  - bob.cpp
+
+requires:
+  components:
+    - bob

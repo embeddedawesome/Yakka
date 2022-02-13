@@ -1,0 +1,8 @@
+name: BOB test
+
+sources:
+  - bob_test.cpp
+
+requires:
+  components:
+    - bob

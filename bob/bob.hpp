@@ -1,17 +1,13 @@
 #pragma once
 
+#include "utilities.hpp"
 #include "yaml-cpp/yaml.h"
-// #include "indicators/progress_bar.hpp"
 #include <set>
 #include <string>
 #include <functional>
 #include <unordered_set>
 
 namespace bob {
-    using component_list_t = std::set<std::string>;
-    using feature_list_t = std::set<std::string>;
-    using command_list_t = std::unordered_set<std::string>;
-
     const std::string bob_component_extension   = ".bob";
     const char data_dependency_identifier = ':';
     const char data_wildcard_identifier = '*';

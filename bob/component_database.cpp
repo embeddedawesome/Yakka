@@ -1,5 +1,5 @@
-#include "component_database.h"
-#include "bob_component.h"
+#include "component_database.hpp"
+#include "bob_component.hpp"
 #include "spdlog/spdlog.h"
 #include <iostream>
 #include <fstream>
@@ -49,8 +49,10 @@ namespace bob
     void component_database::save()
     {
         std::ofstream database_file( database_filename );
+#ifdef SLCC_SUPPORT
         if (slcc::slcc_database["features"])
             (*this)["provides"]["features"] = slcc::slcc_database["features"];
+#endif
         database_file << static_cast<YAML::Node&>(*this);
         database_file.close();
         database_is_dirty = false;
@@ -107,7 +109,7 @@ namespace bob
             }
 #endif
         }
-
+#ifdef SLCC_SUPPORT
         // TODO: SLCC database should be initialized elsewhere
         if (!slcc::slcc_database["features"])
             slcc::slcc_database["features"] = YAML::Node();
@@ -131,6 +133,7 @@ namespace bob
                 slcc::slcc_database["components"][id] = slcc.yaml;
             }
         }
+#endif
     }
 
 } /* namespace bob */
