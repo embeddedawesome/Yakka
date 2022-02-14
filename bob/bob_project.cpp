@@ -750,6 +750,8 @@ namespace bob
 
         blueprint_commands["pack"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
             auto boblog = spdlog::get("boblog");
+            std::vector<std::byte> data_output;
+
             if (!command["data"])
             {
                 boblog->error("'pack' command requires 'data'\n");
@@ -759,6 +761,7 @@ namespace bob
                 boblog->error("'pack' command requires 'format'\n");
                 return captured_output;
             }
+
             std::string format = command["format"].as<std::string>();
             format = try_render(inja_env, format, generated_json, boblog);
             
@@ -767,24 +770,37 @@ namespace bob
             {
                 auto v = try_render(inja_env, d.as<std::string>(), generated_json, boblog);
                 const char c = *i++;
-                unsigned long value;
-                const auto result = std::from_chars(v.data(), v.data() + v.size(), value);
+                union {
+                    int8_t s8;
+                    uint8_t u8;
+                    int16_t  s16;
+                    uint16_t u16;
+                    int32_t s32;
+                    uint32_t u32;
+                    unsigned long value;
+                    std::byte bytes[8];
+                } temp;
+                const auto result = (v.size() > 1 && v[1] == 'x') ? std::from_chars(v.data()+2, v.data() + v.size(), temp.u32, 16) : 
+                                    (v[0] == '-') ? std::from_chars(v.data(), v.data() + v.size(), temp.s32) : std::from_chars(v.data(), v.data() + v.size(), temp.u32);
                 if (result.ec != std::errc())
                 {
-                    boblog->error("Error converting number\n");
+                    boblog->error("Error converting number: {}\n", v);
                 }
+                
                 switch(c) {
-                    // case 'L': captured_output.append(d.as<unsigned long>()); break;
-                    case 'l': captured_output.append(( long)value); break;
-                    case 'S': captured_output.append((unsigned short)value); break;
-                    case 's': captured_output.append((short)value); break;
-                    case 'C': captured_output.append((unsigned char)value); break;
-                    case 'c': captured_output.append((char)value); break;
-                    case 'x': captured_output.append('\0'); break;
+                    case 'L': data_output.insert(data_output.end(), &temp.bytes[0], &temp.bytes[4]); break;
+                    case 'l': data_output.insert(data_output.end(), &temp.bytes[0], &temp.bytes[4]); break;
+                    case 'S': data_output.insert(data_output.end(), &temp.bytes[0], &temp.bytes[2]); break;
+                    case 's': data_output.insert(data_output.end(), &temp.bytes[0], &temp.bytes[2]); break;
+                    case 'C': data_output.insert(data_output.end(), &temp.bytes[0], &temp.bytes[1]); break;
+                    case 'c': data_output.insert(data_output.end(), &temp.bytes[0], &temp.bytes[1]); break;
+                    case 'x': data_output.push_back(std::byte{0}); break;
                     default: boblog->error("Unknown pack type\n"); break;
                 }
             }
-
+            auto chars = reinterpret_cast<char const*>(data_output.data());
+            captured_output.insert(captured_output.end(), chars, chars + data_output.size());
+            boblog->info("pack: {} bytes in captured output", captured_output.size());
             return captured_output;
         };
 
@@ -795,10 +811,26 @@ namespace bob
             std::filesystem::copy(source, destination);
             return "";
         };
+
+        blueprint_commands["cat"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
+            auto boblog = spdlog::get("boblog");
+            std::string filename = try_render(inja_env, command.begin()->second.as<std::string>( ), generated_json, boblog);
+            std::ifstream datafile;
+            datafile.open(filename, std::ios_base::in | std::ios_base::binary);
+            // datafile.read()
+            std::string line;
+            while (std::getline(datafile, line))
+                captured_output.append(line);
+            // datafile >> captured_output;
+            datafile.close();
+            boblog->info("cat: {} bytes in captured output", captured_output.size());
+            return captured_output;
+        };
     }
 
     void project::create_tasks(const std::string target_name, tf::Task& parent)
     {
+        // XXX: Start time should be determined at the start of the executable and not here
         auto start_time = fs::file_time_type::clock::now();
 
         // Check if this target has already been processed
@@ -859,19 +891,30 @@ namespace bob
                 // log->info("{}: process", target_name);
                 auto d = static_cast<construction_task*>(task.data());
                 if (d->blueprint_match)
-                    for ( auto j: d->blueprint_match->dependencies)
+                {
+                    // Check if there are no dependencies
+                    if (d->blueprint_match->dependencies.size() == 0)
                     {
-                        auto temp = todo_list.equal_range(j);
-                        for (auto k = temp.first; k != temp.second; ++k)
+                        run_command(i->first, d, this);
+                        d->last_modified = start_time;
+                    }
+                    else
+                    {
+                        for ( auto j: d->blueprint_match->dependencies)
                         {
-                            if (k->second.last_modified > start_time)
+                            auto temp = todo_list.equal_range(j);
+                            for (auto k = temp.first; k != temp.second; ++k)
                             {
-                                log->info("{} needs updating because of {}",target_name, j);
-                                run_command(i->first, d, this);
-                                d->last_modified = k->second.last_modified;
+                                if (k->second.last_modified > start_time)
+                                {
+                                    log->info("{} needs updating because of {}",target_name, j);
+                                    run_command(i->first, d, this);
+                                    d->last_modified = k->second.last_modified;
+                                }
                             }
                         }
                     }
+                }
             });
 
             new_todo->second.task = task;
@@ -887,7 +930,7 @@ namespace bob
     {
         auto boblog = spdlog::get("boblog");
         auto console = spdlog::get("bobconsole");
-        std::string captured_output;
+        std::string captured_output = "";
         inja::Environment inja_env = inja::Environment();
         auto& blueprint = task->blueprint_match;
 
