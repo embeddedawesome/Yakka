@@ -961,7 +961,7 @@ namespace bob
 
             // For each dependency described in blueprint, retrieve or create task, add relationship, and add item to todo list 
             for (auto& dep_target: i->second->dependencies)
-                create_tasks(dep_target, new_todo->second.task);
+                create_tasks(dep_target.starts_with("./") ? dep_target.substr(2) : dep_target, new_todo->second.task);
         }
     }
 
