@@ -23,23 +23,6 @@ namespace bob
 {
     const std::string default_output_directory  = "output/";
 
-    #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-    const std::string host_os_string       = "windows";
-    const std::string executable_extension = ".exe";
-    const std::string host_os_path_seperator = ";";
-    const auto async_launch_option = std::launch::async|std::launch::deferred;
-    #elif defined(__APPLE__)
-    const std::string host_os_string       = "macos";
-    const std::string executable_extension = "";
-    const std::string host_os_path_seperator = ":";
-    const auto async_launch_option = std::launch::async|std::launch::deferred; // Unsure
-    #elif defined (__linux__)
-    const std::string host_os_string       = "linux";
-    const std::string executable_extension = "";
-    const std::string host_os_path_seperator = ":";
-    const auto async_launch_option = std::launch::deferred;
-    #endif
-
     typedef std::function<std::string(std::string, const YAML::Node&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
 
     class project
@@ -77,7 +60,6 @@ namespace bob
         void load_common_commands();
         void set_project_file(const std::string filepath);
         void process_construction(indicators::ProgressBar& bar);
-        void load_config_file(const std::string config_filename);
         void save_summary();
         void save_blueprints();
         std::optional<YAML::Node> find_registry_component(const std::string& name);
@@ -111,24 +93,28 @@ namespace bob
         bob::blueprint_database blueprint_database;
 
         nlohmann::json project_summary_json;
-        nlohmann::json configuration_json;
 
         // Blueprint evaluation
         inja::Environment inja_environment;
         std::multimap<std::string, std::shared_ptr<blueprint_match> > target_database;
         std::multimap<std::string, construction_task> todo_list;
+        int work_task_count;
         // YAML::Node blueprint_database;
         // std::multimap<std::string, std::shared_ptr< construction_task > > construction_list;
         // std::vector<std::string> todo_list;
         // std::map<std::string, tf::Task> tasks;
         tf::Taskflow taskflow;
 
+        std::mutex project_lock;
+
         // std::vector< std::pair<std::string, YAML::Node> > blueprint_list;
         std::map< std::string, blueprint_command > blueprint_commands;
+
+        std::function<void()> task_complete_handler;
     };
 
     std::string try_render(inja::Environment& env, const std::string& input, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log);
-    static std::pair<std::string, int> run_command( const std::string target, construction_task* task, const project* project );
+    static std::pair<std::string, int> run_command( const std::string target, construction_task* task, project* project );
     static void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node);
     static void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node);
     static std::vector<std::string> parse_gcc_dependency_file(const std::string filename);

@@ -18,6 +18,10 @@ namespace bob
     {
         log = spdlog::get("boblog");
         init();
+
+        configuration["host_os"] = host_os_string;
+        configuration["executable_extension"] = executable_extension;
+        configuration_json = configuration.as<nlohmann::json>();
     }
 
     void workspace::init()
@@ -36,6 +40,8 @@ namespace bob
 
         if (!fs::exists(".bob/repos"))
             fs::create_directories(".bob/repos");
+
+        load_config_file("config.yaml");
     }
 
     void workspace::load_component_registries()
@@ -65,15 +71,65 @@ namespace bob
         return {};
     }
 
+    std::string workspace::template_render(const std::string input)
+    {
+        return inja_environment.render(input, configuration_json);
+    }
+
+    void workspace::load_config_file(const std::string config_filename)
+    {
+        if (!fs::exists(config_filename))
+            return;
+
+        try
+        {
+            auto configuration = YAML::LoadFile( config_filename );
+
+            // project_summary["configuration"] = configuration;
+            // project_summary["tools"] = configuration["tools"];
+
+            // if (configuration["bob_home"].IsDefined())
+            // {
+            //     bob_home_directory =  configuration["bob_home"].Scalar();
+            //     if (!fs::exists(bob_home_directory + "/repos"))
+            //         fs::create_directories(bob_home_directory + "/repos");
+            // }
+
+            if (configuration["path"].IsDefined())
+            {
+                std::string path = std::getenv("PATH");
+                for (const auto& p: configuration["path"])
+                {
+                    path += host_os_path_seperator + p.as<std::string>();
+                }
+                #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+                _putenv_s("PATH", path.c_str());
+                #else
+                setenv("PATH", path.c_str(), 1);
+                #endif
+            }
+        }
+        catch ( std::exception &e )
+        {
+            log->error("Couldn't read '{}'\n{}", config_filename, e.what( ));
+            // project_summary["configuration"];
+            // project_summary["tools"] = "";
+        }
+
+    }
+
     std::future<void> workspace::fetch_component(const std::string& name, YAML::Node node, std::function<void(size_t)> progress_handler)
     {
+        std::string url    = template_render(node["packages"]["default"]["url"].as<std::string>());
+        std::string branch = template_render(node["packages"]["default"]["branch"].as<std::string>());
+        
         return std::async(std::launch::async, [=]() {
-                bob::fetch_component(name, node, progress_handler);
+                do_fetch_component(name, url, branch, progress_handler);
         });
     }
 
     using namespace std::string_literals;
-    void fetch_component(const std::string& name, YAML::Node node, std::function<void(size_t)> progress_handler)
+    void workspace::do_fetch_component(const std::string& name, const std::string url, const std::string branch, std::function<void(size_t)> progress_handler)
     {
         auto boblog = spdlog::get("boblog");
         enum {
@@ -87,16 +143,10 @@ namespace bob
 
         // Of the total time to fetch a Git repo, 10% is allocated to counting, 10% to compressing, and 80% to receiving.
         static const int phase_rates[] = {0, 10, 20, 75, 80};
-
-        std::string url    = node["packages"]["default"]["url"].as<std::string>();
-        std::string branch = node["packages"]["default"]["branch"].as<std::string>();
         const std::string fetch_string = "-C "s + ".bob"s + "/repos/ clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
 
-    #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-    # define GIT_STRING  "c:/silabs/apps/git/bin/git"
-    #else
-    # define GIT_STRING  "git"
-    #endif
+        # define GIT_STRING  "git"
+
         auto t1 = std::chrono::high_resolution_clock::now();
         bob::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
             std::smatch s;

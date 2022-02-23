@@ -23,7 +23,7 @@ namespace bob
         catch ( ... )
         {
             boblog->error( "Failed to load file: '{}'", path_string);
-            return;
+            throw;
         }
 
         // Add known information

@@ -14,7 +14,7 @@ int main(int argc, char **argv)
 
     // Create a project
     bob::project project(boblog);
-    project.init_project("bob msvc link!");
+    project.init_project("test test!");
     project.evaluate_dependencies();
     project.generate_project_summary();
     project.save_summary();

@@ -32,6 +32,7 @@ namespace bob
             }
         }
 
-        process = blueprint["process"];
+        if (blueprint["process"])
+            process = blueprint["process"];
     }
 }

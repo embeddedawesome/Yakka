@@ -16,7 +16,6 @@ namespace bob
     project::project( std::shared_ptr<spdlog::logger> log ) : project_directory("."), bob_home_directory("/.bob")
     {
         this->log = log;
-        load_config_file("config.yaml");
     }
 
     project::~project( )
@@ -57,7 +56,7 @@ namespace bob
         project_name = bob::generate_project_name(this->unprocessed_components, this->unprocessed_features);
         output_path  = bob::default_output_directory;
         project_summary_file = "output/" + project_name + "/bob_summary.yaml";
-        previous_summary["components"] = YAML::Node();
+        // previous_summary["components"] = YAML::Node();
 
         if (fs::exists(project_summary_file))
         {
@@ -176,7 +175,6 @@ namespace bob
 
                 auto a = previous_summary["components"][name];
                 auto b = project_summary["components"][name];
-
             }
         }
     }
@@ -224,7 +222,8 @@ namespace bob
                 catch ( std::exception e )
                 {
                     log->error("Failed to parse: {}\n{}", c, e.what());
-                    project_summary["components"].remove(c);
+                    throw;
+                    // project_summary["components"].remove(c);
                     //unknown_components.insert(c);
                 }
 
@@ -272,6 +271,8 @@ namespace bob
         project_summary["configuration"]["host_os"] = host_os_string;
         project_summary["configuration"]["executable_extension"] = executable_extension;
 
+        project_summary_json = project_summary.as<nlohmann::json>();
+
         if (!project_summary["tools"])
           project_summary["tools"] = YAML::Node();
 
@@ -284,7 +285,7 @@ namespace bob
                 inja::Environment inja_env = inja::Environment();
                 inja_env.add_callback("curdir", 0, [&c](const inja::Arguments& args) { return c->yaml["directory"].Scalar();});
 
-                project_summary["tools"][tool.first.Scalar()] = try_render(inja_env, tool.second.Scalar(), configuration_json, log);
+                project_summary["tools"][tool.first.Scalar()] = try_render(inja_env, tool.second.Scalar(), project_summary_json, log);
             }
         }
 
@@ -378,13 +379,17 @@ namespace bob
 
     bool project::has_data_dependency_changed(std::string data_path)
     {
-        std::vector<std::pair<YAML::Node,YAML::Node>> changed_nodes;
+        std::vector<std::pair<const YAML::Node&, const YAML::Node&>> changed_nodes;
 
         if (data_path.front() != data_dependency_identifier)
             return false;
 
+        std::lock_guard<std::mutex> lock(project_lock);
         try
         {
+            if (previous_summary.IsNull() || previous_summary["components"].IsNull())
+                return true;
+            
             // Check for wildcard or component name
             if (data_path[1] == data_wildcard_identifier)
             {
@@ -407,7 +412,9 @@ namespace bob
                 std::string component_name = data_path.substr(1, data_path.find_first_of('.')-1);
                 data_path = data_path.substr(data_path.find_first_of('.')+1);
                 if (!(previous_summary["components"][component_name] == project_summary["components"][component_name] ))
+                {
                     changed_nodes.push_back({project_summary["components"][component_name], previous_summary["components"][component_name]});
+                }
             }
 
             // Check if we have any nodes that have changed
@@ -419,7 +426,7 @@ namespace bob
             {
                 auto first = yaml_path(n.first, data_path);
                 auto second = yaml_path(n.second, data_path);
-                if (first && second && yaml_diff(first, second))
+                if (yaml_diff(first, second))
                     return true;
             }
             return false;
@@ -654,17 +661,21 @@ namespace bob
                 {
                     std::string filename = try_render(inja_env, command["file"].as<std::string>(), generated_json, boblog);
 
-                    if (!fs::exists(filename))
-                        boblog->error( "{} not found when trying to apply template engine", filename);
-                    else
-                        try
+                    try
+                    {
+                        if (command["data"])
                         {
+                            std::string data_filename = try_render(inja_env, command["data"].as<std::string>(), generated_json, boblog);
+                            YAML::Node data = YAML::LoadFile(data_filename);
+                            captured_output = inja_env.render_file(filename, data.as<nlohmann::json>());
+                        }
+                        else
                             captured_output = inja_env.render_file(filename, generated_json);
-                        }
-                        catch(std::exception&e )
-                        {
-                            boblog->error("Template error in {}: {}", filename, e.what());
-                        }
+                    }
+                    catch(std::exception&e )
+                    {
+                        boblog->error("Template error in {}: {}", filename, e.what());
+                    }
                 }
                 else
                 {
@@ -800,15 +811,21 @@ namespace bob
             }
             auto chars = reinterpret_cast<char const*>(data_output.data());
             captured_output.insert(captured_output.end(), chars, chars + data_output.size());
-            boblog->info("pack: {} bytes in captured output", captured_output.size());
             return captured_output;
         };
 
         blueprint_commands["copy"] = [ ]( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> std::string {
             auto boblog = spdlog::get("boblog");
-            std::string source      = try_render(inja_env, command["source"].as<std::string>( ), generated_json, boblog);
-            std::string destination = try_render(inja_env, command["destination"].as<std::string>( ), generated_json, boblog);
-            std::filesystem::copy(source, destination);
+            try 
+            {
+                std::string source      = try_render(inja_env, command["source"].as<std::string>( ), generated_json, boblog);
+                std::string destination = try_render(inja_env, command["destination"].as<std::string>( ), generated_json, boblog);
+                std::filesystem::copy(source, destination, std::filesystem::copy_options::recursive);
+            }
+            catch (std::exception& e)
+            {
+                boblog->error("'copy' command failed while processing {}", target);
+            }
             return "";
         };
 
@@ -823,7 +840,6 @@ namespace bob
                 captured_output.append(line);
             // datafile >> captured_output;
             datafile.close();
-            boblog->info("cat: {} bytes in captured output", captured_output.size());
             return captured_output;
         };
     }
@@ -854,8 +870,22 @@ namespace bob
             auto new_todo = todo_list.insert(std::make_pair(target_name, construction_task()));
             auto task = taskflow.placeholder();
 
+            // Check if target is a data dependency
+            if (target_name.front() == data_dependency_identifier)
+            {
+                task.data(&new_todo->second).work([=]() {
+                    // log->info("{}: data", target_name);
+                    auto d = static_cast<construction_task*>(task.data());
+                    d->last_modified = has_data_dependency_changed(target_name) ? fs::file_time_type::max() : fs::file_time_type::min();
+                    if (d->last_modified > start_time)
+                        log->info("{} has been updated", target_name);
+
+                    // if (task_complete_handler)
+                    //     task_complete_handler();
+                });
+            }
             // Check if target name matches an existing file in filesystem
-            if (fs::exists(target_name))
+            else if (fs::exists(target_name))
             {
                 // Create a new task to retrieve the file timestamp
                 task.data(&new_todo->second).work([=]() {
@@ -864,18 +894,15 @@ namespace bob
                     d.last_modified = fs::last_write_time(target_name);
                     if (d.last_modified > start_time)
                         log->info("{} has been updated", target_name);
+                    
+                    // if (task_complete_handler)
+                    //     task_complete_handler();
                 });
                 
             }
             else
             {
-                task.data(&new_todo->second).work([=]() {
-                    // log->info("{}: data", target_name);
-                    auto d = static_cast<construction_task*>(task.data());
-                    d->last_modified = has_data_dependency_changed(target_name) ? fs::file_time_type::max() : fs::file_time_type::min();
-                    if (d->last_modified > start_time)
-                        log->info("{} has been updated", target_name);
-                });
+                log->info("Target {} has no action", target_name);
             }
             new_todo->second.task = task;
             new_todo->second.task.precede(parent);
@@ -884,37 +911,57 @@ namespace bob
 
         for (auto i=targets.first; i != targets.second; ++i)
         {
+            ++work_task_count;
             auto new_todo = todo_list.insert(std::make_pair(target_name, construction_task()));
             new_todo->second.blueprint_match = i->second;
             auto task = taskflow.placeholder();
             task.data(&new_todo->second).work([=]() {
                 // log->info("{}: process", target_name);
                 auto d = static_cast<construction_task*>(task.data());
+                if (d->last_modified != fs::file_time_type::min())
+                {
+                    // I don't think this event happens. This check can probably be removed
+                    log->info("{} already done", target_name);
+                    return;
+                }
                 if (d->blueprint_match)
                 {
                     // Check if there are no dependencies
                     if (d->blueprint_match->dependencies.size() == 0)
                     {
-                        run_command(i->first, d, this);
-                        d->last_modified = start_time;
+                        // If it doesn't exist as a file, run the command
+                        if (!fs::exists(target_name))
+                        {
+                            run_command(i->first, d, this);
+                            d->last_modified = fs::file_time_type::clock::now();
+                        }
+                        else
+                            d->last_modified = fs::last_write_time(target_name);
                     }
-                    else
+                    else if (!d->blueprint_match->blueprint->process.IsNull())
                     {
+                        auto max_element = todo_list.end();
                         for ( auto j: d->blueprint_match->dependencies)
                         {
                             auto temp = todo_list.equal_range(j);
-                            for (auto k = temp.first; k != temp.second; ++k)
-                            {
-                                if (k->second.last_modified > start_time)
-                                {
-                                    log->info("{} needs updating because of {}",target_name, j);
-                                    run_command(i->first, d, this);
-                                    d->last_modified = k->second.last_modified;
-                                }
-                            }
+                            auto temp_element = std::max_element(temp.first, temp.second, [](auto const& i, auto const& j) { return i.second.last_modified < j.second.last_modified;});
+                            if (max_element == todo_list.end() || temp_element->second.last_modified > max_element->second.last_modified)
+                                max_element = temp_element;
+                        }
+                        if (!fs::exists(target_name) || max_element->second.last_modified > start_time)
+                        {
+                            log->info("{}: Updating because of {}",target_name, max_element->first);
+                            run_command(i->first, d, this);
+                            d->last_modified = fs::file_time_type::clock::now();
                         }
                     }
+                    else
+                    {
+                        log->info("{} has no process", target_name);
+                    }
                 }
+                if (task_complete_handler)
+                        task_complete_handler();
             });
 
             new_todo->second.task = task;
@@ -925,8 +972,8 @@ namespace bob
                 create_tasks(dep_target, new_todo->second.task);
         }
     }
-// #if 0
-    static std::pair<std::string, int> run_command( const std::string target, construction_task* task, const project* project )
+
+    static std::pair<std::string, int> run_command( const std::string target, construction_task* task, project* project )
     {
         auto boblog = spdlog::get("boblog");
         auto console = spdlog::get("bobconsole");
@@ -952,8 +999,12 @@ namespace bob
                     continue;
                 
                 if (v.IsMap())
-                    for (auto i: v)
-                        aggregate[i.first] = i.second; //inja_env.render(i.second.as<std::string>(), project->project_summary_json);
+                    for (const auto& i: v)
+                    {
+                        project->project_lock.lock();
+                        aggregate[i.first.Scalar()] = i.second; //inja_env.render(i.second.as<std::string>(), project->project_summary_json);
+                        project->project_lock.unlock();
+                    }
                 else if (v.IsSequence())
                     for (auto i: v)
                         aggregate.push_back(inja_env.render(i.as<std::string>(), project->project_summary_json));
@@ -1027,7 +1078,7 @@ namespace bob
         boblog->info( "{}: {} milliseconds", target, duration);
         return {captured_output, 0};
     }
-// #endif
+
 
     static void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node)
     {
@@ -1366,50 +1417,6 @@ namespace bob
     }
     #endif
 
-    void project::load_config_file(const std::string config_filename)
-    {
-        if (!fs::exists(config_filename))
-            return;
-
-        try
-        {
-            auto configuration = YAML::LoadFile( config_filename );
-
-            project_summary["configuration"] = configuration;
-            project_summary["tools"] = configuration["tools"];
-
-            if (configuration["bob_home"].IsDefined())
-            {
-                bob_home_directory =  configuration["bob_home"].Scalar();
-                if (!fs::exists(bob_home_directory + "/repos"))
-                    fs::create_directories(bob_home_directory + "/repos");
-            }
-
-            if (configuration["path"].IsDefined())
-            {
-                std::string path = std::getenv("PATH");
-                for (const auto& p: configuration["path"])
-                {
-                    path += host_os_path_seperator + p.as<std::string>();
-                }
-                #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-                _putenv_s("PATH", path.c_str());
-                #else
-                setenv("PATH", path.c_str(), 1);
-                #endif
-            }
-
-            configuration_json = configuration.as<nlohmann::json>();
-        }
-        catch ( std::exception &e )
-        {
-            log->error("Couldn't read '{}'\n{}", config_filename, e.what( ));
-            project_summary["configuration"];
-            project_summary["tools"] = "";
-        }
-
-    }
-
     /**
      * @brief Save to disk the content of the @ref project_summary to bob_summary.yaml and bob_summary.json
      *
@@ -1418,8 +1425,6 @@ namespace bob
     {
         if (!fs::exists(project_summary["project_output"].Scalar()))
             fs::create_directories(project_summary["project_output"].Scalar());
-        if (!fs::exists(project_summary["project_generated_output"].Scalar()))
-            fs::create_directories(project_summary["project_generated_output"].Scalar());
 
         std::ofstream summary_file( project_summary["project_output"].Scalar() + "/bob_summary.yaml" );
         summary_file << project_summary;

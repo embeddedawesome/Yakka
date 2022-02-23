@@ -198,31 +198,51 @@ int main(int argc, char **argv)
     project.generate_project_summary();
     project.save_summary();
 
-
     t1 = std::chrono::high_resolution_clock::now();
     project.parse_blueprints();
-
     project.generate_target_database();
-
     t2 = std::chrono::high_resolution_clock::now();
+
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
     boblog->info("{}ms to process blueprints", duration);
 
+    project.load_common_commands();
+
     // Task flow test
-    std::map<std::string, tf::Task> tasks;
-    tf::Taskflow taskflow;
+    project.work_task_count = 0;
+    std::atomic<int> execution_progress = 0;
     tf::Executor executor;
+    auto finish = project.taskflow.emplace([&]() { execution_progress = 100; } );
     for (auto& i: project.commands)
-        create_tasks(project, i, tasks, taskflow);
-
-    executor.run(taskflow).wait();
-
-    // std::cout << project.blueprint_database;
-    console->flush();
-    show_console_cursor(true);
-    return 0;
+        project.create_tasks(i, finish);
 
     
+    ProgressBar building_bar {
+        option::BarWidth{ 50 },
+        option::ShowPercentage{ true },
+        option::PrefixText{ "Building " },
+        option::MaxProgress{project.work_task_count}
+    };
+
+    project.task_complete_handler = [&]() {
+        ++execution_progress;
+    };
+     
+    auto execution_future = executor.run(project.taskflow);
+    do
+    {
+        building_bar.set_option(option::PostfixText{
+            std::to_string(execution_progress) + "/" + std::to_string(project.work_task_count)
+        });
+        building_bar.set_progress(execution_progress);
+    } while (execution_future.wait_for(100ms) != std::future_status::ready);
+
+    building_bar.set_progress(project.work_task_count);
+
+    auto bob_end_time = fs::file_time_type::clock::now();
+    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(bob_end_time - bob_start_time).count() << " milliseconds" << std::endl;
+
+#if 0
 
     project.load_common_commands();
 
@@ -245,49 +265,9 @@ int main(int argc, char **argv)
 
     auto bob_end_time = fs::file_time_type::clock::now();
     std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(bob_end_time - bob_start_time).count() << " milliseconds" << std::endl;
+#endif
 
     console->flush();
     show_console_cursor(true);
     return 0;
-}
-
-tf::Task& create_tasks(bob::project& project, const std::string& name, std::map<std::string, tf::Task>& tasks, tf::Taskflow& taskflow)
-{   
-    // Find item in blueprint database
-    #if 0
-    const auto& bp = project.blueprint_database.equal_range(name);
-    if (bp)
-    {
-        // Retrieve existing task or create new task
-        if (tasks.find(name) == tasks.end())
-            tasks.insert(std::make_pair(name, taskflow.emplace([=]() { std::cout << "Updating '" << name << "'\n"; })));
-
-        // For each dependency described in blueprint, retrieve or create task, add relationship, and add item to todo list 
-        for (auto& i: bp["tasks"])
-        {
-            for(auto& j: i["deps"])
-            {
-                auto dep_name = j.as<std::string>();
-                auto& new_task = create_tasks(project, dep_name, tasks, taskflow);
-                new_task.precede(tasks[name]);
-                 
-                // if (tasks.find(dep_name) == tasks.end())
-                    // tasks.insert(std::make_pair(dep_name, taskflow.emplace([=]() { std::cout << "Updating" << dep_name << "\n"; })));
-            }
-        }
-    }
-    else
-    {
-        // Check if item matches file in filesystem
-        if (fs::exists(name) && (tasks.find(name) == tasks.end()))
-        {
-            // If so, retrieve timestamp
-            tasks.insert(std::make_pair(name, taskflow.emplace([=]() { std::cout << "Get timestamp of '" << name << "'\n"; })));
-        }
-    }
-    return tasks[name];
-    #else
-    tf::Task temp;
-    return temp;
-    #endif
 }

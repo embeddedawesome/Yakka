@@ -84,7 +84,7 @@ void exec( const std::string& command_text, const std::string& arg_text, std::fu
 
 bool yaml_diff(const YAML::Node& node1, const YAML::Node& node2)
 {
-    std::vector<std::pair<YAML::Node, YAML::Node>> compare_list;
+    std::vector<std::pair<const YAML::Node&, const YAML::Node&>> compare_list;
     compare_list.push_back({node1, node2});
     for (int i = 0; i < compare_list.size(); ++i)
     {
