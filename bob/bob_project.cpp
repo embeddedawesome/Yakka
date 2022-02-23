@@ -871,9 +871,6 @@ namespace bob
                     d->last_modified = has_data_dependency_changed(target_name) ? fs::file_time_type::max() : fs::file_time_type::min();
                     if (d->last_modified > start_time)
                         log->info("{} has been updated", target_name);
-
-                    // if (task_complete_handler)
-                    //     task_complete_handler();
                 });
             }
             // Check if target name matches an existing file in filesystem
@@ -881,14 +878,9 @@ namespace bob
             {
                 // Create a new task to retrieve the file timestamp
                 task.data(&new_todo->second).work([=]() {
-                    // log->info("{}: timestamp", target_name);
-                    auto d = *static_cast<construction_task*>(task.data());
-                    d.last_modified = fs::last_write_time(target_name);
-                    if (d.last_modified > start_time)
-                        log->info("{} has been updated", target_name);
-                    
-                    // if (task_complete_handler)
-                    //     task_complete_handler();
+                    auto d = static_cast<construction_task*>(task.data());
+                    d->last_modified = fs::last_write_time(target_name);
+                    // log->info("{}: timestamp {}", target_name, d->last_modified.time_since_epoch().count());
                 });
                 
             }
@@ -918,6 +910,9 @@ namespace bob
                 }
                 if (d->blueprint_match)
                 {
+                    if (fs::exists(target_name))
+                        d->last_modified = fs::last_write_time(target_name);
+
                     // Check if there are no dependencies
                     if (d->blueprint_match->dependencies.size() == 0)
                     {
@@ -927,8 +922,6 @@ namespace bob
                             run_command(i->first, d, this);
                             d->last_modified = fs::file_time_type::clock::now();
                         }
-                        else
-                            d->last_modified = fs::last_write_time(target_name);
                     }
                     else if (!d->blueprint_match->blueprint->process.IsNull())
                     {
@@ -940,7 +933,7 @@ namespace bob
                             if (max_element == todo_list.end() || temp_element->second.last_modified > max_element->second.last_modified)
                                 max_element = temp_element;
                         }
-                        if (!fs::exists(target_name) || max_element->second.last_modified > start_time)
+                        if (!fs::exists(target_name) || max_element->second.last_modified > d->last_modified)
                         {
                             log->info("{}: Updating because of {}",target_name, max_element->first);
                             run_command(i->first, d, this);
@@ -949,7 +942,7 @@ namespace bob
                     }
                     else
                     {
-                        log->info("{} has no process", target_name);
+                        //log->info("{} has no process", target_name);
                     }
                 }
                 if (task_complete_handler)
