@@ -4,12 +4,7 @@
 
 namespace bob
 {
-    component::component( fs::path file_path, blueprint_database& database )
-    {
-        parse_file(file_path, database);
-    }
-
-    void component::parse_file( fs::path file_path, blueprint_database& database )
+    YAML::Node& component::parse_file( fs::path file_path, blueprint_database& database )
     {
         auto boblog = spdlog::get("boblog");
         this->file_path = file_path;
@@ -20,10 +15,11 @@ namespace bob
         {
             yaml = YAML::LoadFile( path_string );
         }
-        catch ( ... )
+        catch ( std::exception& e )
         {
-            boblog->error( "Failed to load file: '{}'", path_string);
-            throw;
+            boblog->error( "Failed to load file: '{}'\n{}\n", path_string, e.what());
+            std::cerr << "Failed to parse: " << path_string << "\n" << e.what() << "\n";
+            return yaml;
         }
 
         // Add known information
@@ -60,6 +56,8 @@ namespace bob
             for( auto n: f["requires"]["components"])
                 if (n.Scalar().front() == '.')
                     n.first = n.as<std::string>().insert(0, path_string);
+
+        return yaml;
     }
 
     // std::tuple<component_list_t&, feature_list_t&> component::apply_feature( std::string feature_name)

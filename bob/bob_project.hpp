@@ -31,6 +31,7 @@ namespace bob
         enum class state {
             PROJECT_HAS_UNKNOWN_COMPONENTS,
             PROJECT_HAS_REMOTE_COMPONENTS,
+            PROJECT_HAS_INVALID_COMPONENT,
             PROJECT_VALID
         };
 

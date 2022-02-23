@@ -107,7 +107,8 @@ int main(int argc, char **argv)
         project.init_project();
     }
 
-    project.evaluate_dependencies();
+    if (project.evaluate_dependencies() != bob::project::state::PROJECT_VALID)
+        return 1;
 
     // Check if the project depends on components we don't have yet 
     if (!project.unknown_components.empty())

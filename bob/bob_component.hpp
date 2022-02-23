@@ -13,8 +13,6 @@ namespace bob {
 
     struct base_component
     {
-        base_component( ) {}
-
         void parse_file( fs::path file_path);
         std::tuple<component_list_t&, feature_list_t&> apply_feature( std::string feature_name );
         std::tuple<component_list_t&, feature_list_t&> process_requirements(const YAML::Node& node);
@@ -28,10 +26,7 @@ namespace bob {
 
     struct component : public base_component
     {
-        component( ) {};
-        component( fs::path file_path, blueprint_database& database );
-
-        void parse_file( fs::path file_path, blueprint_database& database);
+        YAML::Node& parse_file( fs::path file_path, blueprint_database& database);
         component_list_t get_required_components();
         feature_list_t   get_required_features();
         // std::vector< blueprint_node > get_blueprints();

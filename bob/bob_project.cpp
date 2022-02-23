@@ -213,19 +213,11 @@ namespace bob
                     continue;
                 }
 
-                std::shared_ptr<bob::component> new_component;
-                try
-                {
-                    new_component = std::make_shared<bob::component>( component_path.value(), blueprint_database );
+                std::shared_ptr<bob::component> new_component = std::make_shared<bob::component>();
+                if (!new_component->parse_file( component_path.value(), blueprint_database ).IsNull())
                     components.push_back( new_component );
-                }
-                catch ( std::exception e )
-                {
-                    log->error("Failed to parse: {}\n{}", c, e.what());
-                    throw;
-                    // project_summary["components"].remove(c);
-                    //unknown_components.insert(c);
-                }
+                else
+                    return project::state::PROJECT_HAS_INVALID_COMPONENT;
 
                 // Add all the required components into the unprocessed list
                 for (const auto& r : new_component->yaml["requires"]["components"])
