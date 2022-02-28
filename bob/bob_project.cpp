@@ -298,7 +298,10 @@ namespace bob
 
         // Check if that component is in the database
         if (!c)
+        {
+            // TODO: Check the filesystem 
             return {};
+        }
 
         if (c.IsScalar() && fs::exists(c.Scalar()))
             return c.Scalar();

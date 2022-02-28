@@ -36,14 +36,14 @@ namespace bob
         if (yaml["requires"]["components"].IsScalar())
         {
             std::string value = yaml["requires"]["components"].Scalar();
-            // yaml["requires"]["components"] = YAML::Node();
+            yaml["requires"]["components"] = YAML::Node();
             yaml["requires"]["components"].push_back(value);
         }
 
         if (yaml["requires"]["features"].IsScalar())
         {
             std::string value = yaml["requires"]["features"].Scalar();
-            // yaml["requires"]["features"] = YAML::Node();
+            yaml["requires"]["features"] = YAML::Node();
             yaml["requires"]["features"].push_back(value);
         }
 
@@ -127,21 +127,21 @@ namespace bob
     //     return {std::move(new_components), std::move(new_features)};
     // }
 
-    component_list_t component::get_required_components( )
-    {
-        component_list_t list;
-        for (const auto& c : yaml["requires"]["components"])
-            list.insert(c.Scalar());
+    // component_list_t component::get_required_components( )
+    // {
+    //     component_list_t list;
+    //     for (const auto& c : yaml["requires"]["components"])
+    //         list.insert(c.Scalar());
 
-        return list;
-    }
+    //     return list;
+    // }
 
-    feature_list_t component::get_required_features( )
-    {
-        feature_list_t list;
-        for (const auto& f : yaml["requires"]["features"])
-            list.insert(f.Scalar());
+    // feature_list_t component::get_required_features( )
+    // {
+    //     feature_list_t list;
+    //     for (const auto& f : yaml["requires"]["features"])
+    //         list.insert(f.Scalar());
 
-        return list;
-    }
+    //     return list;
+    // }
 } /* namespace bob */
