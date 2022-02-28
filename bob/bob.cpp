@@ -132,8 +132,9 @@ int main(int argc, char **argv)
         project.init_project();
     }
 
-    if (project.evaluate_dependencies() != bob::project::state::PROJECT_VALID)
+    if (project.evaluate_dependencies() == bob::project::state::PROJECT_HAS_INVALID_COMPONENT) {
         return 1;
+    }
 
     // Check if the project depends on components we don't have yet 
     if (!project.unknown_components.empty())
