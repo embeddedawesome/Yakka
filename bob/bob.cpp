@@ -4,6 +4,7 @@
 #include "cxxopts.hpp"
 #include "subprocess.hpp"
 #include "spdlog/spdlog.h"
+#include "semver.hpp"
 #include <indicators/dynamic_progress.hpp>
 #include <indicators/progress_bar.hpp>
 #include <indicators/cursor_control.hpp>
@@ -18,6 +19,9 @@ using namespace indicators;
 using namespace std::chrono_literals;
 
 tf::Task& create_tasks(bob::project& project, const std::string& name, std::map<std::string, tf::Task>& tasks, tf::Taskflow& taskflow);
+static const semver::version bob_version {
+    #include "bob_version.h"
+};
 
 int main(int argc, char **argv)
 {
@@ -33,7 +37,7 @@ int main(int argc, char **argv)
     //spdlog::set_async_mode(4096);
     auto boblog = spdlog::basic_logger_mt("boblog", "bob.log");
 
-    cxxopts::Options options("bob", "BOB the universal builder");
+    cxxopts::Options options("bob", "BOB the universal builder. Ver " + bob_version.to_string());
     options.positional_help("<action> [optional args]");
     options.add_options()
         ("h,help", "Print usage")
