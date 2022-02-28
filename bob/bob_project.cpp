@@ -4,7 +4,6 @@
 #include <fstream>
 #include <chrono>
 #include <thread>
-#include <ranges>
 #include <string>
 #include <charconv>
 
@@ -13,7 +12,7 @@ namespace bob
     using namespace std::chrono_literals;
 
 
-    project::project( std::shared_ptr<spdlog::logger> log ) : project_directory("."), bob_home_directory("/.bob")
+    project::project(  const std::string project_name, std::shared_ptr<spdlog::logger> log ) : project_directory("."), bob_home_directory("/.bob"), project_name(project_name)
     {
         this->log = log;
     }
@@ -53,7 +52,6 @@ namespace bob
 
     void project::init_project()
     {
-        project_name = bob::generate_project_name(this->unprocessed_components, this->unprocessed_features);
         output_path  = bob::default_output_directory;
         project_summary_file = "output/" + project_name + "/bob_summary.yaml";
         // previous_summary["components"] = YAML::Node();

@@ -6,8 +6,8 @@
 
 
 namespace bob {
-using component_list_t = std::set<std::string>;
-using feature_list_t = std::set<std::string>;
+using component_list_t = std::unordered_set<std::string>;
+using feature_list_t = std::unordered_set<std::string>;
 using command_list_t = std::unordered_set<std::string>;
 
 std::pair<std::string, int> exec( const std::string& command_text, const std::string& arg_text);

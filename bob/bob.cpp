@@ -77,13 +77,38 @@ int main(int argc, char **argv)
 
     auto t1 = std::chrono::high_resolution_clock::now();
 
-    auto [components, features, commands] = bob::parse_arguments(result.unmatched());
+    // Process the command line options
+    std::string project_name;
+    std::unordered_set<std::string> components;
+    std::unordered_set<std::string> features;
+    std::unordered_set<std::string> commands;
+    for (auto s: result.unmatched())
+    {
+        // Identify features, commands, and components
+        if (s.front() == '+')
+            features.insert(s.substr(1));
+        else if (s.back() == '!')
+            commands.insert(s.substr(0, s.size() - 1));
+        else 
+        {
+            components.insert(s);
+            project_name += s + "-";
+        }
+    }
+
+    if (components.size() == 0)
+    {
+        console->error("No components identified");
+        return -1;
+    }
+
+    project_name.pop_back();
 
     // Create a workspace
     bob::workspace workspace;
-
+    
     // Create a project
-    bob::project project(boblog);
+    bob::project project(project_name, boblog);
 
     // Move the CLI parsed data to the project
     project.unprocessed_components = std::move(components);
