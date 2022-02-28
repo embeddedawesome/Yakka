@@ -1,7 +1,7 @@
 name: BOB CLI app
 
 sources:
-  - bob.cpp
+  - bob_cli.cpp
 
 requires:
   components:

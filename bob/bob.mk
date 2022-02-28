@@ -1,6 +1,6 @@
 NAME := BOB
 
-$(NAME)_SOURCES := bob.cpp \
+$(NAME)_SOURCES := bob_cli.cpp \
                    bob_project.cpp \
                    bob_component.cpp \
                    bob_workspace.cpp \
