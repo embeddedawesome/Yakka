@@ -37,6 +37,9 @@ int main(int argc, char **argv)
     //spdlog::set_async_mode(4096);
     auto boblog = spdlog::basic_logger_mt("boblog", "bob.log");
 
+    // Create a workspace
+    bob::workspace workspace;
+
     cxxopts::Options options("bob", "BOB the universal builder. Ver " + bob_version.to_string());
     options.positional_help("<action> [optional args]");
     options.add_options()
@@ -73,11 +76,29 @@ int main(int argc, char **argv)
     if (result["fetch"].as<bool>())
     {
       // Ensure the BOB repos directory exists
-      fs::create_directory(".bob/repos");
+      fs::create_directories(".bob/repos");
     }
 
     if (!result.count("action"))
         return 0;
+
+    if (result["action"].as<std::string>() == "register")
+    {
+        if (result.unmatched().size() == 0)
+        {
+            console->error("Must provide URL of component registry");
+            return -1;
+        }
+        // Ensure the BOB registries directory exists
+        fs::create_directories(".bob/registries");
+        if (workspace.add_component_registry(result.unmatched()[0]) != bob::bob_status::SUCCESS)
+        {
+            console->error("Failed to add component registry. See bob.log for details");
+            return -1;
+        }
+
+        return 0;
+    }
 
     auto t1 = std::chrono::high_resolution_clock::now();
 
@@ -108,8 +129,7 @@ int main(int argc, char **argv)
 
     project_name.pop_back();
 
-    // Create a workspace
-    bob::workspace workspace;
+    workspace.init();
     
     // Create a project
     bob::project project(project_name, boblog);
@@ -268,6 +288,9 @@ int main(int argc, char **argv)
         building_bar.set_progress(execution_progress);
     } while (execution_future.wait_for(100ms) != std::future_status::ready);
 
+    building_bar.set_option(option::PostfixText{
+        std::to_string(project.work_task_count) + "/" + std::to_string(project.work_task_count)
+    });
     building_bar.set_progress(project.work_task_count);
 
     auto bob_end_time = fs::file_time_type::clock::now();

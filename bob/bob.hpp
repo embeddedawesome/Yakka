@@ -30,6 +30,12 @@ namespace bob {
     const auto async_launch_option = std::launch::deferred;
     #endif
 
+    enum bob_status
+    {
+        SUCCESS = 0,
+        FAIL,        
+    };
+
     static std::string component_dotname_to_id(const std::string dotname)
     {
         return dotname.find_last_of(".") != std::string::npos ? dotname.substr(dotname.find_last_of(".")+1) : dotname;

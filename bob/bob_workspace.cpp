@@ -16,8 +16,7 @@ namespace bob
 {
     workspace::workspace() : workspace_directory(".")
     {
-        log = spdlog::get("boblog");
-        init();
+        load_config_file("config.yaml");
 
         configuration["host_os"] = host_os_string;
         configuration["executable_extension"] = executable_extension;
@@ -26,22 +25,13 @@ namespace bob
 
     void workspace::init()
     {
-        if (!fs::exists(".bob"))
-        {
+        log = spdlog::get("boblog");
+
+        if (!fs::exists(".bob/registries"))
             fs::create_directories(".bob/registries");
-            std::ofstream example(".bob/registries/silabs.yaml");
-            example << example_registry;
-            example.close();
-        }
-        else
-        {
-            // Load registries
-        }
 
         if (!fs::exists(".bob/repos"))
             fs::create_directories(".bob/repos");
-
-        load_config_file("config.yaml");
     }
 
     void workspace::load_component_registries()
@@ -60,6 +50,11 @@ namespace bob
                 {
                     log->error("Could not parse component registry: '{}'", p.path().generic_string());
                 }
+    }
+
+    bob_status workspace::add_component_registry(const std::string& url)
+    {
+        return fetch_registry(url);
     }
 
     std::optional<YAML::Node> workspace::find_registry_component(const std::string& name)
@@ -128,6 +123,21 @@ namespace bob
         });
     }
 
+    #define GIT_STRING  "git"
+    bob_status workspace::fetch_registry(const std::string& url )
+    {
+        auto boblog = spdlog::get("boblog");
+        const std::string fetch_string = "-C .bob/registries/ clone " + url + " --progress --single-branch";
+        auto [output, result] = bob::exec(GIT_STRING, fetch_string);
+
+        boblog->info("{}", output);
+
+        if (result != 0)
+            return FAIL;
+
+        return SUCCESS;
+    }
+
     using namespace std::string_literals;
     void workspace::do_fetch_component(const std::string& name, const std::string url, const std::string branch, std::function<void(size_t)> progress_handler)
     {
@@ -142,10 +152,8 @@ namespace bob
         int old_progress = 0;
 
         // Of the total time to fetch a Git repo, 10% is allocated to counting, 10% to compressing, and 80% to receiving.
-        static const int phase_rates[] = {0, 10, 20, 75, 80};
+        static const int phase_rates[] = {0, 10, 20, 75, 90};
         const std::string fetch_string = "-C "s + ".bob"s + "/repos/ clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
-
-        # define GIT_STRING  "git"
 
         auto t1 = std::chrono::high_resolution_clock::now();
         bob::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
@@ -174,7 +182,6 @@ namespace bob
         if (!fs::exists("components/" + name))
             fs::create_directories("components/" + name);
         const std::string checkout_string     = "--git-dir "s + ".bob"s + "/repos/" + name + "/.git --work-tree components/" + name + " checkout " + branch + " --force";
-        const std::string lfs_checkout_string = "--git-dir "s + ".bob"s + "/repos/" + name + "/.git --work-tree components/" + name + " lfs checkout";
 
         // Checkout instance
         t1 = std::chrono::high_resolution_clock::now();
@@ -193,23 +200,6 @@ namespace bob
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
         boblog->info("{}: checkout in {}ms", name, duration);
 
-        // set_progress(90);
-
-        // t1 = std::chrono::high_resolution_clock::now();
-        // bob::exec(GIT_STRING, lfs_checkout_string, [&](const std::string& data) -> void {
-        //     std::smatch s;
-        //     if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
-        //     {
-        //         // boblog->info(data);
-        //         int phase_progress = std::stoi( s[1] );
-        //         int end_value = std::stoi( s[2] );
-        //         int progress = phase_rates[GIT_LFS_CHECKOUT] + ((100-phase_rates[GIT_LFS_CHECKOUT])*phase_progress)/end_value;
-        //         set_progress(progress);
-        //     }
-        // });
-        // t2 = std::chrono::high_resolution_clock::now();
-        // duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-        // boblog->info("{}: LFS checkout in {}ms", name, duration);
         progress_handler(100);
     }
 
