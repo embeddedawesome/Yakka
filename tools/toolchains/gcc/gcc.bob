@@ -1,14 +1,28 @@
 name: GCC compiler
 
 flags:
+  c:
+    global:
+      - -O3
+      - -MD
+      - -g
+      - -ffunction-sections
+      - -fdata-sections
+
   cpp:
     global:
-      - -O3 -std=c++17 -g
+      - -O3
+      - -MD
+      - -std=c++20
+      - -g
+      - -ffunction-sections
+      - -fdata-sections
 
   ld:
     global:
-      - -O3 
-      - -lpthread
+      - -O3
+      - -pthread
+      - -Wl,--gc-sections
 
 tools:
   g++: 'g++'
