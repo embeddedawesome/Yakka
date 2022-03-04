@@ -36,10 +36,5 @@ namespace bob {
         FAIL,        
     };
 
-    static std::string component_dotname_to_id(const std::string dotname)
-    {
-        return dotname.find_last_of(".") != std::string::npos ? dotname.substr(dotname.find_last_of(".")+1) : dotname;
-    }
-
     void fetch_component(const std::string& name, YAML::Node node, std::function<void(size_t)> progress_handler);
 }

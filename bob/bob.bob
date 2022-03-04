@@ -19,7 +19,3 @@ requires:
     - cxxopts
     - spdlog
     - taskflow
-
-defines:
-  local:
-    - TEST24

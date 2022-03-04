@@ -82,7 +82,8 @@ int main(int argc, char **argv)
     if (!result.count("action"))
         return 0;
 
-    if (result["action"].as<std::string>() == "register")
+    const auto action = result["action"].as<std::string>();
+    if (action == "register")
     {
         if (result.unmatched().size() == 0)
         {
@@ -99,7 +100,33 @@ int main(int argc, char **argv)
 
         return 0;
     }
+    else if (action == "list")
+    {
+        workspace.load_component_registries();
+        for (auto registry: workspace.registries)
+        {
+            std::cout << registry.second["name"] << "\n";
+            for (auto c: registry.second["provides"]["components"])
+                std::cout << "  - " << c.first << "\n";
+        }
+        return 0;
+    }
+    else if (action == "update")
+    {
+        // Find all the component repos in .bob
+        for (auto d: fs::directory_iterator(".bob/repos"))
+            if (d.is_directory())
+            {
+                const auto name = d.path().filename().generic_string();
+                std::cout << "Updating: " << name << "\n";
+                workspace.update_component(name);
+            }
 
+        std::cout << "Complete\n";
+        return 0;
+    }
+
+    
     auto t1 = std::chrono::high_resolution_clock::now();
 
     // Process the command line options
@@ -130,14 +157,6 @@ int main(int argc, char **argv)
     project_name.pop_back();
 
     workspace.init();
-    
-    // Create a project
-    bob::project project(project_name, boblog);
-
-    // Move the CLI parsed data to the project
-    project.unprocessed_components = std::move(components);
-    project.unprocessed_features = std::move(features);
-    project.commands = std::move(commands);
 
     if (result["action"].as<std::string>() == "build")
     {
@@ -147,14 +166,21 @@ int main(int argc, char **argv)
         // The user can add features to "flavour" the build
         return 0;
     }
-    else
-    {
-        // The action, if not one of the built-in actions, is interpreted as a command to be processed by a blueprint
-        project.commands.insert(result["action"].as<std::string>());
+    
 
-        // Init the project
-        project.init_project();
-    }
+    // Create a project
+    bob::project project(project_name, boblog);
+
+    // Move the CLI parsed data to the project
+    project.unprocessed_components = std::move(components);
+    project.unprocessed_features = std::move(features);
+    project.commands = std::move(commands);
+
+    // The action, if not one of the built-in actions, is interpreted as a command to be processed by a blueprint
+    project.commands.insert(result["action"].as<std::string>());
+
+    // Init the project
+    project.init_project();
 
     if (project.evaluate_dependencies() == bob::project::state::PROJECT_HAS_INVALID_COMPONENT) {
         return 1;

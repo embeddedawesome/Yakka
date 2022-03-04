@@ -69,7 +69,7 @@ namespace bob {
 
     struct construction_task
     {
-        std::shared_ptr<blueprint_match> blueprint_match;
+        std::shared_ptr<blueprint_match> match;
         fs::file_time_type last_modified;
         tf::Task task;
         // construction_task_state state;

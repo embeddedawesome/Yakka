@@ -19,6 +19,7 @@ namespace bob
         void load_config_file(const std::string config_filename);
         std::string template_render(const std::string input);
         bob_status fetch_registry(const std::string& url );
+        bob_status update_component(const std::string& name );
 
         static void do_fetch_component(const std::string& name, const std::string url, const std::string branch, std::function<void(size_t)> progress_handler);
 

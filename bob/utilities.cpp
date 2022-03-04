@@ -1,6 +1,7 @@
 #include "utilities.hpp"
 #include "subprocess.hpp"
 #include "spdlog/spdlog.h"
+#include <fstream>
 
 namespace bob {
 
@@ -179,5 +180,156 @@ std::string generate_project_name(const component_list_t& components, const feat
         project_name = "none";
 
     return project_name;
+}
+
+/**
+ * @brief Parses dependency files as output by GCC or Clang generating a vector of filenames as found in the named file
+ *
+ * @param filename  Name of the dependency file. Typically ending in '.d'
+ * @return std::vector<std::string>  Vector of files specified as dependencies
+ */
+std::vector<std::string> parse_gcc_dependency_file(const std::string filename)
+{
+    std::vector<std::string> dependencies;
+    std::ifstream infile(filename);
+
+    if (!infile.is_open())
+        return {};
+
+    std::string line;
+
+    // Find and ignore the first line with the target. Typically "<target>: \"
+    do
+    {
+        std::getline(infile, line);
+    } while(line.length() > 0 && line.find(':') == std::string::npos);
+
+    while (std::getline(infile, line, ' '))
+    {
+        if (line.empty() || line.compare("\\\n") == 0)
+            continue;
+        if (line.back() == '\n') line.pop_back();
+        if (line.back() == '\r') line.pop_back();
+        dependencies.push_back(line);
+    }
+
+    return dependencies;
+}
+
+void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node)
+{
+    auto boblog = spdlog::get("boblog");
+    if (!node.IsMap())
+    {
+        boblog->error("Invalid feature node {}", node.as<std::string>());
+        return;
+    }
+
+    for (const auto& i : node)
+    {
+        const std::string item_name = i.first.as<std::string>();
+        YAML::Node        item_node = i.second;
+
+        if ( !merge_target[item_name] )
+        {
+            merge_target[item_name] = item_node;
+        }
+        else
+        {
+            if (item_node.IsScalar())
+            {
+                if (merge_target[item_name].IsScalar())
+                {
+                    YAML::Node new_node;
+                    new_node.push_back(merge_target[item_name]);
+                    new_node.push_back(item_node.Scalar());
+                    merge_target[item_name].reset(new_node);
+                }
+                else if (merge_target[item_name].IsSequence())
+                {
+                    merge_target[item_name].push_back(item_node.Scalar());
+                }
+                else
+                {
+                    boblog->error("Cannot merge scalar and map\nScalar: {}\nMap: {}", i.first.as<std::string>(), merge_target[item_name].as<std::string>());
+                    return;
+                }
+            }
+            else if (item_node.IsSequence())
+            {
+                if (merge_target[item_name].IsMap())
+                {
+                    boblog->error("Cannot merge sequence and map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
+                    return;
+                }
+                if (merge_target[item_name].IsScalar())
+                {
+                    // Convert merge_target from a scalar to a sequence
+                    YAML::Node new_node;
+                    new_node.push_back( merge_target[item_name].Scalar() );
+                    merge_target[item_name] = new_node;
+                }
+                for (auto a : item_node)
+                {
+                    merge_target[item_name].push_back(a);
+                }
+            }
+            else if (item_node.IsMap())
+            {
+                if (!merge_target[item_name].IsMap())
+                {
+                    boblog->error("Cannot merge map and non-map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
+                    return;
+                }
+                auto new_merge = merge_target[item_name];
+                yaml_node_merge(new_merge, item_node);
+            }
+        }
+    }
+}
+
+void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node)
+{
+    auto boblog = spdlog::get("boblog");
+    switch(node.type())
+    {
+        case nlohmann::detail::value_t::object:
+            switch(merge_target.type())
+            {
+                case nlohmann::detail::value_t::object:
+                case nlohmann::detail::value_t::array:
+                default:
+                    boblog->error("Currently not supported"); break;
+            }
+            break;
+        case nlohmann::detail::value_t::array:
+            switch(merge_target.type())
+            {
+                case nlohmann::detail::value_t::object:
+                    boblog->error("Cannot merge array into an object"); break;
+                case nlohmann::detail::value_t::array:
+                    for (auto& i: node)
+                        merge_target.push_back(i);
+                    break;
+                default:
+                    merge_target.push_back(node); break;
+            }
+            break;
+        default:
+            switch(merge_target.type())
+            {
+                case nlohmann::detail::value_t::object:
+                    boblog->error("Cannot merge scalar into an object"); break;
+                case nlohmann::detail::value_t::array:
+                default:
+                    merge_target.push_back(node); break;
+            }
+            break;
+    }
+}
+
+std::string component_dotname_to_id(const std::string dotname)
+{
+    return dotname.find_last_of(".") != std::string::npos ? dotname.substr(dotname.find_last_of(".")+1) : dotname;
 }
 }

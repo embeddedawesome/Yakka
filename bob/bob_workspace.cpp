@@ -138,6 +138,39 @@ namespace bob
         return SUCCESS;
     }
 
+    bob_status workspace::update_component(const std::string& name )
+    {
+        // This function could be async like fetch_component
+        auto boblog = spdlog::get("boblog");
+        auto console = spdlog::get("bobconsole");
+        const std::string git_directory_string = "--git-dir .bob/repos/" + name + "/.git --work-tree components/" + name + " ";
+
+        auto [stash_output, stash_result] = bob::exec(GIT_STRING, git_directory_string + "stash");
+        if (stash_result != 0) 
+        {
+            console->error(stash_output);
+            return FAIL;
+        }
+        boblog->info(stash_output);
+
+        auto [pull_output, pull_result] = bob::exec(GIT_STRING, git_directory_string + "pull --progress");
+        if (pull_result != 0)
+        {
+            boblog->error(pull_output);
+            return FAIL;
+        }
+        boblog->info(pull_output);
+
+        auto [pop_output, pop_result] = bob::exec(GIT_STRING, git_directory_string + "stash pop");
+        if (pop_result != 0)
+        {
+            boblog->error(pop_output);
+            return FAIL;
+        }
+        boblog->info(pop_output);
+        return SUCCESS;
+    }
+
     using namespace std::string_literals;
     void workspace::do_fetch_component(const std::string& name, const std::string url, const std::string branch, std::function<void(size_t)> progress_handler)
     {

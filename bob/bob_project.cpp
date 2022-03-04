@@ -12,7 +12,7 @@ namespace bob
     using namespace std::chrono_literals;
 
 
-    project::project(  const std::string project_name, std::shared_ptr<spdlog::logger> log ) : project_directory("."), bob_home_directory("/.bob"), project_name(project_name)
+    project::project(  const std::string project_name, std::shared_ptr<spdlog::logger> log ) : project_name(project_name), bob_home_directory("/.bob"), project_directory(".")
     {
         this->log = log;
     }
@@ -613,7 +613,6 @@ namespace bob
                 std::istringstream ss(captured_output);
                 std::string line;
                 captured_output = "";
-                int count = 0;
 
                 while (std::getline(ss, line))
                 {
@@ -827,11 +826,9 @@ namespace bob
             std::string filename = try_render(inja_env, command.begin()->second.as<std::string>( ), generated_json, boblog);
             std::ifstream datafile;
             datafile.open(filename, std::ios_base::in | std::ios_base::binary);
-            // datafile.read()
             std::string line;
             while (std::getline(datafile, line))
                 captured_output.append(line);
-            // datafile >> captured_output;
             datafile.close();
             return captured_output;
         };
@@ -866,7 +863,7 @@ namespace bob
             // Check if target is a data dependency
             if (target_name.front() == data_dependency_identifier)
             {
-                task.data(&new_todo->second).work([=]() {
+                task.data(&new_todo->second).work([=, this]() {
                     // log->info("{}: data", target_name);
                     auto d = static_cast<construction_task*>(task.data());
                     d->last_modified = has_data_dependency_changed(target_name) ? fs::file_time_type::max() : fs::file_time_type::min();
@@ -898,9 +895,9 @@ namespace bob
         {
             ++work_task_count;
             auto new_todo = todo_list.insert(std::make_pair(target_name, construction_task()));
-            new_todo->second.blueprint_match = i->second;
+            new_todo->second.match = i->second;
             auto task = taskflow.placeholder();
-            task.data(&new_todo->second).work([=]() {
+            task.data(&new_todo->second).work([=,this]() {
                 // log->info("{}: process", target_name);
                 auto d = static_cast<construction_task*>(task.data());
                 if (d->last_modified != fs::file_time_type::min())
@@ -909,13 +906,13 @@ namespace bob
                     log->info("{} already done", target_name);
                     return;
                 }
-                if (d->blueprint_match)
+                if (d->match)
                 {
                     if (fs::exists(target_name))
                         d->last_modified = fs::last_write_time(target_name);
 
                     // Check if there are no dependencies
-                    if (d->blueprint_match->dependencies.size() == 0)
+                    if (d->match->dependencies.size() == 0)
                     {
                         // If it doesn't exist as a file, run the command
                         if (!fs::exists(target_name))
@@ -924,10 +921,10 @@ namespace bob
                             d->last_modified = fs::file_time_type::clock::now();
                         }
                     }
-                    else if (!d->blueprint_match->blueprint->process.IsNull())
+                    else if (!d->match->blueprint->process.IsNull())
                     {
                         auto max_element = todo_list.end();
-                        for ( auto j: d->blueprint_match->dependencies)
+                        for ( auto j: d->match->dependencies)
                         {
                             auto temp = todo_list.equal_range(j);
                             auto temp_element = std::max_element(temp.first, temp.second, [](auto const& i, auto const& j) { return i.second.last_modified < j.second.last_modified;});
@@ -959,20 +956,20 @@ namespace bob
         }
     }
 
-    static std::pair<std::string, int> run_command( const std::string target, construction_task* task, project* project )
+    std::pair<std::string, int> run_command( const std::string target, construction_task* task, project* project )
     {
         auto boblog = spdlog::get("boblog");
         auto console = spdlog::get("bobconsole");
         std::string captured_output = "";
         inja::Environment inja_env = inja::Environment();
-        auto& blueprint = task->blueprint_match;
+        auto& blueprint = task->match;
 
         inja_env.add_callback("$", 1, [&blueprint](const inja::Arguments& args) {
             return blueprint->regex_matches[ args[0]->get<int>() ];
         });
 
         inja_env.add_callback("curdir", 0, [&blueprint](const inja::Arguments& args) { return blueprint->blueprint->parent_path;});
-        inja_env.add_callback("filesize", 1, [&blueprint](const inja::Arguments& args) { return fs::file_size(args[0]->get<std::string>());});
+        inja_env.add_callback("filesize", 1, [&](const inja::Arguments& args) { return fs::file_size(args[0]->get<std::string>());});
         inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return inja_env.render(args[0]->get<std::string>(), project->project_summary_json);});
         inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
             YAML::Node aggregate;
@@ -1010,13 +1007,18 @@ namespace bob
         for ( const auto command_entry : blueprint->blueprint->process )
         {
             // Take the first entry in the map as the command
-            auto        command      = command_entry.begin();
+            auto              command      = command_entry.begin();
             const std::string command_name = command->first.as<std::string>();
 
             try
             {
-                // Verify tool exists
-                if (project->project_summary["tools"][command_name].IsDefined())
+                // Check if a component has provided a matching tool
+                // Unfortunately YAML-CPP modifies nodes when testing for a child node so we protect this with a lock.
+                // This should be done in a better way.
+                project->project_lock.lock();
+                auto temp = project->project_summary["tools"][command_name];
+                project->project_lock.unlock();
+                if (temp)
                 {
                     YAML::Node tool = project->project_summary["tools"][command_name];
                     std::string command_text = "";
@@ -1041,6 +1043,7 @@ namespace bob
                     // TODO: Note this should be done by the main thread to ensure the outputs from multiple run_command instances don't overlap
                     boblog->info(captured_output);
                 }
+                // Else check if it is a built-in command
                 else if (project->blueprint_commands.find(command_name) != project->blueprint_commands.end()) // To be replaced with .contains() once C++20 is available
                 {
                     captured_output = project->blueprint_commands.at(command_name)( target, command_entry, captured_output, project->project_summary_json, inja_env );
@@ -1066,117 +1069,7 @@ namespace bob
     }
 
 
-    static void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node)
-    {
-        auto boblog = spdlog::get("boblog");
-        switch(node.type())
-        {
-            case nlohmann::detail::value_t::object:
-                switch(merge_target.type())
-                {
-                    case nlohmann::detail::value_t::object:
-                    case nlohmann::detail::value_t::array:
-                    default:
-                        boblog->error("Currently not supported"); break;
-                }
-                break;
-            case nlohmann::detail::value_t::array:
-                switch(merge_target.type())
-                {
-                    case nlohmann::detail::value_t::object:
-                        boblog->error("Cannot merge array into an object"); break;
-                    case nlohmann::detail::value_t::array:
-                        for (auto& i: node)
-                            merge_target.push_back(i);
-                        break;
-                    default:
-                        merge_target.push_back(node); break;
-                }
-                break;
-            default:
-                switch(merge_target.type())
-                {
-                    case nlohmann::detail::value_t::object:
-                        boblog->error("Cannot merge scalar into an object"); break;
-                    case nlohmann::detail::value_t::array:
-                    default:
-                        merge_target.push_back(node); break;
-                }
-                break;
-        }
-    }
-
-    static void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node)
-    {
-        auto boblog = spdlog::get("boblog");
-        if (!node.IsMap())
-        {
-            boblog->error("Invalid feature node {}", node.as<std::string>());
-            return;
-        }
-
-        for (const auto& i : node)
-        {
-            const std::string item_name = i.first.as<std::string>();
-            YAML::Node        item_node = i.second;
-
-            if ( !merge_target[item_name] )
-            {
-                merge_target[item_name] = item_node;
-            }
-            else
-            {
-                if (item_node.IsScalar())
-                {
-                    if (merge_target[item_name].IsScalar())
-                    {
-                        YAML::Node new_node;
-                        new_node.push_back(merge_target[item_name]);
-                        new_node.push_back(item_node.Scalar());
-                        merge_target[item_name].reset(new_node);
-                    }
-                    else if (merge_target[item_name].IsSequence())
-                    {
-                        merge_target[item_name].push_back(item_node.Scalar());
-                    }
-                    else
-                    {
-                        boblog->error("Cannot merge scalar and map\nScalar: {}\nMap: {}", i.first.as<std::string>(), merge_target[item_name].as<std::string>());
-                        return;
-                    }
-                }
-                else if (item_node.IsSequence())
-                {
-                    if (merge_target[item_name].IsMap())
-                    {
-                        boblog->error("Cannot merge sequence and map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
-                        return;
-                    }
-                    if (merge_target[item_name].IsScalar())
-                    {
-                        // Convert merge_target from a scalar to a sequence
-                        YAML::Node new_node;
-                        new_node.push_back( merge_target[item_name].Scalar() );
-                        merge_target[item_name] = new_node;
-                    }
-                    for (auto a : item_node)
-                    {
-                        merge_target[item_name].push_back(a);
-                    }
-                }
-                else if (item_node.IsMap())
-                {
-                    if (!merge_target[item_name].IsMap())
-                    {
-                        boblog->error("Cannot merge map and non-map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
-                        return;
-                    }
-                    auto new_merge = merge_target[item_name];
-                    yaml_node_merge(new_merge, item_node);
-                }
-            }
-        }
-    }
+    
 
 #if 0
     void project::process_construction(indicators::ProgressBar& bar)
@@ -1433,39 +1326,6 @@ namespace bob
         }
     }
 
-    /**
-     * @brief Parses dependency files as output by GCC or Clang generating a vector of filenames as found in the named file
-     *
-     * @param filename  Name of the dependency file. Typically ending in '.d'
-     * @return std::vector<std::string>  Vector of files specified as dependencies
-     */
-    std::vector<std::string> parse_gcc_dependency_file(const std::string filename)
-    {
-        std::vector<std::string> dependencies;
-        std::ifstream infile(filename);
-
-        if (!infile.is_open())
-            return {};
-
-        std::string line;
-
-        // Find and ignore the first line with the target. Typically "<target>: \"
-        do
-        {
-            std::getline(infile, line);
-        } while(line.length() > 0 && line.find(':') == std::string::npos);
-
-        while (std::getline(infile, line, ' '))
-        {
-            if (line.empty() || line.compare("\\\n") == 0)
-                continue;
-            if (line.back() == '\n') line.pop_back();
-            if (line.back() == '\r') line.pop_back();
-            dependencies.push_back(line);
-        }
-
-        return std::move(dependencies);
-    }
 
     /**
      * @brief Returns the path corresponding to the home directory of BOB
