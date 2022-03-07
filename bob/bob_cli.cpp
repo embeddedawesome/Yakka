@@ -44,7 +44,6 @@ int main(int argc, char **argv)
     options.positional_help("<action> [optional args]");
     options.add_options()
         ("h,help", "Print usage")
-        ("l,list", "List known components", cxxopts::value<bool>()->default_value("false"))
         ("r,refresh", "Refresh component database", cxxopts::value<bool>()->default_value("false"))
         ("f,fetch", "Fetch missing components", cxxopts::value<bool>()->default_value("false"))
         ("action",  "action", cxxopts::value<std::string>());
@@ -64,14 +63,6 @@ int main(int argc, char **argv)
         bob::component_database db;
         db.save();
         std::cout << "Scan complete. " << bob::component_database::database_filename << " has been updated" << std::endl;
-    }
-    if (result["list"].as<bool>())
-    {
-        bob::component_database db;
-        for (const auto& c: db)
-        {
-            std::cout << c.first << ":\n  " << c.second << std::endl;
-        }
     }
     if (result["fetch"].as<bool>())
     {
@@ -102,12 +93,18 @@ int main(int argc, char **argv)
     }
     else if (action == "list")
     {
+        bob::component_database db;
         workspace.load_component_registries();
         for (auto registry: workspace.registries)
         {
             std::cout << registry.second["name"] << "\n";
             for (auto c: registry.second["provides"]["components"])
+            {
                 std::cout << "  - " << c.first << "\n";
+                // auto instance = db[c.first.as<std::string>()];
+                // if (instance)
+                //     std::cout << instance << "\n";
+            }
         }
         return 0;
     }
