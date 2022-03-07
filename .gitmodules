@@ -42,3 +42,15 @@
 	path = components/taskflow/master
 	url = https://github.com/taskflow/taskflow.git
 	branch = master
+[submodule "components/cryptopp/master"]
+	path = components/cryptopp/master
+	url = https://github.com/weidai11/cryptopp.git
+	branch = master
+[submodule "components/glob/master"]
+	path = components/glob/master
+	url = https://github.com/p-ranav/glob.git
+	branch = master
+[submodule "components/fmtlib/master"]
+	path = components/fmtlib/master
+	url = https://github.com/fmtlib/fmt.git
+	branch = master
