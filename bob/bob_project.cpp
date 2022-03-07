@@ -608,6 +608,7 @@ namespace bob
 
         blueprint_commands["regex"] = []( std::string target, const YAML::Node& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> std::string {
             std::regex regex_search(command["search"].as<std::string>());
+            auto boblog = spdlog::get("boblog");
             if (command["split"])
             {
                 std::istringstream ss(captured_output);
@@ -637,9 +638,13 @@ namespace bob
                   }
                 }
             }
-            else
+            else if (command["replace"])
             {
                 captured_output = std::regex_replace(captured_output, regex_search, command["replace"].as<std::string>());
+            }
+            else
+            {
+                boblog->error("'regex' command does not have enough information");
             }
             return captured_output;
         };
