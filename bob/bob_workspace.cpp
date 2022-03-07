@@ -154,19 +154,9 @@ namespace bob
         boblog->info(stash_output);
 
         auto [pull_output, pull_result] = bob::exec(GIT_STRING, git_directory_string + "pull --progress");
-        if (pull_result != 0)
-        {
-            boblog->error(pull_output);
-            return FAIL;
-        }
         boblog->info(pull_output);
 
         auto [pop_output, pop_result] = bob::exec(GIT_STRING, git_directory_string + "stash pop");
-        if (pop_result != 0)
-        {
-            boblog->error(pop_output);
-            return FAIL;
-        }
         boblog->info(pop_output);
         return SUCCESS;
     }
