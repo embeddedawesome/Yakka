@@ -326,9 +326,6 @@ namespace bob
                 std::string blueprint_string = try_render(inja_environment,  b.second["regex"] ? b.second["regex"].Scalar() : b.first.Scalar( ), project_summary_json, log);
                 log->info("Blueprint: {}", blueprint_string);
                 blueprint_database.blueprints.insert({blueprint_string, std::make_shared<blueprint>(blueprint_string, b.second, c.second["directory"].Scalar())});
-                
-                // b.second["bob_parent_path"] = c.second["directory"];
-                // blueprint_list.insert( blueprint_list.end( ), { blueprint_string, b.second } );
             }
     }
 
@@ -536,15 +533,17 @@ namespace bob
                     // Load the generated dependency string as YAML and push each item individually
                     try {
                         auto generated_node = YAML::Load( generated_depend );
-                        for ( auto i : generated_node )
-                            match->dependencies.push_back( i.Scalar( ) );
+                        for ( auto i : generated_node ) {
+                            auto temp = i.Scalar();
+                            match->dependencies.push_back( temp.starts_with("./") ? temp.substr(2) : temp );
+                        }
                     } catch ( std::exception& e ) {
                         std::cerr << "Failed to parse dependency: " << d.name << "\n";
                     }
                 }
                 else
                 {
-                    match->dependencies.push_back( generated_depend );
+                    match->dependencies.push_back( generated_depend.starts_with("./") ? generated_depend.substr(2) : generated_depend );
                 }
             }
 
@@ -1073,233 +1072,6 @@ namespace bob
         return {captured_output, 0};
     }
 
-
-    
-
-#if 0
-    void project::process_construction(indicators::ProgressBar& bar)
-    {
-        auto boblog = spdlog::get("boblog");
-        typedef enum
-        {
-            nothing_to_do,
-            dependency_not_ready,
-            dependency_failed,
-            set_to_complete,
-            execute_process,
-        } blueprint_status;
-        int loop_count = 0;
-        bool something_updated = true;
-        const auto construction_start_time = fs::file_time_type::clock::now();
-        int starting_size = todo_list.size( );
-        int completed_tasks = 0;
-
-        if ( todo_list.size( ) == 0 )
-            return;
-
-        std::vector<std::shared_ptr<construction_task>> running_tasks;
-
-        // Process all the stuff to be built
-        boblog->info("------ Building ------");
-        boblog->info("{} items left to construct", todo_list.size());
-
-    #if defined(CONSTRUCTION_LIST_DUMP)
-        for (auto a: construction_list) std::cout << "- " << a.first << "\n";
-    #endif
-
-        // loop through list
-        int loop = 0;
-        int last_progress_update = 0;
-        auto i = todo_list.begin();
-        while ( todo_list.size() != 0 )
-        {
-            ++loop;
-
-            while (running_tasks.size() >= std::thread::hardware_concurrency())
-            {
-                // Update the modified times of the construction items
-                for (auto a = running_tasks.begin(); a != running_tasks.end();)
-                {
-                    if ( a->get()->thread_result.wait_for(0ms) == std::future_status::ready )
-                    {
-                        auto result = a->get()->thread_result.get();
-                        if (result.second == 0)
-                        {
-                            boblog->info( "{}: Done with {}", a->get()->blueprint->blueprint->target, result.second);
-                            a->get()->last_modified = construction_start_time;
-                            a->get()->state = bob_task_up_to_date;
-                        }
-                        else
-                        {
-                            boblog->error( "{}: Failed", a->get()->blueprint->blueprint->target);
-                            a->get()->state = bob_task_failed;
-                        }
-                        a = running_tasks.erase( a );
-                        ++completed_tasks;
-                    }
-                    else
-                        ++a;
-                }
-            }
-
-            int progress = (100 * completed_tasks)/starting_size;
-            if (progress != last_progress_update)
-            {
-                bar.set_progress(progress);
-                last_progress_update = progress;
-            }
-
-            // Check if we've done a pass through all the items in the construction list
-            if ( i == todo_list.end( ) )
-            {
-                if (running_tasks.size() == 0 && something_updated == false )
-                    break;
-
-                // Update the modified times of the construction items
-                for (auto a = running_tasks.begin(); a != running_tasks.end();)
-                {
-                    if ( a->get()->thread_result.wait_for(0ms) == std::future_status::ready )
-                    {
-                        auto result = a->get()->thread_result.get();
-                        if (result.second == 0)
-                        {
-                            boblog->info( "{}: Done with result {}", a->get()->blueprint->blueprint->target, result.second);
-                            a->get()->last_modified = construction_start_time;
-                            a->get()->state = bob_task_up_to_date;
-                        }
-                        else
-                        {
-                            boblog->error( "{}: Failed", a->get()->blueprint->blueprint->target);
-                            a->get()->state = bob_task_failed;
-                        }
-                        a = running_tasks.erase( a );
-                        ++completed_tasks;
-                    }
-                    else
-                        ++a;
-                }
-
-                // Reset iterator back to the start of the list and continue
-                i = todo_list.begin( );
-                something_updated = false;
-            }
-
-            auto task_list = construction_list.equal_range(*i);
-
-            // Check validity of task_list
-            if ( task_list.first == construction_list.cend( ) )
-            {
-                boblog->info("Couldn't find '{}' in construction list", *i);
-                i = todo_list.erase(i);
-                continue;
-            }
-
-            auto is_task_complete = [task_list]() -> bool {
-                for(auto i = task_list.first; i != task_list.second; ++i)
-                {
-                    if (i->second->state == bob_task_failed)
-                        return true;
-                    if (i->second->state != bob_task_up_to_date)
-                        return false;
-                }
-                return true;
-            };
-
-            auto get_task_status = [this](construction_task& task) -> blueprint_status {
-                blueprint_status status = task.last_modified == fs::file_time_type::min() ? execute_process : set_to_complete;
-                if (task.blueprint)
-                    for ( const auto& d: task.blueprint->dependencies )
-                    {
-                        for (auto [start,end] = this->construction_list.equal_range(d); start != end; ++start)
-                        {
-                            if ( start->second->state == bob_task_failed)
-                                return dependency_failed;
-                            if ( start->second->state != bob_task_up_to_date)
-                                return dependency_not_ready;
-                            if ( (start->second->last_modified > task.last_modified ) && ( task.blueprint->blueprint->process.size() != 0) )
-                            {
-//                                log->info("{} needs to be updated because of {} at time {} vs {}", task.blueprint->target, start->second->blueprint->target, start->second->last_modified.time_since_epoch().count(), task.last_modified.time_since_epoch().count());
-                                status = execute_process;
-                            }
-                        }
-                    }
-                return status;
-            };
-
-            // Check if the target needs, and is ready for, processing
-            if (is_task_complete())
-            {
-                something_updated = true;
-//                std::cout << "Finished with: " << *i << std::endl;
-                i = todo_list.erase(i);
-                continue;
-            }
-
-            for (auto t=task_list.first; t != task_list.second; ++t)
-            {
-                if (t->second->state != bob_task_to_be_done)
-                    continue;
-
-                // Check if this task is a data dependency target
-                if (t->first.front() == data_dependency_identifier)
-                {
-                    if (has_data_dependency_changed(t->first))
-                        t->second->last_modified = construction_start_time;
-                    t->second->state = bob_task_up_to_date;
-                    something_updated = true;
-                    continue;
-                }
-
-                switch ( get_task_status( *(t->second) ) )
-                {
-                    case set_to_complete:
-                        t->second->state = bob_task_up_to_date;
-                        if (starting_size > 1) --starting_size;
-                        something_updated = true;
-                        break;
-                    case execute_process:
-                        something_updated = true;
-                        if ( t->second->blueprint->blueprint->process.size() != 0)
-                        {
-                            boblog->info( "{}: Executing blueprint", t->second->blueprint->blueprint->target);
-                            t->second->thread_result = std::async(std::launch::async | std::launch::deferred, run_command, t->second, this);
-                            running_tasks.push_back(t->second);
-                            t->second->state = bob_task_executing;
-                        }
-                        else
-                            t->second->state = bob_task_up_to_date;
-                        break;
-                    case dependency_failed:
-                        t->second->state = bob_task_failed;
-                        if (starting_size > 1) --starting_size;
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            i++;
-        }
-
-        bar.set_progress(100);
-        // bar.mark_as_completed();
-
-        for (auto& a: todo_list )
-        {
-            boblog->info( "Couldn't build: {}", a);
-            for (auto entries = this->construction_list.equal_range(a); entries.first != entries.second; ++entries.first)
-            {
-                boblog->info( "\tstate={}", entries.first->second->state);
-                for (const auto& b: entries.first->second->blueprint->dependencies)
-                    boblog->info( "\t{}", b);
-            }
-        }
-
-        for (auto a: construction_list)
-            if (a.second->state == bob_task_to_be_done )
-                boblog->info("{}", a.first);
-    }
-    #endif
 
     /**
      * @brief Save to disk the content of the @ref project_summary to bob_summary.yaml and bob_summary.json

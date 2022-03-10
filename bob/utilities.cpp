@@ -210,7 +210,7 @@ std::vector<std::string> parse_gcc_dependency_file(const std::string filename)
             continue;
         if (line.back() == '\n') line.pop_back();
         if (line.back() == '\r') line.pop_back();
-        dependencies.push_back(line);
+        dependencies.push_back(line.starts_with("./") ? line.substr(2) : line);
     }
 
     return dependencies;
