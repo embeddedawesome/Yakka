@@ -141,6 +141,9 @@ int main(int argc, char **argv)
         else 
         {
             components.insert(s);
+
+            // Compose the project name by concatenation all the components in CLI order.
+            // The features will be added at the end
             project_name += s + "-";
         }
     }
@@ -151,7 +154,12 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    // Remove the extra "-"
     project_name.pop_back();
+
+    // Add features to the project name
+    for (const auto& f: features)
+        project_name += "+" + f;
 
     workspace.init();
 
