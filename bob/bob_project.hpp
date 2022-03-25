@@ -46,7 +46,7 @@ namespace bob
         void process_build_string(const std::string build_string);
         YAML::Node get_project_summary();
         void parse_project_string( const std::vector<std::string>& project_string );
-        void process_requirements(YAML::Node& node, const std::string feature);
+        void process_requirements(YAML::Node& component, YAML::Node child_node);
         state evaluate_dependencies();
         std::optional<fs::path> find_component(const std::string component_dotname);
 
@@ -79,6 +79,7 @@ namespace bob
         // Component processing
         std::unordered_set<std::string> unprocessed_components;
         std::unordered_set<std::string> unprocessed_features;
+        std::unordered_set<std::string> required_components;
         std::unordered_set<std::string> required_features;
         std::unordered_set<std::string> commands;
         std::unordered_set<std::string> unknown_components;

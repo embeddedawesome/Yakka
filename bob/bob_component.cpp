@@ -52,8 +52,13 @@ namespace bob
             if (n.Scalar().front() == '.')
                 n.first = n.as<std::string>().insert(0, path_string);
 
-        for( auto f: yaml["supports"])
+        for( auto f: yaml["supports"]["features"])
             for( auto n: f["requires"]["components"])
+                if (n.Scalar().front() == '.')
+                    n.first = n.as<std::string>().insert(0, path_string);
+
+        for( auto c: yaml["supports"]["components"])
+            for( auto n: c["requires"]["components"])
                 if (n.Scalar().front() == '.')
                     n.first = n.as<std::string>().insert(0, path_string);
 
