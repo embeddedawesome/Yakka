@@ -477,12 +477,16 @@ namespace bob
             match->blueprint = blueprint.second;
 
             inja::Environment local_inja_env;
-            local_inja_env.add_callback("$", 1, [&match](const inja::Arguments& args) {
-                        return match->regex_matches[ args[0]->get<int>() ];
-                    });
-
+            local_inja_env.add_callback("$", 1, [&match](const inja::Arguments& args) { return match->regex_matches[ args[0]->get<int>() ];});
             local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match->blueprint->parent_path;});
+            local_inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
+            local_inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
+            local_inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
             local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return local_inja_env.render(args[0]->get<std::string>(), this->project_summary_json);});
+            local_inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) { 
+                auto file = std::ifstream(args[0]->get<std::string>()); 
+                return std::string{std::istreambuf_iterator<char>{file}, {}};
+            });
             local_inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
                 YAML::Node aggregate;
                 const std::string path = args[0]->get<std::string>();
@@ -610,7 +614,7 @@ namespace bob
             }
             catch (std::exception& e)
             {
-                boblog->error( "Failed to execute: {}", temp);
+                boblog->error( "Failed to execute: {}\n{}", temp, e.what());
                 captured_output = "";
                 return "";
             }
