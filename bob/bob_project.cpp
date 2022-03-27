@@ -674,31 +674,25 @@ namespace bob
             auto boblog = spdlog::get("boblog");
             try
             {
-                if (command["file"])
-                {
-                    std::string filename = try_render(inja_env, command["file"].as<std::string>(), generated_json, boblog);
-
-                    try
-                    {
-                        if (command["data"])
-                        {
-                            std::string data_filename = try_render(inja_env, command["data"].as<std::string>(), generated_json, boblog);
-                            YAML::Node data = YAML::LoadFile(data_filename);
-                            captured_output = inja_env.render_file(filename, data.as<nlohmann::json>());
-                        }
-                        else
-                            captured_output = inja_env.render_file(filename, generated_json);
-                    }
-                    catch(std::exception&e )
-                    {
-                        boblog->error("Template error in {}: {}", filename, e.what());
-                    }
-                }
+                std::string template_string;
+                std::string template_filename;
+                nlohmann::json data;
+                if (command["template_file"])
+                    template_filename = try_render(inja_env, command["template_file"].as<std::string>(), generated_json, boblog);
                 else
+                    template_string = (command["template"]) ? command["template"].Scalar() : command["inja"].Scalar();
+
+                if (command["data_file"])
                 {
-                    const auto& node = (command["template"]) ? command["template"] : command["inja"];
-                    captured_output = try_render(inja_env, node.Scalar(), generated_json, boblog);
+                    std::string data_filename = try_render(inja_env, command["data_file"].as<std::string>(), generated_json, boblog);
+                    YAML::Node data_yaml = YAML::LoadFile(data_filename);
+                    data = data_yaml.as<nlohmann::json>();
                 }
+
+                if (template_filename.empty())
+                    captured_output = try_render(inja_env, template_string, data.is_null() ? generated_json : data, boblog);
+                else
+                    captured_output = inja_env.render_file(template_filename, data.is_null() ? generated_json : data);
             }
             catch (std::exception &e)
             {
