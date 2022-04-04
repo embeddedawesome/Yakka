@@ -41,6 +41,7 @@ int main(int argc, char **argv)
     bob::workspace workspace;
 
     cxxopts::Options options("bob", "BOB the universal builder. Ver " + bob_version.to_string());
+    options.allow_unrecognised_options();
     options.positional_help("<action> [optional args]");
     options.add_options()
         ("h,help", "Print usage")
@@ -120,6 +121,18 @@ int main(int argc, char **argv)
             }
 
         std::cout << "Complete\n";
+        return 0;
+    }
+    else if (action == "git")
+    {
+        auto iter = result.unmatched().begin();
+        const auto component_name = *iter;
+        std::string git_command = "--git-dir=.bob/repos/" + component_name + "/.git --work-tree=components/" + component_name;
+        for (iter++ ; iter != result.unmatched().end(); ++iter)
+            git_command.append( " " + *iter);
+
+        auto [output, result] = bob::exec("git", git_command);
+        std::cout << output;
         return 0;
     }
 
@@ -317,7 +330,7 @@ int main(int argc, char **argv)
             std::to_string(execution_progress) + "/" + std::to_string(project.work_task_count)
         });
         building_bar.set_progress(execution_progress);
-    } while (execution_future.wait_for(100ms) != std::future_status::ready);
+    } while (execution_future.wait_for(500ms) != std::future_status::ready);
 
     building_bar.set_option(option::PostfixText{
         std::to_string(project.work_task_count) + "/" + std::to_string(project.work_task_count)
