@@ -350,129 +350,131 @@ std::string try_render(inja::Environment& env, const std::string& input, const n
 
 /**
  * @brief Returns the path corresponding to the home directory of BOB
- *        Typically this would be ~/.bob or /Users/<username>/.bob or $HOME/.bob
+ *        Typically this would be ~/.yakka or /Users/<username>/.yakka or $HOME/.yakka
  * @return std::string
  */
 std::string get_bob_home()
 {
     std::string home = !std::getenv("HOME") ? std::getenv("HOME") : std::getenv("USERPROFILE");
-    return home + "/.bob";
+    return home + "/.yakka";
 }
 
 std::pair<std::string, int> run_command( const std::string target, construction_task* task, project* project )
-    {
-        auto boblog = spdlog::get("boblog");
-        auto console = spdlog::get("bobconsole");
-        std::string captured_output = "";
-        inja::Environment inja_env = inja::Environment();
-        auto& blueprint = task->match;
+{
+    auto boblog = spdlog::get("boblog");
+    auto console = spdlog::get("bobconsole");
+    std::string captured_output = "";
+    inja::Environment inja_env = inja::Environment();
+    auto& blueprint = task->match;
 
-        inja_env.add_callback("$", 1, [&blueprint](const inja::Arguments& args) { return blueprint->regex_matches[ args[0]->get<int>() ];});
-        inja_env.add_callback("curdir", 0, [&blueprint](const inja::Arguments& args) { return blueprint->blueprint->parent_path;});
-        inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
-        inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
-        inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});
-        inja_env.add_callback("filesize", 1, [&](const inja::Arguments& args) { return fs::file_size(args[0]->get<std::string>());});
-        inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return inja_env.render(args[0]->get<std::string>(), project->project_summary_json);});
-        inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) { 
-            auto file = std::ifstream(args[0]->get<std::string>()); 
-            return std::string{std::istreambuf_iterator<char>{file}, {}};
-        });
-        inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
-            YAML::Node aggregate;
-            const std::string path = args[0]->get<std::string>();
-            // Loop through components, check if object path exists, if so add it to the aggregate
-            for (const auto& c: project->project_summary["components"])
-            {
-                auto v = yaml_path(c.second, path);
-                if (!v)
-                    continue;
-                
-                if (v.IsMap())
-                    for (const auto& i: v)
-                    {
-                        project->project_lock.lock();
-                        aggregate[i.first.Scalar()] = i.second; //inja_env.render(i.second.as<std::string>(), project->project_summary_json);
-                        project->project_lock.unlock();
-                    }
-                else if (v.IsSequence())
-                    for (auto i: v)
-                        aggregate.push_back(inja_env.render(i.as<std::string>(), project->project_summary_json));
-                else
-                    aggregate.push_back(inja_env.render(v.as<std::string>(), project->project_summary_json));
-            }
-            if (aggregate.IsNull())
-                return nlohmann::json();
-            else
-                return aggregate.as<nlohmann::json>();
-        });
-
-
-        std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-
-        // Note: A blueprint process is a sequence of maps
-        for ( const auto command_entry : blueprint->blueprint->process )
+    inja_env.add_callback("$", 1, [&blueprint](const inja::Arguments& args) { return blueprint->regex_matches[ args[0]->get<int>() ];});
+    inja_env.add_callback("curdir", 0, [&blueprint](const inja::Arguments& args) { return blueprint->blueprint->parent_path;});
+    inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
+    inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
+    inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});
+    inja_env.add_callback("filesize", 1, [&](const inja::Arguments& args) { return fs::file_size(args[0]->get<std::string>());});
+    inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return inja_env.render(args[0]->get<std::string>(), project->project_summary_json);});
+    inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) { 
+        auto file = std::ifstream(args[0]->get<std::string>()); 
+        return std::string{std::istreambuf_iterator<char>{file}, {}};
+    });
+    inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
+        YAML::Node aggregate;
+        const std::string path = args[0]->get<std::string>();
+        // Loop through components, check if object path exists, if so add it to the aggregate
+        for (const auto& c: project->project_summary["components"])
         {
-            // Take the first entry in the map as the command
-            auto              command      = command_entry.begin();
-            const std::string command_name = command->first.as<std::string>();
-
-            try
-            {
-                // Check if a component has provided a matching tool
-                // Unfortunately YAML-CPP modifies nodes when testing for a child node so we protect this with a lock.
-                // This should be done in a better way.
-                project->project_lock.lock();
-                auto temp = project->project_summary["tools"][command_name];
-                project->project_lock.unlock();
-                if (temp)
+            auto v = yaml_path(c.second, path);
+            if (!v)
+                continue;
+            
+            if (v.IsMap())
+                for (const auto& i: v)
                 {
-                    YAML::Node tool = project->project_summary["tools"][command_name];
-                    std::string command_text = "";
-
-                    command_text.append( tool.as<std::string>( ) );
-
-                    std::string arg_text = command->second.as<std::string>( );
-
-                    // Apply template engine
-                    arg_text = try_render(inja_env, arg_text, project->project_summary_json, boblog);
-
-                    auto[temp_output, retcode] = exec(command_text, arg_text);
-
-                    if (retcode != 0)
-                    {
-                      console->error( temp_output );
-                      boblog->error("Returned {}\n{}",retcode, temp_output);
-                      return {temp_output, retcode};
-                    }
-                    captured_output = temp_output;
-                    // Echo the output of the command
-                    // TODO: Note this should be done by the main thread to ensure the outputs from multiple run_command instances don't overlap
-                    boblog->info(captured_output);
+                    project->project_lock.lock();
+                    aggregate[i.first.Scalar()] = i.second; //inja_env.render(i.second.as<std::string>(), project->project_summary_json);
+                    project->project_lock.unlock();
                 }
-                // Else check if it is a built-in command
-                else if (project->blueprint_commands.find(command_name) != project->blueprint_commands.end()) // To be replaced with .contains() once C++20 is available
-                {
-                    captured_output = project->blueprint_commands.at(command_name)( target, command_entry, captured_output, project->project_summary_json, inja_env );
-                }
-                else
-                {
-                    boblog->error("{} tool doesn't exist", command_name);
-                }
-
-            }
-            catch ( std::exception& e )
-            {
-                boblog->error("Failed to run command: '{}' as part of {}", command_name, target);
-                boblog->info( "Failed to run: {}", command_entry.Scalar());
-                throw e;
-            }
+            else if (v.IsSequence())
+                for (auto i: v)
+                    aggregate.push_back(inja_env.render(i.as<std::string>(), project->project_summary_json));
+            else
+                aggregate.push_back(inja_env.render(v.as<std::string>(), project->project_summary_json));
         }
+        if (aggregate.IsNull())
+            return nlohmann::json();
+        else
+            return aggregate.as<nlohmann::json>();
+    });
 
-        std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-        boblog->info( "{}: {} milliseconds", target, duration);
-        return {captured_output, 0};
+
+    std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+
+    // Note: A blueprint process is a sequence of maps
+    for ( const auto command_entry : blueprint->blueprint->process )
+    {
+        // Take the first entry in the map as the command
+        auto              command      = command_entry.begin();
+        const std::string command_name = command->first.as<std::string>();
+
+        try
+        {
+            // Check if a component has provided a matching tool
+            // Unfortunately YAML-CPP modifies nodes when testing for a child node so we protect this with a lock.
+            // This should be done in a better way.
+            YAML::Node temp;
+            {
+                std::lock_guard<std::mutex> lock(project->project_lock);
+                temp = project->project_summary["tools"][command_name];
+            }
+            if (temp)
+            {
+                YAML::Node tool = project->project_summary["tools"][command_name];
+                std::string command_text = "";
+
+                command_text.append( tool.as<std::string>( ) );
+
+                std::string arg_text = command->second.as<std::string>( );
+
+                // Apply template engine
+                arg_text = try_render(inja_env, arg_text, project->project_summary_json, boblog);
+
+                auto[temp_output, retcode] = exec(command_text, arg_text);
+
+                if (retcode != 0)
+                {
+                    console->error( temp_output );
+                    boblog->error("Returned {}\n{}",retcode, temp_output);
+                    return {temp_output, retcode};
+                }
+                captured_output = temp_output;
+                // Echo the output of the command
+                // TODO: Note this should be done by the main thread to ensure the outputs from multiple run_command instances don't overlap
+                boblog->info(captured_output);
+            }
+            // Else check if it is a built-in command
+            else if (project->blueprint_commands.find(command_name) != project->blueprint_commands.end()) // To be replaced with .contains() once C++20 is available
+            {
+                captured_output = project->blueprint_commands.at(command_name)( target, command_entry, captured_output, project->project_summary_json, inja_env );
+            }
+            else
+            {
+                boblog->error("{} tool doesn't exist", command_name);
+            }
+
+        }
+        catch ( std::exception& e )
+        {
+            boblog->error("Failed to run command: '{}' as part of {}", command_name, target);
+            boblog->info( "Failed to run: {}", command_entry.Scalar());
+            throw e;
+        }
     }
+
+    std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+    boblog->info( "{}: {} milliseconds", target, duration);
+    return {captured_output, 0};
+}
 
 }

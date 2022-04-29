@@ -6,7 +6,7 @@
 
 namespace bob
 {
-    const std::string component_database::database_filename = "bob-components.yaml";
+    const std::string component_database::database_filename = "yakka-components.yaml";
 
     component_database::component_database( fs::path project_home )
     {

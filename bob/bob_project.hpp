@@ -49,6 +49,7 @@ namespace bob
         void process_requirements(YAML::Node& component, YAML::Node child_node);
         state evaluate_dependencies();
         std::optional<fs::path> find_component(const std::string component_dotname);
+        void evaluate_choices();
 
         void parse_blueprints();
         void update_summary();
@@ -106,6 +107,9 @@ namespace bob
         // std::vector<std::string> todo_list;
         // std::map<std::string, tf::Task> tasks;
         tf::Taskflow taskflow;
+
+        std::vector<std::string> incomplete_choices;
+        std::vector<std::string> multiple_answer_choices;
 
         std::mutex project_lock;
 

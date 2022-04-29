@@ -1,5 +1,5 @@
-/* A BOB workspace is identified by a .bob folder
- * The .bob folder holds information about locally available components, and remote registries
+/* A BOB workspace is identified by a .yakka folder
+ * The .yakka folder holds information about locally available components, and remote registries
  */
 #include "bob.hpp"
 #include "bob_workspace.hpp"
@@ -27,20 +27,20 @@ namespace bob
     {
         log = spdlog::get("boblog");
 
-        if (!fs::exists(".bob/registries"))
-            fs::create_directories(".bob/registries");
+        if (!fs::exists(".yakka/registries"))
+            fs::create_directories(".yakka/registries");
 
-        if (!fs::exists(".bob/repos"))
-            fs::create_directories(".bob/repos");
+        if (!fs::exists(".yakka/repos"))
+            fs::create_directories(".yakka/repos");
     }
 
     void workspace::load_component_registries()
     {
-        // Verify the .bob/registries path exists
-        if (!fs::exists(workspace_directory + "/.bob/registries"))
+        // Verify the .yakka/registries path exists
+        if (!fs::exists(workspace_directory + "/.yakka/registries"))
             return;
 
-        for ( const auto& p : fs::recursive_directory_iterator( workspace_directory + "/.bob/registries") )
+        for ( const auto& p : fs::recursive_directory_iterator( workspace_directory + "/.yakka/registries") )
             if ( p.path().extension().generic_string() == ".yaml" )
                 try
                 {
@@ -127,7 +127,7 @@ namespace bob
     bob_status workspace::fetch_registry(const std::string& url )
     {
         auto boblog = spdlog::get("boblog");
-        const std::string fetch_string = "-C .bob/registries/ clone " + url + " --progress --single-branch";
+        const std::string fetch_string = "-C .yakka/registries/ clone " + url + " --progress --single-branch";
         auto [output, result] = bob::exec(GIT_STRING, fetch_string);
 
         boblog->info("{}", output);
@@ -143,7 +143,7 @@ namespace bob
         // This function could be async like fetch_component
         auto boblog = spdlog::get("boblog");
         auto console = spdlog::get("bobconsole");
-        const std::string git_directory_string = "--git-dir .bob/repos/" + name + "/.git --work-tree components/" + name + " ";
+        const std::string git_directory_string = "--git-dir .yakka/repos/" + name + "/.git --work-tree components/" + name + " ";
 
         auto [stash_output, stash_result] = bob::exec(GIT_STRING, git_directory_string + "stash");
         if (stash_result != 0) 
@@ -176,7 +176,7 @@ namespace bob
 
         // Of the total time to fetch a Git repo, 10% is allocated to counting, 10% to compressing, and 80% to receiving.
         static const int phase_rates[] = {0, 10, 20, 75, 90};
-        const std::string fetch_string = "-C "s + ".bob"s + "/repos/ clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
+        const std::string fetch_string = "-C "s + ".yakka"s + "/repos/ clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
 
         auto t1 = std::chrono::high_resolution_clock::now();
         bob::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
@@ -204,7 +204,7 @@ namespace bob
 
         if (!fs::exists("components/" + name))
             fs::create_directories("components/" + name);
-        const std::string checkout_string     = "--git-dir "s + ".bob"s + "/repos/" + name + "/.git --work-tree components/" + name + " checkout " + branch + " --force";
+        const std::string checkout_string     = "--git-dir "s + ".yakka"s + "/repos/" + name + "/.git --work-tree components/" + name + " checkout " + branch + " --force";
 
         // Checkout instance
         t1 = std::chrono::high_resolution_clock::now();

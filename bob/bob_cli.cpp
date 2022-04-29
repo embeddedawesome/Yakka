@@ -29,18 +29,18 @@ int main(int argc, char **argv)
 
     // Setup logging
     std::error_code error_code;
-    fs::remove("bob.log", error_code);
+    fs::remove("yakka.log", error_code);
 
     auto console = spdlog::stderr_color_mt("bobconsole");
     console->flush_on(spdlog::level::level_enum::off);
     console->set_pattern("[%^%l%$]: %v");
     //spdlog::set_async_mode(4096);
-    auto boblog = spdlog::basic_logger_mt("boblog", "bob.log");
+    auto boblog = spdlog::basic_logger_mt("boblog", "yakka.log");
 
     // Create a workspace
     bob::workspace workspace;
 
-    cxxopts::Options options("bob", "BOB the universal builder. Ver " + bob_version.to_string());
+    cxxopts::Options options("yakka", "Yakka the embedded builder. Ver " + bob_version.to_string());
     options.allow_unrecognised_options();
     options.positional_help("<action> [optional args]");
     options.add_options()
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     if (result["fetch"].as<bool>())
     {
       // Ensure the BOB repos directory exists
-      fs::create_directories(".bob/repos");
+      fs::create_directories(".yakka/repos");
     }
 
     if (!result.count("action"))
@@ -83,13 +83,14 @@ int main(int argc, char **argv)
             return -1;
         }
         // Ensure the BOB registries directory exists
-        fs::create_directories(".bob/registries");
+        fs::create_directories(".yakka/registries");
+        console->info("Adding component registry...");
         if (workspace.add_component_registry(result.unmatched()[0]) != bob::bob_status::SUCCESS)
         {
-            console->error("Failed to add component registry. See bob.log for details");
+            console->error("Failed to add component registry. See yakka.log for details");
             return -1;
         }
-
+        console->info("Complete");
         return 0;
     }
     else if (action == "list")
@@ -111,8 +112,8 @@ int main(int argc, char **argv)
     }
     else if (action == "update")
     {
-        // Find all the component repos in .bob
-        for (auto d: fs::directory_iterator(".bob/repos"))
+        // Find all the component repos in .yakka
+        for (auto d: fs::directory_iterator(".yakka/repos"))
             if (d.is_directory())
             {
                 const auto name = d.path().filename().generic_string();
@@ -127,9 +128,12 @@ int main(int argc, char **argv)
     {
         auto iter = result.unmatched().begin();
         const auto component_name = *iter;
-        std::string git_command = "--git-dir=.bob/repos/" + component_name + "/.git --work-tree=components/" + component_name;
+        std::string git_command = "--git-dir=.yakka/repos/" + component_name + "/.git --work-tree=components/" + component_name;
         for (iter++ ; iter != result.unmatched().end(); ++iter)
-            git_command.append( " " + *iter);
+            if (iter->find(' ') == std::string::npos)
+                git_command.append( " " + *iter);
+            else
+                git_command.append( " \"" + *iter + "\"");
 
         auto [output, result] = bob::exec("git", git_command);
         std::cout << output;
@@ -285,6 +289,38 @@ int main(int argc, char **argv)
     auto t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
     boblog->info("{}ms to process components", duration);
+
+    project.evaluate_choices();
+
+    if (!project.incomplete_choices.empty())
+    {
+        for (auto a: project.incomplete_choices)
+        {
+            console->error("Choice {} - Must choose from the following", a);
+            if (project.project_summary["choices"][a]["features"])
+            {
+                console->error("Features: ");
+                for (auto b: project.project_summary["choices"][a]["features"])
+                    console->error("  - {}", b.Scalar());
+            }
+
+            if (project.project_summary["choices"][a]["components"])
+            {
+                console->error("Components: ");
+                for (auto b: project.project_summary["choices"][a]["components"])
+                    console->error("  - {}", b.Scalar());
+            }
+        }
+        return -1;
+    }
+    if (!project.multiple_answer_choices.empty())
+    {
+        for (auto a: project.multiple_answer_choices)
+        {
+            console->error("Choice {} - Has multiple selections", a);
+        }
+        return -1;
+    }
 
     boblog->info("Required features:");
     for (auto f: project.required_features)

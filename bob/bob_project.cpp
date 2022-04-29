@@ -12,7 +12,7 @@ namespace bob
     using namespace std::chrono_literals;
 
 
-    project::project(  const std::string project_name, std::shared_ptr<spdlog::logger> log ) : project_name(project_name), bob_home_directory("/.bob"), project_directory(".")
+    project::project(  const std::string project_name, std::shared_ptr<spdlog::logger> log ) : project_name(project_name), bob_home_directory("/.yakka"), project_directory(".")
     {
         this->log = log;
     }
@@ -66,17 +66,18 @@ namespace bob
                 required_features.insert(f.as<std::string>());
 
             // Remove the known components from unprocessed_components
-            component_list_t temp_components;
-            for (const auto& c: unprocessed_components)
-                if (!project_summary["components"][c])
-                    temp_components.insert(c);
-            feature_list_t temp_features;
-            for (const auto& c: unprocessed_features)
-                if (!project_summary["features"][c])
-                    temp_features.insert(c);
-            unprocessed_components = std::move(temp_components);
-            unprocessed_features = std::move(temp_features);
+            // component_list_t temp_components;
+            // for (const auto& c: unprocessed_components)
+            //     if (!project_summary["components"][c])
+            //         temp_components.insert(c);
+            // feature_list_t temp_features;
+            // for (const auto& c: unprocessed_features)
+            //     if (!project_summary["features"][c])
+            //         temp_features.insert(c);
+            // unprocessed_components = std::move(temp_components);
+            // unprocessed_features = std::move(temp_features);
 
+            project_summary["choices"] = {};
             update_summary();
         }
         else
@@ -268,6 +269,27 @@ namespace bob
         if (unknown_components.size() != 0) return project::state::PROJECT_HAS_UNKNOWN_COMPONENTS;
 
         return project::state::PROJECT_VALID;
+    }
+
+    void project::evaluate_choices()
+    {
+        // For each component, check each choice has exactly one match in required features
+        for (auto c: components)
+            for (auto i: c->yaml["choices"])
+            {
+                const auto choice_name = i.first.Scalar();
+                project_summary["choices"][i.first.Scalar()] = i.second;
+
+                int matches = 0;
+                if (i.second["features"])
+                    matches = std::count_if(i.second["features"].begin(), i.second["features"].end(), [&](auto j){ return required_features.contains(j.Scalar()); });
+                if (i.second["components"])
+                    matches = std::count_if(i.second["components"].begin(), i.second["components"].end(), [&](auto j){ return required_components.contains(j.Scalar()); });
+                if (matches == 0)
+                    incomplete_choices.push_back(choice_name);
+                else if (matches > 1)
+                    multiple_answer_choices.push_back(choice_name);
+            }
     }
 
     void project::generate_project_summary()
