@@ -23,7 +23,7 @@ namespace bob
 {
     const std::string default_output_directory  = "output/";
 
-    typedef std::function<std::string(std::string, const YAML::Node&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
+    typedef std::function<bob::process_return(std::string, const nlohmann::json&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
 
     class project
     {
@@ -44,7 +44,6 @@ namespace bob
         void init_project();
         void init_project(const std::string build_string);
         void process_build_string(const std::string build_string);
-        YAML::Node get_project_summary();
         void parse_project_string( const std::vector<std::string>& project_string );
         void process_requirements(YAML::Node& component, YAML::Node child_node);
         state evaluate_dependencies();
@@ -67,7 +66,7 @@ namespace bob
         std::optional<YAML::Node> find_registry_component(const std::string& name);
         std::future<void> fetch_component(const std::string& name, indicators::ProgressBar& bar);
         bool has_data_dependency_changed(std::string data_path);
-        void create_tasks(const std::string target, tf::Task& parent);
+        void create_tasks(const std::string target_name, tf::Task& parent);
 
         // Logging
         std::shared_ptr<spdlog::logger> log;
@@ -86,8 +85,7 @@ namespace bob
         std::unordered_set<std::string> unknown_components;
         // std::map<std::string, YAML::Node> remote_components;
 
-        YAML::Node  project_summary;
-        YAML::Node  previous_summary;
+        YAML::Node  project_summary_yaml;
         std::string project_directory;
         std::string project_summary_file;
         fs::file_time_type project_summary_last_modified;
@@ -95,7 +93,8 @@ namespace bob
         bob::component_database component_database;
         bob::blueprint_database blueprint_database;
 
-        nlohmann::json project_summary_json;
+        nlohmann::json previous_summary;
+        nlohmann::json project_summary;
 
         // Blueprint evaluation
         inja::Environment inja_environment;
@@ -107,11 +106,12 @@ namespace bob
         // std::vector<std::string> todo_list;
         // std::map<std::string, tf::Task> tasks;
         tf::Taskflow taskflow;
+        std::atomic<bool> abort_build;
 
         std::vector<std::string> incomplete_choices;
         std::vector<std::string> multiple_answer_choices;
 
-        std::mutex project_lock;
+        // std::mutex project_lock;
 
         // std::vector< std::pair<std::string, YAML::Node> > blueprint_list;
         std::map< std::string, blueprint_command > blueprint_commands;

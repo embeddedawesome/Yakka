@@ -30,6 +30,12 @@ namespace bob {
     const auto async_launch_option = std::launch::deferred;
     #endif
 
+    struct process_return
+    {
+        std::string result;
+        int retcode;
+    };
+
     enum bob_status
     {
         SUCCESS = 0,

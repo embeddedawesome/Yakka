@@ -300,15 +300,15 @@ int main(int argc, char **argv)
             if (project.project_summary["choices"][a]["features"])
             {
                 console->error("Features: ");
-                for (auto b: project.project_summary["choices"][a]["features"])
-                    console->error("  - {}", b.Scalar());
+                for (auto& b: project.project_summary["choices"][a]["features"])
+                    console->error("  - {}", b.get<std::string>());
             }
 
             if (project.project_summary["choices"][a]["components"])
             {
                 console->error("Components: ");
-                for (auto b: project.project_summary["choices"][a]["components"])
-                    console->error("  - {}", b.Scalar());
+                for (auto& b: project.project_summary["choices"][a]["components"])
+                    console->error("  - {}", b.get<std::string>());
             }
         }
         return -1;

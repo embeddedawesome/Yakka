@@ -142,6 +142,27 @@ YAML::Node yaml_path(const YAML::Node& node, std::string path)
     return temp;
 }
 
+nlohmann::json::json_pointer json_pointer(std::string path)
+{
+    path = "/" + path;
+    std::replace( path.begin(), path.end(), '.', '/');
+    return nlohmann::json::json_pointer{path};
+}
+
+nlohmann::json json_path(const nlohmann::json& node, std::string path)
+{
+    nlohmann::json::json_pointer temp(path);
+    return node[temp];
+    
+    // return node[nlohmann::json_pointer(path)];
+    // auto temp = node;
+    // std::stringstream ss(path);
+    // std::string s;
+    // while (std::getline(ss, s, '.'))
+    //     temp = temp[s];//.reset(temp[s]);
+    // return temp;
+}
+
 std::tuple<component_list_t, feature_list_t, command_list_t> parse_arguments( const std::vector<std::string>& argument_string )
 {
     component_list_t components;
@@ -373,73 +394,70 @@ std::pair<std::string, int> run_command( const std::string target, construction_
     inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
     inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});
     inja_env.add_callback("filesize", 1, [&](const inja::Arguments& args) { return fs::file_size(args[0]->get<std::string>());});
-    inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return inja_env.render(args[0]->get<std::string>(), project->project_summary_json);});
+    inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return inja_env.render(args[0]->get<std::string>(), project->project_summary);});
     inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) { 
         auto file = std::ifstream(args[0]->get<std::string>()); 
         return std::string{std::istreambuf_iterator<char>{file}, {}};
     });
     inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
-        YAML::Node aggregate;
-        const std::string path = args[0]->get<std::string>();
+        nlohmann::json aggregate;
+        auto path = json_pointer(args[0]->get<std::string>());
         // Loop through components, check if object path exists, if so add it to the aggregate
-        for (const auto& c: project->project_summary["components"])
+        for (const auto& [c_key, c_value]: project->project_summary["components"].items())
         {
-            auto v = yaml_path(c.second, path);
-            if (!v)
+            // auto v = json_path(c.value(), path);
+            if (!c_value.contains(path) || c_value[path].is_null())
                 continue;
             
-            if (v.IsMap())
-                for (const auto& i: v)
+            auto v = c_value[path];
+            if (v.is_object())
+                for (const auto& [i_key, i_value] : v.items())
                 {
-                    project->project_lock.lock();
-                    aggregate[i.first.Scalar()] = i.second; //inja_env.render(i.second.as<std::string>(), project->project_summary_json);
-                    project->project_lock.unlock();
+                    aggregate[i_key] = i_value; //inja_env.render(i.second.as<std::string>(), project->project_summary);
                 }
-            else if (v.IsSequence())
-                for (auto i: v)
-                    aggregate.push_back(inja_env.render(i.as<std::string>(), project->project_summary_json));
-            else
-                aggregate.push_back(inja_env.render(v.as<std::string>(), project->project_summary_json));
+            else if (v.is_array())
+                for (const auto& [i_key, i_value]: v.items())
+                    aggregate.push_back(inja_env.render(i_value, project->project_summary));
+            else if (!v.is_null())
+                aggregate.push_back(inja_env.render(v, project->project_summary));
         }
-        if (aggregate.IsNull())
-            return nlohmann::json();
-        else
-            return aggregate.as<nlohmann::json>();
+        return aggregate;
     });
 
 
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 
     // Note: A blueprint process is a sequence of maps
-    for ( const auto command_entry : blueprint->blueprint->process )
+    for ( const auto& command_entry : blueprint->blueprint->process )
     {
+        assert(command_entry.is_object());
+        
+        if (command_entry.size() != 1) {
+            console->error("Command '{}' for target '{}' is malformed", command_entry.begin().key(), target);
+            return {"", -1};
+        }
+
         // Take the first entry in the map as the command
         auto              command      = command_entry.begin();
-        const std::string command_name = command->first.as<std::string>();
+        const std::string command_name = command.key();
+        int retcode = 0;
 
         try
         {
-            // Check if a component has provided a matching tool
-            // Unfortunately YAML-CPP modifies nodes when testing for a child node so we protect this with a lock.
-            // This should be done in a better way.
-            YAML::Node temp;
+            if (project->project_summary["tools"].contains(command_name))
             {
-                std::lock_guard<std::mutex> lock(project->project_lock);
-                temp = project->project_summary["tools"][command_name];
-            }
-            if (temp)
-            {
-                YAML::Node tool = project->project_summary["tools"][command_name];
+                auto tool = project->project_summary["tools"][command_name];
                 std::string command_text = "";
 
-                command_text.append( tool.as<std::string>( ) );
+                command_text.append( tool );
 
-                std::string arg_text = command->second.as<std::string>( );
+                std::string arg_text = command.value().get<std::string>( );
 
                 // Apply template engine
-                arg_text = try_render(inja_env, arg_text, project->project_summary_json, boblog);
+                arg_text = try_render(inja_env, arg_text, project->project_summary, boblog);
 
-                auto[temp_output, retcode] = exec(command_text, arg_text);
+                auto [temp_output, temp_retcode] = exec(command_text, arg_text);
+                retcode = temp_retcode;
 
                 if (retcode != 0)
                 {
@@ -453,20 +471,24 @@ std::pair<std::string, int> run_command( const std::string target, construction_
                 boblog->info(captured_output);
             }
             // Else check if it is a built-in command
-            else if (project->blueprint_commands.find(command_name) != project->blueprint_commands.end()) // To be replaced with .contains() once C++20 is available
+            else if (project->blueprint_commands.contains(command_name))
             {
-                captured_output = project->blueprint_commands.at(command_name)( target, command_entry, captured_output, project->project_summary_json, inja_env );
+                bob::process_return test_result  = project->blueprint_commands.at(command_name)( target, command.value(), captured_output, project->project_summary, inja_env );
+                captured_output = test_result.result;
+                retcode = test_result.retcode;
             }
             else
             {
                 boblog->error("{} tool doesn't exist", command_name);
             }
 
+            if (retcode != 0)
+                return {captured_output, retcode};
         }
         catch ( std::exception& e )
         {
             boblog->error("Failed to run command: '{}' as part of {}", command_name, target);
-            boblog->info( "Failed to run: {}", command_entry.Scalar());
+            boblog->info( "Failed to run: {}", command_entry.dump());
             throw e;
         }
     }

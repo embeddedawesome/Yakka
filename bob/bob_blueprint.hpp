@@ -28,10 +28,10 @@ namespace bob {
         std::string target;
         std::optional<std::string> regex;
         std::vector<dependency> dependencies; // Unprocessed dependencies. Raw values as found in the YAML.
-        YAML::Node process;
+        nlohmann::json process;
         std::string parent_path;
 
-        blueprint(const std::string& target, const YAML::Node& blueprint, const std::string& parent_path);
+        blueprint(const std::string& target, const nlohmann::json& blueprint, const std::string& parent_path);
     };
 
     struct blueprint_match {

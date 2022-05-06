@@ -112,7 +112,7 @@ namespace bob
             {
                 if (p["condition"])
                     for (auto& c: p["condition"])
-                        yaml["supports"][c.as<std::string>()]["includes"] = p["path"];
+                        yaml["supports"]["feature"][c.as<std::string>()]["includes"] = p["path"];
                 else
                     includes["global"].push_back(p["path"]);
             }
