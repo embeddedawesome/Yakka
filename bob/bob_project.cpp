@@ -93,50 +93,60 @@ namespace bob
         yaml_node_merge( component, child_node );
 
         // If the feature has no requires we stop here
-        if ( !child_node["requires"] )
-            return;
-
-        // Process all the requires for this feature
-        auto child_node_requirements = child_node["requires"];
-        if (child_node_requirements.IsScalar () || child_node_requirements.IsSequence ())
+        if ( child_node["requires"] )
         {
-            log->error("Node 'requires' entry is malformed: '{}'", child_node_requirements.Scalar());
-            return;
-        }
-
-        try
-        {
-            // Process required components
-            if (child_node_requirements["components"])
+            // Process all the requires for this feature
+            auto child_node_requirements = child_node["requires"];
+            if (child_node_requirements.IsScalar () || child_node_requirements.IsSequence ())
             {
-                // Add the item/s to the new_component list
-                if (child_node_requirements["components"].IsScalar())
-                    unprocessed_components.insert(child_node_requirements["components"].as<std::string>());
-                else if (child_node_requirements["components"].IsSequence())
-                    for (const auto &i : child_node_requirements["components"])
-                        unprocessed_components.insert(i.as<std::string>());
-                else
-                    log->error("Node '{}' has invalid 'requires'", child_node_requirements.Scalar());
+                log->error("Node 'requires' entry is malformed: '{}'", child_node_requirements.Scalar());
+                return;
             }
 
-            // Process required features
-            if (child_node_requirements["features"])
+            try
             {
-                std::vector<std::string> new_features;
+                // Process required components
+                if (child_node_requirements["components"])
+                {
+                    // Add the item/s to the new_component list
+                    if (child_node_requirements["components"].IsScalar())
+                        unprocessed_components.insert(child_node_requirements["components"].as<std::string>());
+                    else if (child_node_requirements["components"].IsSequence())
+                        for (const auto &i : child_node_requirements["components"])
+                            unprocessed_components.insert(i.as<std::string>());
+                    else
+                        log->error("Node '{}' has invalid 'requires'", child_node_requirements.Scalar());
+                }
 
-                // Add the item/s to the new_features list
-                if (child_node_requirements["features"].IsScalar())
-                    unprocessed_features.insert(child_node_requirements["features"].as<std::string>());
-                else if (child_node_requirements["features"].IsSequence())
-                    for (const auto &i : child_node_requirements["features"])
-                        unprocessed_features.insert(i.as<std::string>());
-                else
-                    log->error("Node '{}' has invalid 'requires'", child_node_requirements.Scalar());
+                // Process required features
+                if (child_node_requirements["features"])
+                {
+                    std::vector<std::string> new_features;
+
+                    // Add the item/s to the new_features list
+                    if (child_node_requirements["features"].IsScalar())
+                        unprocessed_features.insert(child_node_requirements["features"].as<std::string>());
+                    else if (child_node_requirements["features"].IsSequence())
+                        for (const auto &i : child_node_requirements["features"])
+                            unprocessed_features.insert(i.as<std::string>());
+                    else
+                        log->error("Node '{}' has invalid 'requires'", child_node_requirements.Scalar());
+                }
+            }
+            catch (YAML::Exception &e)
+            {
+                log->error("Failed to process requirements for '{}'\n{}", child_node_requirements.Scalar(), e.msg);
             }
         }
-        catch (YAML::Exception &e)
+
+        if ( child_node["provides"]["features"] )
         {
-            log->error("Failed to process requirements for '{}'\n{}", child_node_requirements.Scalar(), e.msg);
+            auto child_node_provides = child_node["provides"]["features"];
+            if (child_node_provides.IsScalar())
+                unprocessed_features.insert(child_node_provides.as<std::string>());
+            else if (child_node_provides.IsSequence())
+                for (const auto &i : child_node_provides)
+                    unprocessed_features.insert(i.as<std::string>());
         }
     }
 
@@ -215,6 +225,10 @@ namespace bob
 
                 // Add all the required features into the unprocessed list
                 for (const auto& f : new_component->yaml["requires"]["features"])
+                    unprocessed_features.insert(f.Scalar());
+
+                // Add all the provided features into the unprocessed list
+                for (const auto& f : new_component->yaml["provides"]["features"])
                     unprocessed_features.insert(f.Scalar());
 
                 // Process all the currently required features. Note new feature will be processed in the features pass
@@ -645,7 +659,7 @@ namespace bob
                 auto [temp_output, retcode] = exec( captured_output, std::string( "" ) );
 
                 if (retcode != 0 && temp_output.length( ) != 0) {
-                    console->error( temp_output );
+                    console->error( "\n{}", temp_output ); // Ensure output starts on a new line
                     boblog->error( "\n{} returned {}\n{}", captured_output, retcode, temp_output);
                 }
                 else if ( temp_output.length( ) != 0 )

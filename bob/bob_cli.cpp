@@ -35,7 +35,16 @@ int main(int argc, char **argv)
     console->flush_on(spdlog::level::level_enum::off);
     console->set_pattern("[%^%l%$]: %v");
     //spdlog::set_async_mode(4096);
-    auto boblog = spdlog::basic_logger_mt("boblog", "yakka.log");
+    std::shared_ptr<spdlog::logger> boblog;
+    try
+    {
+        boblog = spdlog::basic_logger_mt("boblog", "yakka.log");
+    }
+    catch (...)
+    {
+        std::cerr << "Cannot open yakka.log. No idea why\n";
+        exit(1);
+    }
 
     // Create a workspace
     bob::workspace workspace;
@@ -296,22 +305,29 @@ int main(int argc, char **argv)
     {
         for (auto a: project.incomplete_choices)
         {
+            bool valid_options = false;
             console->error("Choice {} - Must choose from the following", a);
-            if (project.project_summary["choices"][a]["features"])
+            if (project.project_summary["choices"][a].contains("features"))
             {
+                valid_options = true;
                 console->error("Features: ");
                 for (auto& b: project.project_summary["choices"][a]["features"])
                     console->error("  - {}", b.get<std::string>());
             }
 
-            if (project.project_summary["choices"][a]["components"])
+            if (project.project_summary["choices"][a].contains("components"))
             {
+                valid_options = true;
                 console->error("Components: ");
                 for (auto& b: project.project_summary["choices"][a]["components"])
                     console->error("  - {}", b.get<std::string>());
             }
+
+            if (!valid_options) {
+                console->error("ERROR: Choice data is invalid");
+            }
         }
-        return -1;
+        return 0;
     }
     if (!project.multiple_answer_choices.empty())
     {

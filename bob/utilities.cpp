@@ -461,7 +461,7 @@ std::pair<std::string, int> run_command( const std::string target, construction_
 
                 if (retcode != 0)
                 {
-                    console->error( temp_output );
+                    console->error( "\n{}", temp_output ); // Ensure output starts on a new line
                     boblog->error("Returned {}\n{}",retcode, temp_output);
                     return {temp_output, retcode};
                 }
