@@ -417,9 +417,9 @@ std::pair<std::string, int> run_command( const std::string target, construction_
                 }
             else if (v.is_array())
                 for (const auto& [i_key, i_value]: v.items())
-                    aggregate.push_back(inja_env.render(i_value, project->project_summary));
+                    aggregate.push_back(inja_env.render(i_value.get<std::string>(), project->project_summary));
             else if (!v.is_null())
-                aggregate.push_back(inja_env.render(v, project->project_summary));
+                aggregate.push_back(inja_env.render(v.get<std::string>(), project->project_summary));
         }
         return aggregate;
     });
