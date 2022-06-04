@@ -598,7 +598,7 @@ namespace bob
                 }
                 catch ( std::exception& e )
                 {
-                    log->error("Couldn't apply template: '{}'", d.name);
+                    log->error("Couldn't apply template: '{}'\n{}", d.name, e.what());
                     return;
                 }
 
