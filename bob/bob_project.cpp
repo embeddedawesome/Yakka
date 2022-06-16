@@ -415,10 +415,8 @@ namespace bob
         }
     }
 
-    bool project::has_data_dependency_changed(std::string data_path)
+    bool project::has_data_dependency_changed(std::string data_path, const nlohmann::json left, const nlohmann::json right)
     {
-        // std::vector<std::pair<const nlohmann::json&, const nlohmann::json&>> changed_nodes;
-
         if (data_path[0] != data_dependency_identifier)
             return false;
 
@@ -427,7 +425,7 @@ namespace bob
         // std::lock_guard<std::mutex> lock(project_lock);
         try
         {
-            if (previous_summary.is_null() || previous_summary["components"].is_null())
+            if (left.is_null() || left["components"].is_null())
                 return true;
 
             // Check for wildcard or component name
@@ -441,15 +439,14 @@ namespace bob
 
                 data_path = data_path.substr(3);
                 nlohmann::json::json_pointer pointer{data_path};
-                for (const auto& [c_key, c_value]: project_summary["components"].items())
+                for (const auto& [c_key, c_value]: right["components"].items())
                 {
                     std::string component_name = c_key;
-                    auto a = previous_summary["components"][component_name][pointer];
-                    auto b = project_summary["components"][component_name][pointer];
+                    auto a = left["components"][component_name].contains(pointer) ? left["components"][component_name][pointer] : nlohmann::json{};
+                    auto b = right["components"][component_name].contains(pointer) ? right["components"][component_name][pointer] : nlohmann::json{};
                     if (a != b )
                     {
                         return true;
-                        // changed_nodes.push_back({project_summary["components"][component_name], previous_summary["components"][component_name]});
                     }
                 }
             }
@@ -458,40 +455,13 @@ namespace bob
                 std::string component_name = data_path.substr(2, data_path.find_first_of('/', 2)-2);
                 data_path = data_path.substr(data_path.find_first_of('/',2));
                 nlohmann::json::json_pointer pointer{data_path};
-                auto a = previous_summary["components"][component_name][pointer];
-                auto b = project_summary["components"][component_name][pointer];
+                auto a = left["components"][component_name].contains(pointer) ? left["components"][component_name][pointer] : nlohmann::json{};
+                auto b = right["components"][component_name].contains(pointer) ? right["components"][component_name][pointer] : nlohmann::json{};
                 if (a != b )
                 {
                     return true;
-                    // changed_nodes.push_back({project_summary["components"][component_name], previous_summary["components"][component_name]});
                 }
             }
-
-            // // Check if we have any nodes that have changed
-            // if (changed_nodes.size() == 0)
-            //     return false;
-
-            // // Check every data path for every changed node
-            // for (const auto& n: changed_nodes)
-            // {
-            //     // auto first = n.first[data_pointer];
-            //     // auto second = n.second[data_pointer];
-            //     nlohmann::json::json_pointer pointer{data_path};
-            //     if (n.first.contains(pointer) || n.second.contains(pointer))
-            //     {
-            //         auto result = nlohmann::json::diff(n.first, n.second, data_path);
-            //         if (result.size() != 0)
-            //         {
-            //             log->error("{}\n{}\n{}\n",result.dump(), n.first.dump(), n.second.dump());
-            //             return true;
-            //         }
-            //     }
-            //     // auto first = json_path(n.first, data_path);
-            //     // auto second = json_path(n.second, data_path);
-            //     //assert("todo");
-            //     // if (yaml_diff(first, second))
-            //         // return true;
-            // }
             return false;
         }
         catch(const std::exception& e)
@@ -965,7 +935,7 @@ namespace bob
                 task.data(&new_todo->second).work([=, this]() {
                     // log->info("{}: data", target_name);
                     auto d = static_cast<construction_task*>(task.data());
-                    d->last_modified = has_data_dependency_changed(target_name) ? fs::file_time_type::max() : fs::file_time_type::min();
+                    d->last_modified = has_data_dependency_changed(target_name, previous_summary, project_summary) ? fs::file_time_type::max() : fs::file_time_type::min();
                     if (d->last_modified > start_time)
                         log->info("{} has been updated", target_name);
                     return;

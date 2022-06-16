@@ -65,7 +65,7 @@ namespace bob
         void save_blueprints();
         std::optional<YAML::Node> find_registry_component(const std::string& name);
         std::future<void> fetch_component(const std::string& name, indicators::ProgressBar& bar);
-        bool has_data_dependency_changed(std::string data_path);
+        bool has_data_dependency_changed(std::string data_path, const nlohmann::json left, const nlohmann::json right);
         void create_tasks(const std::string target_name, tf::Task& parent);
 
         // Logging
