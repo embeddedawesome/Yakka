@@ -144,8 +144,11 @@ YAML::Node yaml_path(const YAML::Node& node, std::string path)
 
 nlohmann::json::json_pointer json_pointer(std::string path)
 {
-    path = "/" + path;
-    std::replace( path.begin(), path.end(), '.', '/');
+    if (path.front() != '/')
+    {
+        path = "/" + path;
+        std::replace( path.begin(), path.end(), '.', '/');
+    }
     return nlohmann::json::json_pointer{path};
 }
 
