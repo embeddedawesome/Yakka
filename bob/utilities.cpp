@@ -391,13 +391,21 @@ std::pair<std::string, int> run_command( const std::string target, construction_
     inja::Environment inja_env = inja::Environment();
     auto& blueprint = task->match;
 
+    std::string curdir_path = blueprint->blueprint->parent_path;
     inja_env.add_callback("$", 1, [&blueprint](const inja::Arguments& args) { return blueprint->regex_matches[ args[0]->get<int>() ];});
-    inja_env.add_callback("curdir", 0, [&blueprint](const inja::Arguments& args) { return blueprint->blueprint->parent_path;});
+    inja_env.add_callback("curdir", 0, [&](const inja::Arguments& args) { return curdir_path;});
     inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
     inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
     inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});
     inja_env.add_callback("filesize", 1, [&](const inja::Arguments& args) { return fs::file_size(args[0]->get<std::string>());});
     inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return inja_env.render(args[0]->get<std::string>(), project->project_summary);});
+    inja_env.add_callback("render", 2, [&curdir_path, &inja_env, &project](const inja::Arguments& args) {
+        auto backup = curdir_path;
+        curdir_path = args[1]->get<std::string>();
+        std::string render_output = inja_env.render(args[0]->get<std::string>(), project->project_summary);
+        curdir_path = backup;
+        return render_output;
+        });
     inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) { 
         auto file = std::ifstream(args[0]->get<std::string>()); 
         return std::string{std::istreambuf_iterator<char>{file}, {}};
