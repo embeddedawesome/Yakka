@@ -217,7 +217,17 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    // Check if the project depends on components we don't have yet 
+    // If we're missing a component, update the component database and try again
+    if (!project.unknown_components.empty())
+    {
+        console->info("Scanning workspace for missing components");
+        boblog->info("Scanning workspace to find missing components");
+        project.component_database.scan_for_components();
+        project.unprocessed_components.swap(project.unknown_components);
+        project.evaluate_dependencies();
+    }
+
+    // If there are still missing components, try and download them
     if (!project.unknown_components.empty())
     {
         workspace.load_component_registries();
