@@ -295,7 +295,7 @@ namespace bob
                 if (i.second["components"])
                     matches = std::count_if(i.second["components"].begin(), i.second["components"].end(), [&](auto j){ return required_components.contains(j.Scalar()); });
                 if (matches == 0)
-                    incomplete_choices.push_back(choice_name);
+                    incomplete_choices.push_back({c->id, choice_name});
                 else if (matches > 1)
                     multiple_answer_choices.push_back(choice_name);
             }

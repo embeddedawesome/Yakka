@@ -313,23 +313,23 @@ int main(int argc, char **argv)
 
     if (!project.incomplete_choices.empty())
     {
-        for (auto a: project.incomplete_choices)
+        for (auto& i: project.incomplete_choices)
         {
             bool valid_options = false;
-            console->error("Choice {} - Must choose from the following", a);
-            if (project.project_summary["choices"][a].contains("features"))
+            console->error("Component '{}' has a choice '{}' - Must choose from the following", i.first, i.second);
+            if (project.project_summary["choices"][i.second].contains("features"))
             {
                 valid_options = true;
                 console->error("Features: ");
-                for (auto& b: project.project_summary["choices"][a]["features"])
+                for (auto& b: project.project_summary["choices"][i.second]["features"])
                     console->error("  - {}", b.get<std::string>());
             }
 
-            if (project.project_summary["choices"][a].contains("components"))
+            if (project.project_summary["choices"][i.second].contains("components"))
             {
                 valid_options = true;
                 console->error("Components: ");
-                for (auto& b: project.project_summary["choices"][a]["components"])
+                for (auto& b: project.project_summary["choices"][i.second]["components"])
                     console->error("  - {}", b.get<std::string>());
             }
 

@@ -108,7 +108,7 @@ namespace bob
         tf::Taskflow taskflow;
         std::atomic<bool> abort_build;
 
-        std::vector<std::string> incomplete_choices;
+        std::vector< std::pair<std::string, std::string> > incomplete_choices;
         std::vector<std::string> multiple_answer_choices;
 
         // std::mutex project_lock;
