@@ -85,11 +85,12 @@ namespace bob
           return;
         }
 
-        for ( const auto& p : fs::recursive_directory_iterator( path ) )
+        auto rdi = fs::recursive_directory_iterator( path );
+        for ( auto p = fs::begin(rdi); p != fs::end(rdi); ++p )
         {
-            if (p.path().filename().extension() == bob_component_extension)
+            if (p->path().filename().extension() == bob_component_extension)
             {
-                add_component(p.path());
+                add_component(p->path());
             }
 #ifdef SLCC_SUPPORT
             else if (p.path().filename().extension() == ".slcc")
