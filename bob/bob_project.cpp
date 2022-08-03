@@ -442,6 +442,8 @@ namespace bob
                 for (const auto& [c_key, c_value]: right["components"].items())
                 {
                     std::string component_name = c_key;
+                    if (!left["components"].contains(component_name))
+                        return true;
                     auto a = left["components"][component_name].contains(pointer) ? left["components"][component_name][pointer] : nlohmann::json{};
                     auto b = right["components"][component_name].contains(pointer) ? right["components"][component_name][pointer] : nlohmann::json{};
                     if (a != b )
@@ -455,6 +457,8 @@ namespace bob
                 std::string component_name = data_path.substr(2, data_path.find_first_of('/', 2)-2);
                 data_path = data_path.substr(data_path.find_first_of('/',2));
                 nlohmann::json::json_pointer pointer{data_path};
+                if (!left["components"].contains(component_name))
+                        return true;
                 auto a = left["components"][component_name].contains(pointer) ? left["components"][component_name][pointer] : nlohmann::json{};
                 auto b = right["components"][component_name].contains(pointer) ? right["components"][component_name][pointer] : nlohmann::json{};
                 if (a != b )
