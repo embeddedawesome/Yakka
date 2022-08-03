@@ -721,6 +721,13 @@ namespace bob
                         if (!data_yaml.IsNull())
                             data = data_yaml.as<nlohmann::json>();
                     }
+                    else if (command.contains("data"))
+                    {
+                        std::string data_string = try_render(inja_env, command["data"].get<std::string>(), generated_json, boblog);
+                        YAML::Node data_yaml = YAML::Load(data_string);
+                        if (!data_yaml.IsNull())
+                            data = data_yaml.as<nlohmann::json>();
+                    }
 
                     if (command.contains("template_file"))
                     {
