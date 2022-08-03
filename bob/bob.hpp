@@ -9,7 +9,8 @@
 #include <future>
 
 namespace bob {
-    const std::string bob_component_extension   = ".bob";
+    const std::string bob_component_extension   = ".yakka";
+    const std::string bob_component_old_extension   = ".bob";
     const char data_dependency_identifier = ':';
     const char data_wildcard_identifier = '*';
 
