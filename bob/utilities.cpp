@@ -394,6 +394,11 @@ std::pair<std::string, int> run_command( const std::string target, construction_
     std::string curdir_path = blueprint->blueprint->parent_path;
     inja_env.add_callback("$", 1, [&blueprint](const inja::Arguments& args) { return blueprint->regex_matches[ args[0]->get<int>() ];});
     inja_env.add_callback("curdir", 0, [&](const inja::Arguments& args) { return curdir_path;});
+    inja_env.add_callback("dir", 1, [](inja::Arguments& args) { 
+                auto path = std::filesystem::path{args.at(0)->get<std::string>()}.relative_path();
+                if (path.has_filename()) return path.parent_path().string();
+                else return path.string();
+                });
     inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
     inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
     inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});

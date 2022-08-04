@@ -509,9 +509,14 @@ namespace bob
             inja::Environment local_inja_env;
             local_inja_env.add_callback("$", 1, [&match](const inja::Arguments& args) { return match->regex_matches[ args[0]->get<int>() ];});
             local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match->blueprint->parent_path;});
+            local_inja_env.add_callback("dir", 1, [](inja::Arguments& args) { 
+                auto path = std::filesystem::path{args.at(0)->get<std::string>()}.relative_path();
+                if (path.has_filename()) return path.parent_path().string();
+                else return path.string();
+                });
             local_inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
             local_inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
-            local_inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
+            local_inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});
             local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return local_inja_env.render(args[0]->get<std::string>(), this->project_summary);});
             local_inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) { 
                 auto file = std::ifstream(args[0]->get<std::string>()); 
