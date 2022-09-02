@@ -1,0 +1,9 @@
+name: Performance tester
+
+sources:
+  - perf_test.cpp
+
+requires:
+  components:
+    - yaml-cpp
+    - json
