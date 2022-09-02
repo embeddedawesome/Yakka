@@ -1,6 +1,7 @@
 # BOB
 
-BOB aims to provide an open-source, standardized set of modern software development tools for a range of development environments while remaining language agnostic.
+BOB aims to be modern, minimal, yet universal build system that can be used as a basic task runner as
+ an open-source, standardized set of modern software development tools for a range of development environments while remaining language agnostic.
 Many modern programming languages recognize that writing source code is only a small part of the full software development lifecycle and thus strive to include additional functionality required to develop and deploy software projects. This includes test infrastructure, dependency management, component packaging, and software deployment.
 
 ## Design

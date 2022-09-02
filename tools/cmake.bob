@@ -1,0 +1,33 @@
+name: CMake generator
+
+blueprints:
+  cmake:
+    depends:
+      - '[{%for name, component in components %}{% if existsIn(component, "sources") %}{{component.directory}}/{{name}}.cmake, {%endif%}{%endfor%}]'
+      - '{{project_output}}/CMakeLists.txt'
+
+  cmake_file:
+    regex: '.+/(.*)\.cmake'
+    depends:
+      - '{{at(components,$(1)).bob_file}}'
+    process:
+      - inja:
+        template: |
+          cmake_minimum_required(VERSION 3.16){% set __component = at(components,$(1)) %}
+          project({{$(1)}})
+          add_library({{$(1)}} OBJECT {% for source in __component.sources %}${SDK_ROOT}/{{__component.directory}}/{{source}} {%endfor%})
+          {% if existsIn(__component, "includes") %}target_include_directories({{$(1)}} PUBLIC {% for include in __component.includes.global %}${SDK_ROOT}/{{__component.directory}}/{{include}} {% endfor %}){%endif%}
+      - save:
+    
+  '{{project_output}}/CMakeLists.txt':
+    process:
+      - inja:
+        template: |
+          cmake_minimum_required(VERSION 3.16)
+          project({{project_name}} VERSION 1.0 LANGUAGES CXX)
+          set(SDK_ROOT ../..)
+          {% for name, component in components %}{% if existsIn(component, "sources") %}include(${SDK_ROOT}/{{component.directory}}/{{name}}.cmake)
+          {%endif%}{%endfor%}
+          add_executable({{project_name}} {% for name, component in components %}{% if existsIn(component, "sources") %}$<TARGET_OBJECTS:{{name}}> {%endif%}{%endfor%})
+          target_include_directories({{project_name}} PUBLIC {% for name, component in components %}{% for include in component.includes.global %}-I${SDK_ROOT}/{{component.directory}}/{{include}} {% endfor %}{%endfor%})
+      - save:
