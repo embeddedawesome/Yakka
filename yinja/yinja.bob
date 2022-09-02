@@ -1,0 +1,12 @@
+name: Yinja
+
+sources:
+  - yinja.cpp
+
+requires:
+  components:
+    - yaml-cpp
+    - inja
+    - cxxopts
+    - json
+    - semver
