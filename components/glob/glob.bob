@@ -1,0 +1,8 @@
+name: Glob
+
+includes:
+  global:
+    - single_include
+
+sources:
+  - source/glob.cpp

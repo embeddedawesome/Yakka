@@ -19,3 +19,4 @@ requires:
     - cxxopts
     - spdlog
     - taskflow
+    - glob

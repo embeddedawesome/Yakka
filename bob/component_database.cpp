@@ -1,6 +1,7 @@
 #include "component_database.hpp"
 #include "bob_component.hpp"
 #include "spdlog/spdlog.h"
+#include "glob/glob.hpp"
 #include <iostream>
 #include <fstream>
 
@@ -85,6 +86,11 @@ namespace bob
           return;
         }
 
+        for (auto &p : glob::rglob({"**/*.bob", "**/*.yakka"}))
+        {
+            add_component(p->path());
+        }
+#if 0
         auto rdi = fs::recursive_directory_iterator( path );
         for ( auto p = fs::begin(rdi); p != fs::end(rdi); ++p )
         {
@@ -134,6 +140,7 @@ namespace bob
                 slcc::slcc_database["components"][id] = slcc.yaml;
             }
         }
+#endif
 #endif
     }
 
