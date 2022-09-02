@@ -1,7 +1,7 @@
 #include "component_database.hpp"
 #include "yakka_component.hpp"
 #include "spdlog/spdlog.h"
-#include "glob/glob.hpp"
+#include "glob/glob.h"
 #include <iostream>
 #include <fstream>
 
@@ -88,7 +88,7 @@ namespace bob
 
         for (auto &p : glob::rglob({"**/*.bob", "**/*.yakka"}))
         {
-            add_component(p->path());
+            add_component(p);
         }
 #if 0
         auto rdi = fs::recursive_directory_iterator( path );

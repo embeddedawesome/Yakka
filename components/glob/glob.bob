@@ -2,7 +2,7 @@ name: Glob
 
 includes:
   global:
-    - master/single_include
+    - master/include
 
 sources:
   - master/source/glob.cpp
