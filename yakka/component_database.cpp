@@ -1,5 +1,5 @@
 #include "component_database.hpp"
-#include "bob_component.hpp"
+#include "yakka_component.hpp"
 #include "spdlog/spdlog.h"
 #include "glob/glob.hpp"
 #include <iostream>

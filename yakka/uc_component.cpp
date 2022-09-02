@@ -1,4 +1,4 @@
-#include "bob_component.h"
+#include "yakka_component.h"
 #include "yaml-cpp/yaml.h"
 #include "spdlog/spdlog.h"
 

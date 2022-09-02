@@ -1,8 +1,8 @@
 /* A BOB workspace is identified by a .yakka folder
  * The .yakka folder holds information about locally available components, and remote registries
  */
-#include "bob.hpp"
-#include "bob_workspace.hpp"
+#include "yakka.hpp"
+#include "yakka_workspace.hpp"
 // #include "example_registry.h"
 #include <filesystem>
 #include <fstream>

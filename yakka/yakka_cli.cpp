@@ -1,6 +1,6 @@
-#include "bob.hpp"
-#include "bob_project.hpp"
-#include "bob_workspace.hpp"
+#include "yakka.hpp"
+#include "yakka_project.hpp"
+#include "yakka_workspace.hpp"
 #include "cxxopts.hpp"
 #include "subprocess.hpp"
 #include "spdlog/spdlog.h"
@@ -20,7 +20,7 @@ using namespace std::chrono_literals;
 
 tf::Task& create_tasks(bob::project& project, const std::string& name, std::map<std::string, tf::Task>& tasks, tf::Taskflow& taskflow);
 static const semver::version bob_version {
-    #include "bob_version.h"
+    #include "yakka_version.h"
 };
 
 int main(int argc, char **argv)

@@ -1,11 +1,11 @@
-name: BOB
+name: Yakka
 
 sources:
-  - bob_project.cpp
-  - bob_component.cpp
-  - bob_workspace.cpp
+  - yakka_project.cpp
+  - yakka_component.cpp
+  - yakka_workspace.cpp
   - component_database.cpp
-  - bob_blueprint.cpp
+  - yakka_blueprint.cpp
   - utilities.cpp
 
 requires:

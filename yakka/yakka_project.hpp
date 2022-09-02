@@ -1,7 +1,7 @@
 #pragma once
 
-#include "bob.hpp"
-#include "bob_component.hpp"
+#include "yakka.hpp"
+#include "yakka_component.hpp"
 #include "component_database.hpp"
 #include "blueprint_database.hpp"
 #include "yaml-cpp/yaml.h"
