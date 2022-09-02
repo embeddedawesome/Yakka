@@ -1,0 +1,12 @@
+name: Configurator
+
+sources:
+  - configurator.cpp
+
+requires:
+  components:
+    - cxxopts
+    - ftxui
+    - yaml-cpp
+    - json
+    
