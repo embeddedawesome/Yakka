@@ -1,0 +1,6 @@
+prefix=C:/silabs/github/BOB/components/spdlog/master/out/install/x64-Debug
+includedir=${prefix}/include
+
+Name: spdlog
+Description: Super fast C++ logging library. 
+Version: 0.17.0
