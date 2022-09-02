@@ -1,7 +1,8 @@
 # Standard directories on Windows
 WINDOWS_SDK_DIR   := C:/Program\ Files\ (x86)/Windows\ Kits/10
 VISUAL_STUDIO_DIR := C:/Program\ Files\ (x86)/Microsoft\ Visual\ Studio/2019
-VISUAL_STUDIO_TYPE := $(notdir $(lastword $(wildcard $(VISUAL_STUDIO_DIR)/* )))
+#$(notdir $(lastword $(wildcard $(VISUAL_STUDIO_DIR)/* )))
+VISUAL_STUDIO_TYPE :=BuildTools
 VISUAL_STUDIO_TOOL_DIR := $(VISUAL_STUDIO_DIR)/$(VISUAL_STUDIO_TYPE)/VC/Tools/MSVC
 
 
