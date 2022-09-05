@@ -7,7 +7,7 @@
 
 // namespace fs = std::filesystem;
 
-namespace bob
+namespace yakka
 {
     #if 0
     void blueprint_database::generate_task_database(std::vector<std::string> command_list)
@@ -84,7 +84,7 @@ namespace bob
                         return match.regex_matches[ args[0]->get<int>() ];
                     });
 
-            local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match.blueprint["bob_parent_path"].Scalar();});
+            local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match.blueprint["yakka_parent_path"].Scalar();});
             local_inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
             local_inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension();});
             local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return local_inja_env.render(args[0]->get<std::string>(), data);});

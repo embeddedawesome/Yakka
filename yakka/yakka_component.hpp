@@ -9,7 +9,7 @@
 #include <iostream>
 #include <filesystem>
 
-namespace bob {
+namespace yakka {
 
     struct base_component
     {
@@ -49,10 +49,10 @@ namespace bob {
         feature_list_t   get_required_features();
         // std::vector< blueprint_node > get_blueprints();
 
-        void convert_to_bob();
+        void convert_to_yakka();
 
         YAML::Node yaml;
     };
 
-} /* namespace bob */
+} /* namespace yakka */
 

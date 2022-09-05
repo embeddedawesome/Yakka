@@ -8,9 +8,9 @@
 #include <unordered_set>
 #include <future>
 
-namespace bob {
-    const std::string bob_component_extension   = ".yakka";
-    const std::string bob_component_old_extension   = ".bob";
+namespace yakka {
+    const std::string yakka_component_extension   = ".yakka";
+    const std::string yakka_component_old_extension   = ".yakka";
     const char data_dependency_identifier = ':';
     const char data_wildcard_identifier = '*';
 
@@ -37,7 +37,7 @@ namespace bob {
         int retcode;
     };
 
-    enum bob_status
+    enum yakka_status
     {
         SUCCESS = 0,
         FAIL,        

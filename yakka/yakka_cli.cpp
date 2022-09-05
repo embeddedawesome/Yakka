@@ -18,27 +18,27 @@
 using namespace indicators;
 using namespace std::chrono_literals;
 
-tf::Task& create_tasks(bob::project& project, const std::string& name, std::map<std::string, tf::Task>& tasks, tf::Taskflow& taskflow);
-static const semver::version bob_version {
+tf::Task& create_tasks(yakka::project& project, const std::string& name, std::map<std::string, tf::Task>& tasks, tf::Taskflow& taskflow);
+static const semver::version yakka_version {
     #include "yakka_version.h"
 };
 
 int main(int argc, char **argv)
 {
-    auto bob_start_time = fs::file_time_type::clock::now();
+    auto yakka_start_time = fs::file_time_type::clock::now();
 
     // Setup logging
     std::error_code error_code;
     fs::remove("yakka.log", error_code);
 
-    auto console = spdlog::stderr_color_mt("bobconsole");
+    auto console = spdlog::stderr_color_mt("yakkaconsole");
     console->flush_on(spdlog::level::level_enum::off);
     console->set_pattern("[%^%l%$]: %v");
     //spdlog::set_async_mode(4096);
-    std::shared_ptr<spdlog::logger> boblog;
+    std::shared_ptr<spdlog::logger> yakkalog;
     try
     {
-        boblog = spdlog::basic_logger_mt("boblog", "yakka.log");
+        yakkalog = spdlog::basic_logger_mt("yakkalog", "yakka.log");
     }
     catch (...)
     {
@@ -47,9 +47,9 @@ int main(int argc, char **argv)
     }
 
     // Create a workspace
-    bob::workspace workspace;
+    yakka::workspace workspace;
 
-    cxxopts::Options options("yakka", "Yakka the embedded builder. Ver " + bob_version.to_string());
+    cxxopts::Options options("yakka", "Yakka the embedded builder. Ver " + yakka_version.to_string());
     options.allow_unrecognised_options();
     options.positional_help("<action> [optional args]");
     options.add_options()
@@ -67,12 +67,12 @@ int main(int argc, char **argv)
     }
     if (result["refresh"].as<bool>())
     {
-        fs::remove(bob::component_database::database_filename);
+        fs::remove(yakka::component_database::database_filename);
 
         std::cout << "Scanning '.' for components" << std::endl;
-        bob::component_database db;
+        yakka::component_database db;
         db.save();
-        std::cout << "Scan complete. " << bob::component_database::database_filename << " has been updated" << std::endl;
+        std::cout << "Scan complete. " << yakka::component_database::database_filename << " has been updated" << std::endl;
     }
     if (result["fetch"].as<bool>())
     {
@@ -94,7 +94,7 @@ int main(int argc, char **argv)
         // Ensure the BOB registries directory exists
         fs::create_directories(".yakka/registries");
         console->info("Adding component registry...");
-        if (workspace.add_component_registry(result.unmatched()[0]) != bob::bob_status::SUCCESS)
+        if (workspace.add_component_registry(result.unmatched()[0]) != yakka::yakka_status::SUCCESS)
         {
             console->error("Failed to add component registry. See yakka.log for details");
             return -1;
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
     }
     else if (action == "list")
     {
-        bob::component_database db;
+        yakka::component_database db;
         workspace.load_component_registries();
         for (auto registry: workspace.registries)
         {
@@ -144,7 +144,7 @@ int main(int argc, char **argv)
             else
                 git_command.append( " \"" + *iter + "\"");
 
-        auto [output, result] = bob::exec("git", git_command);
+        auto [output, result] = yakka::exec("git", git_command);
         std::cout << output;
         return 0;
     }
@@ -200,7 +200,7 @@ int main(int argc, char **argv)
     
 
     // Create a project
-    bob::project project(project_name, boblog);
+    yakka::project project(project_name, yakkalog);
 
     // Move the CLI parsed data to the project
     project.unprocessed_components = std::move(components);
@@ -213,7 +213,7 @@ int main(int argc, char **argv)
     // Init the project
     project.init_project();
 
-    if (project.evaluate_dependencies() == bob::project::state::PROJECT_HAS_INVALID_COMPONENT) {
+    if (project.evaluate_dependencies() == yakka::project::state::PROJECT_HAS_INVALID_COMPONENT) {
         return 1;
     }
 
@@ -221,7 +221,7 @@ int main(int argc, char **argv)
     if (!project.unknown_components.empty())
     {
         console->info("Scanning workspace for missing components");
-        boblog->info("Scanning workspace to find missing components");
+        yakkalog->info("Scanning workspace to find missing components");
         project.component_database.scan_for_components();
         project.unprocessed_components.swap(project.unknown_components);
         project.evaluate_dependencies();
@@ -307,7 +307,7 @@ int main(int argc, char **argv)
 
     auto t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    boblog->info("{}ms to process components", duration);
+    yakkalog->info("{}ms to process components", duration);
 
     project.evaluate_choices();
 
@@ -353,9 +353,9 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    boblog->info("Required features:");
+    yakkalog->info("Required features:");
     for (auto f: project.required_features)
-        boblog->info("- {}", f);
+        yakkalog->info("- {}", f);
 
     project.generate_project_summary();
     project.save_summary();
@@ -366,7 +366,7 @@ int main(int argc, char **argv)
     t2 = std::chrono::high_resolution_clock::now();
 
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    boblog->info("{}ms to process blueprints", duration);
+    yakkalog->info("{}ms to process blueprints", duration);
 
     project.load_common_commands();
 
@@ -404,8 +404,8 @@ int main(int argc, char **argv)
     });
     building_bar.set_progress(project.work_task_count);
 
-    auto bob_end_time = fs::file_time_type::clock::now();
-    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(bob_end_time - bob_start_time).count() << " milliseconds" << std::endl;
+    auto yakka_end_time = fs::file_time_type::clock::now();
+    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(yakka_end_time - yakka_start_time).count() << " milliseconds" << std::endl;
 
 #if 0
 
@@ -428,8 +428,8 @@ int main(int argc, char **argv)
         // std::cout << "Building complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(construction_end_time - construction_start_time).count() << " milliseconds" << std::endl;
     }
 
-    auto bob_end_time = fs::file_time_type::clock::now();
-    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(bob_end_time - bob_start_time).count() << " milliseconds" << std::endl;
+    auto yakka_end_time = fs::file_time_type::clock::now();
+    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(yakka_end_time - yakka_start_time).count() << " milliseconds" << std::endl;
 #endif
 
     console->flush();

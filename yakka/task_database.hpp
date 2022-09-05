@@ -2,7 +2,7 @@
 #include <future>
 #include <optional>
 
-namespace bob
+namespace yakka
 {
     class task_database
     {

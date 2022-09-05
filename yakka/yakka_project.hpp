@@ -19,11 +19,11 @@
 
 namespace fs = std::filesystem;
 
-namespace bob
+namespace yakka
 {
     const std::string default_output_directory  = "output/";
 
-    typedef std::function<bob::process_return(std::string, const nlohmann::json&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
+    typedef std::function<yakka::process_return(std::string, const nlohmann::json&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
 
     class project
     {
@@ -74,7 +74,7 @@ namespace bob
         // Basic project data
         std::string project_name;
         std::string output_path;
-        std::string bob_home_directory;
+        std::string yakka_home_directory;
 
         // Component processing
         std::unordered_set<std::string> unprocessed_components;
@@ -89,9 +89,9 @@ namespace bob
         std::string project_directory;
         std::string project_summary_file;
         fs::file_time_type project_summary_last_modified;
-        std::vector<std::shared_ptr<bob::component>> components;
-        bob::component_database component_database;
-        bob::blueprint_database blueprint_database;
+        std::vector<std::shared_ptr<yakka::component>> components;
+        yakka::component_database component_database;
+        yakka::blueprint_database blueprint_database;
 
         nlohmann::json previous_summary;
         nlohmann::json project_summary;
@@ -124,5 +124,5 @@ namespace bob
     // static void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node);
     // static void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node);
     // static std::vector<std::string> parse_gcc_dependency_file(const std::string filename);
-} /* namespace bob */
+} /* namespace yakka */
 

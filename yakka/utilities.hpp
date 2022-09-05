@@ -5,7 +5,7 @@
 #include <unordered_set>
 
 
-namespace bob {
+namespace yakka {
 using component_list_t = std::unordered_set<std::string>;
 using feature_list_t = std::unordered_set<std::string>;
 using command_list_t = std::unordered_set<std::string>;

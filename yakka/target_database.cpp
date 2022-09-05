@@ -3,7 +3,7 @@
 #include "inja/inja.hpp"
 #include <regex>
 
-namespace bob {
+namespace yakka {
 
     void target_database::add_to_target_database( const std::string target, blueprint_database& blueprint_database, YAML::Node project_summary, nlohmann::json project_summary )
     {

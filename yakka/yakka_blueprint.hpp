@@ -12,7 +12,7 @@ namespace fs = std::experimental::filesystem;
 namespace fs = std::filesystem;
 #endif
 
-namespace bob {
+namespace yakka {
 
     struct blueprint
     {
@@ -36,7 +36,7 @@ namespace bob {
 
     struct blueprint_match {
         std::vector<std::string> dependencies; // Template processed dependencies
-        std::shared_ptr<bob::blueprint> blueprint;
+        std::shared_ptr<yakka::blueprint> blueprint;
         std::vector<std::string> regex_matches; // Regex capture groups for a particular regex match
         
     };
@@ -61,10 +61,10 @@ namespace bob {
 
     // enum construction_task_state
     // {
-    //     bob_task_to_be_done = 0,
-    //     bob_task_executing,
-    //     bob_task_up_to_date,
-    //     bob_task_failed
+    //     yakka_task_to_be_done = 0,
+    //     yakka_task_executing,
+    //     yakka_task_up_to_date,
+    //     yakka_task_failed
     // };
 
     struct construction_task
@@ -77,4 +77,4 @@ namespace bob {
 
         construction_task() : last_modified(fs::file_time_type::min()) {}
     };
-} // bob namespace
+} // yakka namespace

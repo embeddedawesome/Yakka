@@ -5,7 +5,7 @@
 
 namespace fs = std::filesystem;
 
-namespace bob
+namespace yakka
 {
     class component_database : public YAML::Node
     {
@@ -25,5 +25,5 @@ namespace bob
         bool database_is_dirty;
     };
 
-} /* namespace bob */
+} /* namespace yakka */
 

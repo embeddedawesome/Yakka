@@ -6,7 +6,7 @@
 #include <memory>
 #include <map>
 
-namespace bob
+namespace yakka
 {
     class target_database
     {

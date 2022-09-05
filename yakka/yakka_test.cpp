@@ -4,16 +4,16 @@
 
 int main(int argc, char **argv)
 {
-    auto console = spdlog::stderr_color_mt("bobconsole");
+    auto console = spdlog::stderr_color_mt("yakkaconsole");
     console->flush_on(spdlog::level::level_enum::off);
     console->set_pattern("[%^%l%$]: %v");
-    auto boblog = spdlog::basic_logger_mt("boblog", "bob_test.log");
+    auto yakkalog = spdlog::basic_logger_mt("yakkalog", "yakka_test.log");
 
     // Create a workspace
-    // bob::workspace workspace;
+    // yakka::workspace workspace;
 
     // Create a project
-    bob::project project(boblog);
+    yakka::project project(yakkalog);
     project.init_project("test test!");
     project.evaluate_dependencies();
     project.generate_project_summary();

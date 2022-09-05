@@ -1,11 +1,11 @@
 NAME := BOB
 
-$(NAME)_SOURCES := bob_cli.cpp \
-                   bob_project.cpp \
-                   bob_component.cpp \
-                   bob_workspace.cpp \
+$(NAME)_SOURCES := yakka_cli.cpp \
+                   yakka_project.cpp \
+                   yakka_component.cpp \
+                   yakka_workspace.cpp \
                    component_database.cpp \
-                   bob_blueprint.cpp \
+                   yakka_blueprint.cpp \
                    utilities.cpp
 
 #$(NAME)_SUPPORTED_FEATURES := windows \

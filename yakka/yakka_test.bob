@@ -1,8 +1,8 @@
 name: BOB test
 
 sources:
-  - bob_test.cpp
+  - yakka_test.cpp
 
 requires:
   components:
-    - bob
+    - yakka

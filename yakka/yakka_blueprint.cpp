@@ -1,7 +1,7 @@
 #include "yakka_blueprint.hpp"
 #include <iostream>
 
-namespace bob
+namespace yakka
 {
     blueprint::blueprint(const std::string& target, const nlohmann::json& blueprint, const std::string& parent_path)
     {

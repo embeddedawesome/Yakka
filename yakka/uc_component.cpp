@@ -2,7 +2,7 @@
 #include "yaml-cpp/yaml.h"
 #include "spdlog/spdlog.h"
 
-namespace bob
+namespace yakka
 {
     YAML::Node slcc::slcc_database;
 
@@ -13,10 +13,10 @@ namespace bob
 
     void slcc::parse_file( fs::path file_path )
     {
-        auto boblog = spdlog::get("boblog");
+        auto yakkalog = spdlog::get("yakkalog");
         this->file_path = file_path;
         std::string path_string = file_path.generic_string( );
-        boblog->info( "Parsing '{}", path_string);
+        yakkalog->info( "Parsing '{}", path_string);
 
         try
         {
@@ -39,7 +39,7 @@ namespace bob
         }
         catch ( ... )
         {
-            boblog->error("Failed to load file: '{}'", path_string);
+            yakkalog->error("Failed to load file: '{}'", path_string);
             return;
         }
 
@@ -74,7 +74,7 @@ namespace bob
         return {};
     }
 
-    void slcc::convert_to_bob()
+    void slcc::convert_to_yakka()
     {
         // Process 'provides'
         {

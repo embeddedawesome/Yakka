@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 
 std::string example_registry = "";
 
-namespace bob
+namespace yakka
 {
     workspace::workspace() : workspace_directory(".")
     {
@@ -25,7 +25,7 @@ namespace bob
 
     void workspace::init()
     {
-        log = spdlog::get("boblog");
+        log = spdlog::get("yakkalog");
 
         if (!fs::exists(".yakka/registries"))
             fs::create_directories(".yakka/registries");
@@ -52,7 +52,7 @@ namespace bob
                 }
     }
 
-    bob_status workspace::add_component_registry(const std::string& url)
+    yakka_status workspace::add_component_registry(const std::string& url)
     {
         return fetch_registry(url);
     }
@@ -83,11 +83,11 @@ namespace bob
             // project_summary["configuration"] = configuration;
             // project_summary["tools"] = configuration["tools"];
 
-            // if (configuration["bob_home"].IsDefined())
+            // if (configuration["yakka_home"].IsDefined())
             // {
-            //     bob_home_directory =  configuration["bob_home"].Scalar();
-            //     if (!fs::exists(bob_home_directory + "/repos"))
-            //         fs::create_directories(bob_home_directory + "/repos");
+            //     yakka_home_directory =  configuration["yakka_home"].Scalar();
+            //     if (!fs::exists(yakka_home_directory + "/repos"))
+            //         fs::create_directories(yakka_home_directory + "/repos");
             // }
 
             if (configuration["path"].IsDefined())
@@ -124,13 +124,13 @@ namespace bob
     }
 
     #define GIT_STRING  "git"
-    bob_status workspace::fetch_registry(const std::string& url )
+    yakka_status workspace::fetch_registry(const std::string& url )
     {
-        auto boblog = spdlog::get("boblog");
+        auto yakkalog = spdlog::get("yakkalog");
         const std::string fetch_string = "-C .yakka/registries/ clone " + url + " --progress --single-branch";
-        auto [output, result] = bob::exec(GIT_STRING, fetch_string);
+        auto [output, result] = yakka::exec(GIT_STRING, fetch_string);
 
-        boblog->info("{}", output);
+        yakkalog->info("{}", output);
 
         if (result != 0)
             return FAIL;
@@ -138,33 +138,33 @@ namespace bob
         return SUCCESS;
     }
 
-    bob_status workspace::update_component(const std::string& name )
+    yakka_status workspace::update_component(const std::string& name )
     {
         // This function could be async like fetch_component
-        auto boblog = spdlog::get("boblog");
-        auto console = spdlog::get("bobconsole");
+        auto yakkalog = spdlog::get("yakkalog");
+        auto console = spdlog::get("yakkaconsole");
         const std::string git_directory_string = "--git-dir .yakka/repos/" + name + "/.git --work-tree components/" + name + " ";
 
-        auto [stash_output, stash_result] = bob::exec(GIT_STRING, git_directory_string + "stash");
+        auto [stash_output, stash_result] = yakka::exec(GIT_STRING, git_directory_string + "stash");
         if (stash_result != 0) 
         {
             console->error(stash_output);
             return FAIL;
         }
-        boblog->info(stash_output);
+        yakkalog->info(stash_output);
 
-        auto [pull_output, pull_result] = bob::exec(GIT_STRING, git_directory_string + "pull --progress");
-        boblog->info(pull_output);
+        auto [pull_output, pull_result] = yakka::exec(GIT_STRING, git_directory_string + "pull --progress");
+        yakkalog->info(pull_output);
 
-        auto [pop_output, pop_result] = bob::exec(GIT_STRING, git_directory_string + "stash pop");
-        boblog->info(pop_output);
+        auto [pop_output, pop_result] = yakka::exec(GIT_STRING, git_directory_string + "stash pop");
+        yakkalog->info(pop_output);
         return SUCCESS;
     }
 
     using namespace std::string_literals;
     void workspace::do_fetch_component(const std::string& name, const std::string url, const std::string branch, std::function<void(size_t)> progress_handler)
     {
-        auto boblog = spdlog::get("boblog");
+        auto yakkalog = spdlog::get("yakkalog");
         enum {
             GIT_COUNTING    = 0,
             GIT_COMPRESSING = 1,
@@ -179,7 +179,7 @@ namespace bob
         const std::string fetch_string = "-C "s + ".yakka"s + "/repos/ clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
 
         auto t1 = std::chrono::high_resolution_clock::now();
-        bob::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
+        yakka::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
             std::smatch s;
             if ( phase < GIT_COMPRESSING && data.find("Comp" ) != data.npos ) {phase = GIT_COMPRESSING; }
             if ( phase < GIT_RECEIVING && data.find("Rece") != data.npos ) { phase = GIT_RECEIVING; }
@@ -187,12 +187,12 @@ namespace bob
 
             if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
             {
-                // boblog->info(data);
+                // yakkalog->info(data);
                 int phase_progress = std::stoi( s[1] );
                 int end_value = std::stoi( s[2] );
                 int progress = phase_rates[phase] + ((phase_rates[phase+1]-phase_rates[phase])*phase_progress)/end_value;
                 // if (progress < old_progress)
-                //   boblog->info << name << ": " << "Progress regressed\n" << data << "\n";
+                //   yakkalog->info << name << ": " << "Progress regressed\n" << data << "\n";
                 if (progress != old_progress)
                     progress_handler(progress);
                 old_progress = progress;
@@ -200,7 +200,7 @@ namespace bob
         });
         auto t2 = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-        boblog->info("{}: cloned in {}ms", name, duration);
+        yakkalog->info("{}: cloned in {}ms", name, duration);
 
         if (!fs::exists("components/" + name))
             fs::create_directories("components/" + name);
@@ -208,11 +208,11 @@ namespace bob
 
         // Checkout instance
         t1 = std::chrono::high_resolution_clock::now();
-        bob::exec(GIT_STRING, checkout_string, [&](const std::string& data) -> void {
+        yakka::exec(GIT_STRING, checkout_string, [&](const std::string& data) -> void {
             std::smatch s;
             if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
             {
-                // boblog->info(data);
+                // yakkalog->info(data);
                 int phase_progress = std::stoi( s[1] );
                 int end_value = std::stoi( s[2] );
                 int progress = phase_rates[GIT_LFS_CHECKOUT] + ((100-phase_rates[GIT_LFS_CHECKOUT])*phase_progress)/end_value;
@@ -221,7 +221,7 @@ namespace bob
         });
         t2 = std::chrono::high_resolution_clock::now();
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-        boblog->info("{}: checkout in {}ms", name, duration);
+        yakkalog->info("{}: checkout in {}ms", name, duration);
 
         progress_handler(100);
     }
