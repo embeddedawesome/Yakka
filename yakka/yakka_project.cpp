@@ -515,6 +515,13 @@ namespace yakka
                 if (path.has_filename()) return path.parent_path().string();
                 else return path.string();
                 });
+            local_inja_env.add_callback("glob", 1, [](inja::Arguments& args) {
+                nlohmann::json aggregate = nlohmann::json::array();
+                auto s = args.at(0)->get<std::string>();
+                for (auto &p : glob::rglob(s))
+                    aggregate.push_back(p.generic_string());
+                return aggregate;
+            });
             local_inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
             local_inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
             local_inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});

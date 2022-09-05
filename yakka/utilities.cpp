@@ -2,6 +2,7 @@
 #include "utilities.hpp"
 #include "subprocess.hpp"
 #include "spdlog/spdlog.h"
+#include "glob/glob.h"
 #include <fstream>
 
 namespace yakka {
@@ -400,6 +401,13 @@ std::pair<std::string, int> run_command( const std::string target, construction_
                 else return path.string();
                 });
     inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
+    inja_env.add_callback("glob", 1, [](inja::Arguments& args) {
+        nlohmann::json aggregate = nlohmann::json::array();
+        auto s = args.at(0)->get<std::string>();
+        for (auto &p : glob::rglob(s))
+            aggregate.push_back(p.generic_string());
+        return aggregate;
+    });
     inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
     inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});
     inja_env.add_callback("filesize", 1, [&](const inja::Arguments& args) { return fs::file_size(args[0]->get<std::string>());});
