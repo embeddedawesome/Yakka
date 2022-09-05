@@ -52,7 +52,7 @@ blueprints:
   '{{project_output}}/{{project_name}}.global_ld_options':
     depends:
       - data:
-          - '*.flags.ld'
+          - '/*/flags/ld'
     process:
       - inja: "{% for name,component in components %}{% for flag in component.flags.ld.global %}{{flag}} {% endfor %}{%endfor%} {% for name, component in components %}{%if existsIn(component,\"sources\") %}{% for source in component.sources %}{{project_output}}/components/{{name}}/{{source}}.o {% endfor %}{% endif %}{% endfor %}"
       - save:
@@ -61,9 +61,9 @@ blueprints:
     regex: '{{project_output}}/{{project_name}}.global_(cpp|c)_options'
     depends:
       - data:
-          - '*.flags.{{$(1)}}.global'
-          - '*.includes.global'
-          - '*.defines.global'
+          - '/*/flags/{{$(1)}}/global'
+          - '/*/includes/global'
+          - '/*/defines/global'
     process:
       - inja: "{% for name,component in components %}
         {% if existsIn(component, \"flags\") and existsIn(component.flags, $(1)) %}{% for flag in at(component.flags, $(1)).global %}{{flag}} {% endfor %}{%endif%}
@@ -78,9 +78,9 @@ blueprints:
     regex: '.+/components/([^/]*)/\1\.(cpp|c)_options'
     depends:
       - data:
-          - '{{$(1)}}.flags.{{$(2)}}.local'
-          - '{{$(1)}}.includes.local'
-          - '{{$(1)}}.defines.local'
+          - '/{{$(1)}}/flags/.{{$(2)}}/local'
+          - '/{{$(1)}}/includes/local'
+          - '/{{$(1)}}/defines/local'
     process:
       - create_directory: '{{$(0)}}'
       - inja: "{% set component=at(components,$(1)) %}
