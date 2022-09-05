@@ -312,9 +312,9 @@ int main(int argc, char **argv)
     project.evaluate_choices();
 
     // Evaluate default values for empty choices
-    for (auto& i: project.incomplete_choices)
-    {
-    }
+    // for (auto& i: project.incomplete_choices)
+    // {
+    // }
 
     if (!project.incomplete_choices.empty())
     {
