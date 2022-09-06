@@ -86,11 +86,11 @@ namespace yakka
           return;
         }
 
-        for (auto &p : glob::rglob({"**/*.yakka", "**/*.yakka"}))
-        {
-            add_component(p);
-        }
-#if 0
+        // for (auto &p : glob::rglob({"**/*.bob", "**/*.yakka"}))
+        // {
+        //     add_component(p);
+        // }
+#if 1
         auto rdi = fs::recursive_directory_iterator( path );
         for ( auto p = fs::begin(rdi); p != fs::end(rdi); ++p )
         {
