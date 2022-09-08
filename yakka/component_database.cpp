@@ -4,15 +4,13 @@
 #include "glob/glob.h"
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 namespace yakka
 {
-    const std::string component_database::database_filename = "yakka-components.yaml";
-
-    component_database::component_database( fs::path project_home )
+    component_database::component_database( fs::path workspace_path ) : database_is_dirty(false), workspace_path(workspace_path)
     {
-        load( project_home );
-        database_is_dirty = false;
+        this->workspace_path = workspace_path;
     }
 
     component_database::~component_database( )
@@ -27,19 +25,20 @@ namespace yakka
         database_is_dirty = true;
     }
 
-    void component_database::load( fs::path project_home )
+    void component_database::load( )
     {
+        database_filename = workspace_path / "yakka-components.yaml";
         auto yakkalog = spdlog::get("yakkalog");
         if ( !fs::exists( database_filename ) )
         {
-            scan_for_components( project_home );
+            scan_for_components( workspace_path );
             save();
         }
         else
         {
             try
             {
-                YAML::Node::operator =( YAML::LoadFile( database_filename ) );
+                YAML::Node::operator =( YAML::LoadFile( database_filename.string() ) );
             }
             catch(...)
             {
@@ -47,6 +46,7 @@ namespace yakka
             }
         }
     }
+
     void component_database::save()
     {
         std::ofstream database_file( database_filename );
@@ -57,6 +57,12 @@ namespace yakka
         database_file << static_cast<YAML::Node&>(*this);
         database_file.close();
         database_is_dirty = false;
+    }
+
+    void component_database::erase()
+    {
+        if (!database_filename.empty())
+            fs::remove(database_filename);
     }
 
     void component_database::add_component( fs::path path )
@@ -73,16 +79,19 @@ namespace yakka
         }
     }
 
-    void component_database::scan_for_components( fs::path path )
+    void component_database::scan_for_components(fs::path search_start_path)
     {
         auto yakkalog = spdlog::get("yakkalog");
         std::vector<std::future<slcc>> parsed_slcc_files;
 
+        if (search_start_path.empty())
+            search_start_path = this->workspace_path;
+            
         // add_component(path);
 
-        if (!fs::exists(path))
+        if (!fs::exists(search_start_path))
         {
-          yakkalog->error( "Cannot scan for components. Path does not exist: '{}'", path.generic_string());
+          yakkalog->error( "Cannot scan for components. Path does not exist: '{}'", search_start_path.generic_string());
           return;
         }
 
@@ -91,9 +100,15 @@ namespace yakka
         //     add_component(p);
         // }
 #if 1
-        auto rdi = fs::recursive_directory_iterator( path );
+        auto rdi = fs::recursive_directory_iterator( search_start_path );
         for ( auto p = fs::begin(rdi); p != fs::end(rdi); ++p )
         {
+            // Skip any directories that start with '.'
+            if (p->is_directory() && p->path().filename().string().front() == '.') {
+                p.disable_recursion_pending();
+                continue;
+            }
+
             if (p->path().filename().extension() == yakka_component_extension || p->path().filename().extension() == yakka_component_old_extension)
             {
                 add_component(p->path());

@@ -10,18 +10,19 @@ namespace yakka
     class component_database : public YAML::Node
     {
     public:
-        static const std::string database_filename;
-
-        component_database( fs::path project_home = "." );
+        component_database( fs::path workspace_path );
         virtual ~component_database( );
 
         void insert(const std::string id, fs::path config_file);
-        void load( fs::path project_home );
+        void load();
         void save();
+        void erase();
         void add_component( fs::path path );
-        void scan_for_components(fs::path project_home = ".");
+        void scan_for_components(fs::path search_start_path = "");
 
     private:
+        fs::path workspace_path;
+        fs::path database_filename;
         bool database_is_dirty;
     };
 

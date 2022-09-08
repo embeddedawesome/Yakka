@@ -1,6 +1,6 @@
 #include "yakka.hpp"
-#include "yakka_project.hpp"
 #include "yakka_workspace.hpp"
+#include "yakka_project.hpp"
 #include "cxxopts.hpp"
 #include "subprocess.hpp"
 #include "spdlog/spdlog.h"
@@ -55,8 +55,7 @@ int main(int argc, char **argv)
     options.add_options()
         ("h,help", "Print usage")
         ("r,refresh", "Refresh component database", cxxopts::value<bool>()->default_value("false"))
-        ("f,fetch", "Fetch missing components", cxxopts::value<bool>()->default_value("false"))
-        ("action",  "action", cxxopts::value<std::string>());
+        ("action",  "Select from 'register', 'list', 'update', 'git', or a command", cxxopts::value<std::string>());
 
     options.parse_positional({"action"});
     auto result = options.parse(argc, argv);
@@ -67,23 +66,22 @@ int main(int argc, char **argv)
     }
     if (result["refresh"].as<bool>())
     {
-        fs::remove(yakka::component_database::database_filename);
+        workspace.local_database.erase();
 
-        std::cout << "Scanning '.' for components" << std::endl;
-        yakka::component_database db;
-        db.save();
-        std::cout << "Scan complete. " << yakka::component_database::database_filename << " has been updated" << std::endl;
-    }
-    if (result["fetch"].as<bool>())
-    {
-      // Ensure the BOB repos directory exists
-      fs::create_directories(".yakka/repos");
+        std::cout << "Scanning '.' for components\n";
+        workspace.local_database.scan_for_components();
+        workspace.local_database.save();
+        std::cout << "Scan complete.\n";
     }
 
+    // Check if there is no action. If so, print the help
     if (!result.count("action"))
+    {
+        std::cout << options.help() << std::endl;
         return 0;
+    }
 
-    const auto action = result["action"].as<std::string>();
+    auto action = result["action"].as<std::string>();
     if (action == "register")
     {
         if (result.unmatched().size() == 0)
@@ -104,7 +102,6 @@ int main(int argc, char **argv)
     }
     else if (action == "list")
     {
-        yakka::component_database db;
         workspace.load_component_registries();
         for (auto registry: workspace.registries)
         {
@@ -148,7 +145,14 @@ int main(int argc, char **argv)
         std::cout << output;
         return 0;
     }
+    else if (action.back() != '!')
+    {
+        std::cout << "Must provide an action or a command (commands end with !)\n";
+        return 0;
+    }
 
+    // Action must be a command. Drop the !
+    action.pop_back();
     
     auto t1 = std::chrono::high_resolution_clock::now();
 
@@ -189,26 +193,16 @@ int main(int argc, char **argv)
 
     workspace.init();
 
-    if (result["action"].as<std::string>() == "build")
-    {
-        std::cout << "Building projects not supported yet\n";
-        // Identify the project to build
-        // There should only be one component. This is the particular project to build.
-        // The user can add features to "flavour" the build
-        return 0;
-    }
-    
-
     // Create a project
-    yakka::project project(project_name, yakkalog);
+    yakka::project project(project_name, workspace, yakkalog);
 
     // Move the CLI parsed data to the project
     project.unprocessed_components = std::move(components);
     project.unprocessed_features = std::move(features);
     project.commands = std::move(commands);
 
-    // The action, if not one of the built-in actions, is interpreted as a command to be processed by a blueprint
-    project.commands.insert(result["action"].as<std::string>());
+    // Add the action as a command
+    project.commands.insert(action);
 
     // Init the project
     project.init_project();
@@ -222,7 +216,8 @@ int main(int argc, char **argv)
     {
         console->info("Scanning workspace for missing components");
         yakkalog->info("Scanning workspace to find missing components");
-        project.component_database.scan_for_components();
+        workspace.local_database.scan_for_components();
+        workspace.shared_database.scan_for_components();
         project.unprocessed_components.swap(project.unknown_components);
         project.evaluate_dependencies();
     }
@@ -236,7 +231,7 @@ int main(int argc, char **argv)
         DynamicProgress<ProgressBar> fetch_progress_ui;
         std::vector<std::shared_ptr<ProgressBar>> fetch_progress_bars;
 
-        std::map<std::string, std::future<void>> fetch_list;
+        std::map<std::string, std::future<fs::path>> fetch_list;
         do
         {
             // Ask the workspace to fetch them
@@ -282,12 +277,16 @@ int main(int argc, char **argv)
             } while (completed_fetch == fetch_list.end());
 
             // Update the component database
-            project.component_database.scan_for_components("./components/" + completed_fetch->first);
+            auto new_component_path = completed_fetch->second.get();
+            if (new_component_path.string().starts_with(yakka::get_yakka_shared_home()))
+                workspace.shared_database.scan_for_components(new_component_path);
+            else
+                workspace.local_database.scan_for_components(new_component_path);
 
             // Check if any of our unknown components have been found
             for (auto i = project.unknown_components.cbegin(); i != project.unknown_components.cend();)
             {
-                if (project.component_database[*i])
+                if (workspace.local_database[*i])
                 {
                     // Remove component from the unknown list and add it to the unprocessed list
                     project.unprocessed_components.insert(*i);

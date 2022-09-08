@@ -2,6 +2,7 @@
 
 #include "yakka.hpp"
 #include "yakka_component.hpp"
+#include "yakka_workspace.hpp"
 #include "component_database.hpp"
 #include "blueprint_database.hpp"
 #include "yaml-cpp/yaml.h"
@@ -36,7 +37,7 @@ namespace yakka
         };
 
     public:
-        project( const std::string project_name, std::shared_ptr<spdlog::logger> log);
+        project( const std::string project_name, yakka::workspace& workspace, std::shared_ptr<spdlog::logger> log);
 
         virtual ~project( );
 
@@ -47,7 +48,7 @@ namespace yakka
         void parse_project_string( const std::vector<std::string>& project_string );
         void process_requirements(YAML::Node& component, YAML::Node child_node);
         state evaluate_dependencies();
-        std::optional<fs::path> find_component(const std::string component_dotname);
+        //std::optional<fs::path> find_component(const std::string component_dotname);
         void evaluate_choices();
 
         void parse_blueprints();
@@ -63,8 +64,8 @@ namespace yakka
         void process_construction(indicators::ProgressBar& bar);
         void save_summary();
         void save_blueprints();
-        std::optional<YAML::Node> find_registry_component(const std::string& name);
-        std::future<void> fetch_component(const std::string& name, indicators::ProgressBar& bar);
+        //std::optional<YAML::Node> find_registry_component(const std::string& name);
+        //std::future<void> fetch_component(const std::string& name, indicators::ProgressBar& bar);
         bool has_data_dependency_changed(std::string data_path, const nlohmann::json left, const nlohmann::json right);
         void create_tasks(const std::string target_name, tf::Task& parent);
 
@@ -90,8 +91,10 @@ namespace yakka
         std::string project_summary_file;
         fs::file_time_type project_summary_last_modified;
         std::vector<std::shared_ptr<yakka::component>> components;
-        yakka::component_database component_database;
+        //yakka::component_database component_database;
         yakka::blueprint_database blueprint_database;
+
+        workspace& workspace;
 
         nlohmann::json previous_summary;
         nlohmann::json project_summary;

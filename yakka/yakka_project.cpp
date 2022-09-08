@@ -13,7 +13,7 @@ namespace yakka
     using namespace std::chrono_literals;
 
 
-    project::project(  const std::string project_name, std::shared_ptr<spdlog::logger> log ) : project_name(project_name), yakka_home_directory("/.yakka"), project_directory(".")
+    project::project(  const std::string project_name, yakka::workspace& workspace, std::shared_ptr<spdlog::logger> log ) : project_name(project_name), yakka_home_directory("/.yakka"), project_directory("."), workspace(workspace)
     {
         this->log = log;
     }
@@ -201,7 +201,7 @@ namespace yakka
                 const auto c = yakka::component_dotname_to_id(i);
 
                 // Find the component in the project component database
-                auto component_path = find_component(c);
+                auto component_path = workspace.find_component(c);
                 if ( !component_path )
                 {
                     // log->info("{}: Couldn't find it", c);
@@ -335,35 +335,6 @@ namespace yakka
         project_summary["data"] = nlohmann::json::object();
         project_summary["host"] = nlohmann::json::object();
         project_summary["host"]["name"] = host_os_string;
-    }
-
-    std::optional<fs::path> project::find_component(const std::string component_dotname)
-    {
-        const std::string component_id = yakka::component_dotname_to_id(component_dotname);
-
-        // Get component from database
-        const auto& c = component_database[component_id];
-
-        // Check if that component is in the database
-        if (!c)
-        {
-            // TODO: Check the filesystem 
-            return {};
-        }
-
-        if (c.IsScalar() && fs::exists(c.Scalar()))
-            return c.Scalar();
-        if (c.IsSequence())
-        {
-            if ( c.size( ) == 1 )
-            {
-                if ( fs::exists( c[0].Scalar( ) ) )
-                    return c[0].Scalar( );
-            }
-            else
-                log->error("TODO: Parse multiple matches to the same component ID: '{}'", component_id);
-        }
-        return {};
     }
 
     void project::parse_blueprints()
@@ -517,8 +488,10 @@ namespace yakka
                 });
             local_inja_env.add_callback("glob", 1, [](inja::Arguments& args) {
                 nlohmann::json aggregate = nlohmann::json::array();
-                auto s = args.at(0)->get<std::string>();
-                for (auto &p : glob::rglob(s))
+                std::vector<std::string> string_args;
+                for (const auto& i: args)
+                    string_args.push_back(i->get<std::string>());
+                for (auto &p : glob::rglob(string_args))
                     aggregate.push_back(p.generic_string());
                 return aggregate;
             });

@@ -378,7 +378,7 @@ std::string try_render(inja::Environment& env, const std::string& input, const n
  *        Typically this would be ~/.yakka or /Users/<username>/.yakka or $HOME/.yakka
  * @return std::string
  */
-std::string get_yakka_home()
+std::string get_yakka_shared_home()
 {
     std::string home = !std::getenv("HOME") ? std::getenv("HOME") : std::getenv("USERPROFILE");
     return home + "/.yakka";
@@ -401,10 +401,12 @@ std::pair<std::string, int> run_command( const std::string target, construction_
                 else return path.string();
                 });
     inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
-    inja_env.add_callback("glob", 1, [](inja::Arguments& args) {
+    inja_env.add_callback("glob", [](inja::Arguments& args) {
         nlohmann::json aggregate = nlohmann::json::array();
-        auto s = args.at(0)->get<std::string>();
-        for (auto &p : glob::rglob(s))
+        std::vector<std::string> string_args;
+        for (const auto& i: args)
+            string_args.push_back(i->get<std::string>());
+        for (auto &p : glob::rglob(string_args))
             aggregate.push_back(p.generic_string());
         return aggregate;
     });

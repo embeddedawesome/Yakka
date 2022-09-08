@@ -22,4 +22,5 @@ std::tuple<component_list_t, feature_list_t, command_list_t> parse_arguments( co
 std::string generate_project_name(const component_list_t& components, const feature_list_t& features);
 std::vector<std::string> parse_gcc_dependency_file(const std::string filename);
 std::string component_dotname_to_id(const std::string dotname);
+std::string get_yakka_shared_home();
 }
