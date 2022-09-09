@@ -8,7 +8,7 @@
 
 namespace yakka
 {
-    component_database::component_database( fs::path workspace_path ) : database_is_dirty(false), workspace_path(workspace_path)
+    component_database::component_database( fs::path workspace_path ) : workspace_path(workspace_path), database_is_dirty(false)
     {
         this->workspace_path = workspace_path;
     }
