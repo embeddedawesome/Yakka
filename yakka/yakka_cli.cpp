@@ -286,7 +286,7 @@ int main(int argc, char **argv)
             // Check if any of our unknown components have been found
             for (auto i = project.unknown_components.cbegin(); i != project.unknown_components.cend();)
             {
-                if (workspace.local_database[*i])
+                if (workspace.local_database[*i] || workspace.shared_database[*i])
                 {
                     // Remove component from the unknown list and add it to the unprocessed list
                     project.unprocessed_components.insert(*i);
