@@ -380,8 +380,15 @@ std::string try_render(inja::Environment& env, const std::string& input, const n
  */
 std::string get_yakka_shared_home()
 {
-    std::string home = !std::getenv("HOME") ? std::getenv("HOME") : std::getenv("USERPROFILE");
-    return home + "/.yakka";
+    char* sys_home = !std::getenv("HOME") ? std::getenv("HOME") : std::getenv("USERPROFILE");
+    if (sys_home != nullptr) {
+        std::string home {sys_home};
+        return home + "/.yakka";
+    }
+    else
+    {
+        return "~/.yakka";
+    }
 }
 
 std::pair<std::string, int> run_command( const std::string target, construction_task* task, project* project )
