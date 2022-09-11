@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     }
 
     // Create a workspace
-    yakka::workspace workspace;
+    yakka::workspace workspace(".", yakka::get_yakka_shared_home());
 
     cxxopts::Options options("yakka", "Yakka the embedded builder. Ver " + yakka_version.to_string());
     options.allow_unrecognised_options();
@@ -278,7 +278,7 @@ int main(int argc, char **argv)
 
             // Update the component database
             auto new_component_path = completed_fetch->second.get();
-            if (new_component_path.string().starts_with(yakka::get_yakka_shared_home()))
+            if (new_component_path.string().starts_with(workspace.shared_components_path.string()))
                 workspace.shared_database.scan_for_components(new_component_path);
             else
                 workspace.local_database.scan_for_components(new_component_path);

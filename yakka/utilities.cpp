@@ -5,6 +5,7 @@
 #include "glob/glob.h"
 #include <fstream>
 
+
 namespace yakka {
 
 std::pair<std::string, int> exec( const std::string& command_text, const std::string& arg_text)
@@ -378,17 +379,13 @@ std::string try_render(inja::Environment& env, const std::string& input, const n
  *        Typically this would be ~/.yakka or /Users/<username>/.yakka or $HOME/.yakka
  * @return std::string
  */
-std::string get_yakka_shared_home()
+fs::path get_yakka_shared_home()
 {
-    char* sys_home = !std::getenv("HOME") ? std::getenv("HOME") : std::getenv("USERPROFILE");
-    if (sys_home != nullptr) {
-        std::string home {sys_home};
-        return home + "/.yakka";
-    }
-    else
-    {
-        return "~/.yakka";
-    }
+    char* sys_home = std::getenv("HOME");
+    if (sys_home != nullptr)
+        return fs::path(sys_home) / ".yakka";
+
+    return ".yakka";
 }
 
 std::pair<std::string, int> run_command( const std::string target, construction_task* task, project* project )
