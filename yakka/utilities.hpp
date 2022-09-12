@@ -13,7 +13,7 @@ using feature_list_t = std::unordered_set<std::string>;
 using command_list_t = std::unordered_set<std::string>;
 
 std::pair<std::string, int> exec( const std::string& command_text, const std::string& arg_text);
-void exec( const std::string& command_text, const std::string& arg_text, std::function<void(std::string&)> function);
+int exec( const std::string& command_text, const std::string& arg_text, std::function<void(std::string&)> function);
 bool yaml_diff(const YAML::Node& node1, const YAML::Node& node2);
 void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node);
 void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node);

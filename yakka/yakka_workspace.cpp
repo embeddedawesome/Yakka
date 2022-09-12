@@ -201,6 +201,7 @@ namespace yakka
             GIT_LFS_CHECKOUT= 4,
         } phase = GIT_COUNTING;
         int old_progress = 0;
+        int retcode;
 
         if (!fs::exists(git_location)) {
             fs::create_directories(git_location);
@@ -215,7 +216,7 @@ namespace yakka
         const std::string fetch_string = "-C " + git_location.string() + " clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
 
         auto t1 = std::chrono::high_resolution_clock::now();
-        yakka::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
+        retcode = yakka::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
             std::smatch s;
             if ( phase < GIT_COMPRESSING && data.find("Comp" ) != data.npos ) {phase = GIT_COMPRESSING; }
             if ( phase < GIT_RECEIVING && data.find("Rece") != data.npos ) { phase = GIT_RECEIVING; }
@@ -234,6 +235,9 @@ namespace yakka
                 old_progress = progress;
             }
         });
+        if (retcode != 0) {
+            return {};
+        }
         auto t2 = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
         yakkalog->info("{}: cloned in {}ms", name, duration);
@@ -242,7 +246,7 @@ namespace yakka
 
         // Checkout instance
         t1 = std::chrono::high_resolution_clock::now();
-        yakka::exec(GIT_STRING, checkout_string, [&](const std::string& data) -> void {
+        retcode = yakka::exec(GIT_STRING, checkout_string, [&](const std::string& data) -> void {
             std::smatch s;
             if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
             {
@@ -253,6 +257,9 @@ namespace yakka
                 progress_handler(progress);
             }
         });
+        if (retcode != 0) {
+            return {};
+        }
         t2 = std::chrono::high_resolution_clock::now();
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
         yakkalog->info("{}: checkout in {}ms", name, duration);

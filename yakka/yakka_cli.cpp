@@ -276,8 +276,18 @@ int main(int argc, char **argv)
                 completed_fetch = std::find_if(fetch_list.begin(), fetch_list.end(), [](auto& fetch_item){ return fetch_item.second.wait_for(100ms) == std::future_status::ready; } );
             } while (completed_fetch == fetch_list.end());
 
-            // Update the component database
             auto new_component_path = completed_fetch->second.get();
+
+            // Check if the fetch worked
+            if (new_component_path.empty()) {
+                yakkalog->error("Failed to fetch {}", completed_fetch->first);
+                console->error("Failed to fetch {}", completed_fetch->first);
+                project.unknown_components.erase(completed_fetch->first);
+                fetch_list.erase(completed_fetch);
+                continue;
+            }
+
+            // Update the component database
             if (new_component_path.string().starts_with(workspace.shared_components_path.string()))
             {
                 yakkalog->info("Scanning for new component in shared database");

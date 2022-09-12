@@ -45,7 +45,7 @@ std::pair<std::string, int> exec( const std::string& command_text, const std::st
     }
 }
 
-void exec( const std::string& command_text, const std::string& arg_text, std::function<void(std::string&)> function)
+int exec( const std::string& command_text, const std::string& arg_text, std::function<void(std::string&)> function)
 {
     auto yakkalog = spdlog::get("yakkalog");
     yakkalog->info("{} {}", command_text, arg_text);
@@ -78,12 +78,16 @@ void exec( const std::string& command_text, const std::string& arg_text, std::fu
                     ++count;
             };
         }
-        p.wait();
-        p.poll();
+       auto retcode = p.wait();
+#if defined(__USING_WINDOWS__)
+        retcode = p.poll();
+#endif
+        return retcode;
     } catch (std::exception e)
     {
         yakkalog->error("Exception while executing: {}\n{}", command_text, e.what());
     }
+    return -1;
 }
 
 bool yaml_diff(const YAML::Node& node1, const YAML::Node& node2)
