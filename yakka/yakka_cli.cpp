@@ -279,9 +279,17 @@ int main(int argc, char **argv)
             // Update the component database
             auto new_component_path = completed_fetch->second.get();
             if (new_component_path.string().starts_with(workspace.shared_components_path.string()))
+            {
+                yakkalog->info("Scanning for new component in shared database");
                 workspace.shared_database.scan_for_components(new_component_path);
+                workspace.shared_database.save();
+            }
             else
+            {
+                yakkalog->info("Scanning for new component in local database");
                 workspace.local_database.scan_for_components(new_component_path);
+                workspace.shared_database.save();
+            }
 
             // Check if any of our unknown components have been found
             for (auto i = project.unknown_components.cbegin(); i != project.unknown_components.cend();)
