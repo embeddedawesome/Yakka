@@ -429,9 +429,13 @@ std::pair<std::string, int> run_command( const std::string target, construction_
         curdir_path = backup;
         return render_output;
         });
-    inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) { 
+    inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) {
         auto file = std::ifstream(args[0]->get<std::string>()); 
         return std::string{std::istreambuf_iterator<char>{file}, {}};
+    });
+    inja_env.add_callback("load_yaml", 1, [&](const inja::Arguments& args) {
+        auto yaml_data = YAML::LoadFile(args[0]->get<std::string>());
+        return yaml_data.as<nlohmann::json>();
     });
     inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
         nlohmann::json aggregate;
