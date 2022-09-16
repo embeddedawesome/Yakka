@@ -204,10 +204,12 @@ namespace yakka
         int retcode;
 
         if (!fs::exists(git_location)) {
+            yakkalog->info("Creating {}", git_location.string());
             fs::create_directories(git_location);
         }
 
          if (!fs::exists(checkout_location)) {
+            yakkalog->info("Creating {}", checkout_location.string());
             fs::create_directories(checkout_location);
         }
 

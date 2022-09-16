@@ -386,8 +386,12 @@ std::string try_render(inja::Environment& env, const std::string& input, const n
 fs::path get_yakka_shared_home()
 {
     char* sys_home = std::getenv("HOME");
+    char* sys_homepath = std::getenv("HOMEPATH");
+    
     if (sys_home != nullptr)
         return fs::path(sys_home) / ".yakka";
+    if (sys_homepath != nullptr)
+        return fs::path(sys_homepath) / ".yakka";
 
     return ".yakka";
 }
