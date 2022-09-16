@@ -385,14 +385,18 @@ std::string try_render(inja::Environment& env, const std::string& input, const n
  */
 fs::path get_yakka_shared_home()
 {
+    // Try read HOME environment variable
     char* sys_home = std::getenv("HOME");
-    char* sys_homepath = std::getenv("HOMEPATH");
-    
     if (sys_home != nullptr)
         return fs::path(sys_home) / ".yakka";
-    if (sys_homepath != nullptr)
-        return fs::path(sys_homepath) / ".yakka";
 
+    // If that fails we can try the Windows version HOMEDRIVE + HOMEPATH
+    char* sys_homepath = std::getenv("HOMEPATH");
+    char* sys_homedrive = std::getenv("HOMEDRIVE");
+    if (sys_homepath != nullptr && sys_homedrive != nullptr)
+        return fs::path(std::string(sys_homedrive) + std::string(sys_homepath)) / ".yakka";
+
+    // Otherwise we default to using the local .yakka folder
     return ".yakka";
 }
 
