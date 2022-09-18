@@ -33,48 +33,4 @@ namespace yakka {
 
         blueprint(const std::string& target, const nlohmann::json& blueprint, const std::string& parent_path);
     };
-
-    struct blueprint_match {
-        std::vector<std::string> dependencies; // Template processed dependencies
-        std::shared_ptr<yakka::blueprint> blueprint;
-        std::vector<std::string> regex_matches; // Regex capture groups for a particular regex match
-        
-    };
-
-    // struct task
-    // {
-    //     const std::string target;
-
-    //     // List of dependencies after template processing
-    //     // This could use the blueprint::dependency type. Not sure on benefits
-    //     std::vector< std::string > dependencies;
-        
-    //     // Regex matches could be stored as strings or as a JSON object
-    //     // Internally they are used as JSON objects so it makes sense to do all the processing upfront
-    //     nlohmann::json regex_matches;
-    //     // std::vector<std::string> regex_matches;
-
-    //     std::shared_ptr<blueprint> blueprint;
-    //     // Delete the copy constructor?
-    //     // blueprint_node(const blueprint_node& n) = delete;
-    // };
-
-    // enum construction_task_state
-    // {
-    //     yakka_task_to_be_done = 0,
-    //     yakka_task_executing,
-    //     yakka_task_up_to_date,
-    //     yakka_task_failed
-    // };
-
-    struct construction_task
-    {
-        std::shared_ptr<blueprint_match> match;
-        fs::file_time_type last_modified;
-        tf::Task task;
-        // construction_task_state state;
-        // std::future<std::pair<std::string, int>> thread_result;
-
-        construction_task() : last_modified(fs::file_time_type::min()) {}
-    };
 } // yakka namespace

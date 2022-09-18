@@ -26,6 +26,17 @@ namespace yakka
 
     typedef std::function<yakka::process_return(std::string, const nlohmann::json&, std::string, const nlohmann::json&, inja::Environment&)> blueprint_command;
 
+    struct construction_task
+    {
+        std::shared_ptr<blueprint_match> match;
+        fs::file_time_type last_modified;
+        tf::Task task;
+        // construction_task_state state;
+        // std::future<std::pair<std::string, int>> thread_result;
+
+        construction_task() : last_modified(fs::file_time_type::min()) {}
+    };
+
     class project
     {
     public:
@@ -56,7 +67,7 @@ namespace yakka
         void generate_project_summary();
 
         // Target database management
-        void add_to_target_database( const std::string target );
+        //void add_to_target_database( const std::string target );
         void generate_target_database();
 
         void load_common_commands();
@@ -93,6 +104,7 @@ namespace yakka
         std::vector<std::shared_ptr<yakka::component>> components;
         //yakka::component_database component_database;
         yakka::blueprint_database blueprint_database;
+        yakka::target_database target_database;
 
         workspace& workspace;
 
@@ -101,7 +113,7 @@ namespace yakka
 
         // Blueprint evaluation
         inja::Environment inja_environment;
-        std::multimap<std::string, std::shared_ptr<blueprint_match> > target_database;
+        //std::multimap<std::string, std::shared_ptr<blueprint_match> > target_database;
         std::multimap<std::string, construction_task> todo_list;
         int work_task_count;
         // YAML::Node blueprint_database;

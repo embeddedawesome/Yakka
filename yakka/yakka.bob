@@ -6,6 +6,7 @@ sources:
   - yakka_workspace.cpp
   - component_database.cpp
   - yakka_blueprint.cpp
+  - blueprint_database.cpp
   - utilities.cpp
 
 requires:
