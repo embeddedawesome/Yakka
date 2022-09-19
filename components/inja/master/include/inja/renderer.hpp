@@ -199,7 +199,10 @@ class Renderer : public NodeVisitor {
     switch (node.operation) {
     case Op::Not: {
       const auto args = get_arguments<1>(node);
-      make_result(!truthy(args[0]));
+      if (args[0])
+        make_result(!truthy(args[0]));
+      else
+        make_result(true);
     } break;
     case Op::And: {
       make_result(truthy(get_arguments<1, 0>(node)[0]) && truthy(get_arguments<1, 1>(node)[0]));
