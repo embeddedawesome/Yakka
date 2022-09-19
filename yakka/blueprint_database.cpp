@@ -2,7 +2,7 @@
 #include "utilities.hpp"
 #include "yakka.hpp"
 #include "inja.hpp"
-#include "glob/glob.hpp"
+#include "glob/glob.h"
 #include <regex>
 
 
@@ -10,6 +10,7 @@ namespace yakka
 {
     std::shared_ptr<blueprint_match> blueprint_database::find_match( const std::string target, const nlohmann::json& project_summary )
     {
+        auto log = spdlog::get("yakkalog");
         bool blueprint_match_found = false;
 
         for ( const auto& blueprint : blueprints )
@@ -98,16 +99,16 @@ namespace yakka
                 {
                     case blueprint::dependency::DEPENDENCY_FILE_DEPENDENCY:
                     {
-                        const std::string generated_dependency_file = try_render(local_inja_env,  d.name, project_summary, log );
+                        const std::string generated_dependency_file = yakka::try_render(local_inja_env,  d.name, project_summary, log );
                         auto dependencies = parse_gcc_dependency_file(generated_dependency_file);
                         match->dependencies.insert( std::end( match->dependencies ), std::begin( dependencies ), std::end( dependencies ) );
                         continue;
                     }
                     case blueprint::dependency::DATA_DEPENDENCY:
                     {
-                        std::string data_name = try_render(local_inja_env, d.name, project_summary, log);
+                        std::string data_name = yakka::try_render(local_inja_env, d.name, project_summary, log);
                         if (data_name.front() != yakka::data_dependency_identifier)
-                            data_name.insert(0,1, yakka:data_dependency_identifier);
+                            data_name.insert(0,1, yakka::data_dependency_identifier);
                         match->dependencies.push_back(data_name);
                         continue;
                     }
@@ -124,7 +125,7 @@ namespace yakka
                 catch ( std::exception& e )
                 {
                     log->error("Couldn't apply template: '{}'\n{}", d.name, e.what());
-                    return;
+                    return nullptr;
                 }
 
                 // Check if the input was a YAML array construct
@@ -155,6 +156,7 @@ namespace yakka
             if (!fs::exists( target ))
                 log->info("No blueprint for '{}'", target);
         }
+        return nullptr;
     }
 
     #if 0

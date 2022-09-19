@@ -134,7 +134,7 @@ namespace yakka
         std::function<void()> task_complete_handler;
     };
 
-    std::string try_render(inja::Environment& env, const std::string& input, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log);
+    //std::string try_render(inja::Environment& env, const std::string& input, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log);
     std::pair<std::string, int> run_command( const std::string target, construction_task* task, project* project );
     // static void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node);
     // static void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node);

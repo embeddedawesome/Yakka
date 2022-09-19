@@ -844,7 +844,7 @@ namespace yakka
                         // If it doesn't exist as a file, run the command
                         if (!fs::exists(target_name))
                         {
-                            auto result = run_command(i->first, d, this);
+                            auto result = yakka::run_command(i->first, d, this);
                             d->last_modified = fs::file_time_type::clock::now();
                             if (result.second != 0)
                             {
@@ -867,7 +867,7 @@ namespace yakka
                         if (!fs::exists(target_name) || max_element->second.last_modified > d->last_modified)
                         {
                             log->info("{}: Updating because of {}",target_name, max_element->first);
-                            auto [output, retcode] = run_command(i->first, d, this);
+                            auto [output, retcode] = yakka::run_command(i->first, d, this);
                             d->last_modified = fs::file_time_type::clock::now();
                             if (retcode != 0)
                             {
