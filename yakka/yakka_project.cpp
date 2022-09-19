@@ -486,7 +486,7 @@ namespace yakka
                 if (path.has_filename()) return path.parent_path().string();
                 else return path.string();
                 });
-            local_inja_env.add_callback("glob", 1, [](inja::Arguments& args) {
+            local_inja_env.add_callback("glob", [](inja::Arguments& args) {
                 nlohmann::json aggregate = nlohmann::json::array();
                 std::vector<std::string> string_args;
                 for (const auto& i: args)
