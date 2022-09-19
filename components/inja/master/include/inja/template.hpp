@@ -1,5 +1,3 @@
-// Copyright (c) 2021 Pantor. All rights reserved.
-
 #ifndef INCLUDE_INJA_TEMPLATE_HPP_
 #define INCLUDE_INJA_TEMPLATE_HPP_
 
@@ -11,7 +9,6 @@
 #include "node.hpp"
 #include "statistics.hpp"
 
-
 namespace inja {
 
 /*!
@@ -22,8 +19,8 @@ struct Template {
   std::string content;
   std::map<std::string, std::shared_ptr<BlockStatementNode>> block_storage;
 
-  explicit Template() { }
-  explicit Template(const std::string& content): content(content) { }
+  explicit Template() {}
+  explicit Template(const std::string& content): content(content) {}
 
   /// Return number of variables (total number, not distinct ones) in the template
   int count_variables() {

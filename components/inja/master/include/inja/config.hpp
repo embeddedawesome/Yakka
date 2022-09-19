@@ -1,12 +1,10 @@
-// Copyright (c) 2021 Pantor. All rights reserved.
-
 #ifndef INCLUDE_INJA_CONFIG_HPP_
 #define INCLUDE_INJA_CONFIG_HPP_
 
 #include <functional>
 #include <string>
 
-#include "string_view.hpp"
+#include "template.hpp"
 
 namespace inja {
 
@@ -67,6 +65,8 @@ struct LexerConfig {
  */
 struct ParserConfig {
   bool search_included_templates_in_files {true};
+
+  std::function<Template(const std::string&, const std::string&)> include_callback;
 };
 
 /*!
