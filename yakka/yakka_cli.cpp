@@ -47,7 +47,8 @@ int main(int argc, char **argv)
     }
 
     // Create a workspace
-    yakka::workspace workspace(".", yakka::get_yakka_shared_home());
+    yakka::workspace workspace;
+    workspace.init(".", yakka::get_yakka_shared_home());
 
     cxxopts::Options options("yakka", "Yakka the embedded builder. Ver " + yakka_version.to_string());
     options.allow_unrecognised_options();
@@ -190,8 +191,6 @@ int main(int argc, char **argv)
     // Add features to the project name
     for (const auto& f: features)
         project_name += "+" + f;
-
-    workspace.init();
 
     // Create a project
     yakka::project project(project_name, workspace, yakkalog);

@@ -14,34 +14,43 @@ std::string example_registry = "";
 
 namespace yakka
 {
-    workspace::workspace( fs::path workspace_path, fs::path shared_components_path ) : local_database(workspace_path), shared_database(shared_components_path)
+    workspace::workspace( )
     {
-        this->workspace_path = workspace_path;
-        this->shared_components_path = shared_components_path;
-
-        load_config_file(workspace_path / "config.yaml");
-        load_config_file(shared_components_path / "/config.yaml");
-
         configuration["host_os"] = host_os_string;
         configuration["executable_extension"] = executable_extension;
         configuration_json = configuration.as<nlohmann::json>();
     }
 
-    void workspace::init()
+    void workspace::init(fs::path workspace_path, fs::path shared_components_path)
     {
         log = spdlog::get("yakkalog");
 
-        if (!fs::exists(workspace_path / ".yakka/registries"))
-            fs::create_directories(workspace_path / ".yakka/registries");
+        this->workspace_path = workspace_path;
+        try {
+            if (!fs::exists(shared_components_path))
+                fs::create_directories(shared_components_path);
+            
+            this->shared_components_path = shared_components_path;
+        }
+        catch(...)
+        {
+        }
 
-        if (!fs::exists(workspace_path / ".yakka/repos"))
-            fs::create_directories(workspace_path / ".yakka/repos");
+        load_config_file(workspace_path / "config.yaml");
 
-        if (!fs::exists(shared_components_path))
-            fs::create_directories(shared_components_path);
+        if (!fs::exists(this->workspace_path / ".yakka/registries"))
+            fs::create_directories(this->workspace_path / ".yakka/registries");
 
-        local_database.load();
-        shared_database.load();
+        if (!fs::exists(this->workspace_path / ".yakka/repos"))
+            fs::create_directories(this->workspace_path / ".yakka/repos");
+
+        local_database.load(this->workspace_path);
+
+        if (!this->shared_components_path.empty())
+        {
+            load_config_file(this->shared_components_path / "/config.yaml");
+            shared_database.load(this->shared_components_path);
+        }
     }
 
     void workspace::load_component_registries()
@@ -112,11 +121,11 @@ namespace yakka
 
     void workspace::load_config_file(const fs::path config_file_path)
     {
-        if (!fs::exists(config_file_path))
-            return;
-
         try
         {
+            if (!fs::exists(config_file_path))
+                return;
+            
             auto configuration = YAML::LoadFile( config_file_path.string() );
 
             if (configuration["path"].IsDefined())
@@ -144,8 +153,9 @@ namespace yakka
     {
         std::string url    = template_render(node["packages"]["default"]["url"].as<std::string>());
         std::string branch = template_render(node["packages"]["default"]["branch"].as<std::string>());
-        fs::path git_location = (node["type"] && node["type"].as<std::string>() == "tool") ? shared_components_path / "repos" : workspace_path / ".yakka/repos";
-        fs::path checkout_location = (node["type"] && node["type"].as<std::string>() == "tool") ? shared_components_path / "repos" / name : workspace_path / "components" / name;
+        const bool shared_components_write_access = (fs::status(shared_components_path).permissions() & fs::perms::owner_write ) == fs::perms::none;
+        fs::path git_location = (node["type"] && node["type"].as<std::string>() == "tool" && shared_components_write_access) ? shared_components_path / "repos" : workspace_path / ".yakka/repos";
+        fs::path checkout_location = (node["type"] && node["type"].as<std::string>() == "tool" && shared_components_write_access) ? shared_components_path / "repos" / name : workspace_path / "components" / name;
         return std::async(std::launch::async, [=]() {
                 return do_fetch_component(name, url, branch, git_location, checkout_location, progress_handler);
         });
@@ -203,15 +213,23 @@ namespace yakka
         int old_progress = 0;
         int retcode;
 
-        if (!fs::exists(git_location)) {
+        try
+        {
+             if (!fs::exists(git_location)) {
             yakkalog->info("Creating {}", git_location.string());
             fs::create_directories(git_location);
-        }
+            }
 
-         if (!fs::exists(checkout_location)) {
-            yakkalog->info("Creating {}", checkout_location.string());
-            fs::create_directories(checkout_location);
+            if (!fs::exists(checkout_location)) {
+                yakkalog->info("Creating {}", checkout_location.string());
+                fs::create_directories(checkout_location);
+            }
         }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+            return {};
+        }       
 
         // Of the total time to fetch a Git repo, 10% is allocated to counting, 10% to compressing, and 80% to receiving.
         static const int phase_rates[] = {0, 10, 20, 75, 90};
