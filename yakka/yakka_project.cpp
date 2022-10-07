@@ -37,17 +37,34 @@ namespace yakka
         while (std::getline(ss, word, ' ')) {
             // Identify features, commands, and components
             if (word.front() == '+')
-                this->unprocessed_features.insert(word.substr(1));
+                this->initial_features.push_back(word.substr(1));
             else if (word.back() == '!')
                 this->commands.insert(word.substr(0, word.size() - 1));
             else
-                this->unprocessed_components.insert(word);
+                this->initial_components.push_back(word);
         }
     }
 
     void project::init_project(const std::string build_string)
     {
         process_build_string(build_string);
+
+        for (const auto& c: initial_components)
+            unprocessed_components.insert(c);
+        for (const auto& f: initial_features)
+            unprocessed_features.insert(f);
+        init_project();
+    }
+
+    void project::init_project(std::vector<std::string> components, std::vector<std::string> features)
+    {
+        initial_components = components;
+        initial_features = features;
+
+        for (const auto& c: initial_components)
+            unprocessed_components.insert(c);
+        for (const auto& f: initial_features)
+            unprocessed_features.insert(f);
         init_project();
     }
 
@@ -63,23 +80,10 @@ namespace yakka
             std::ifstream i(project_summary_file);
             i >> project_summary;
             i.close();
-            // project_summary = project_summary_yaml.as<nlohmann::json>();
 
             // Fill required_features with features from project summary
             for (auto& f: project_summary["features"])
                 required_features.insert(f.get<std::string>());
-
-            // Remove the known components from unprocessed_components
-            // component_list_t temp_components;
-            // for (const auto& c: unprocessed_components)
-            //     if (!project_summary["components"][c])
-            //         temp_components.insert(c);
-            // feature_list_t temp_features;
-            // for (const auto& c: unprocessed_features)
-            //     if (!project_summary["features"][c])
-            //         temp_features.insert(c);
-            // unprocessed_components = std::move(temp_components);
-            // unprocessed_features = std::move(temp_features);
 
             project_summary["choices"] = {};
             update_summary();
@@ -149,6 +153,16 @@ namespace yakka
                 for (const auto &i : child_node_provides)
                     unprocessed_features.insert(i.as<std::string>());
         }
+
+        // Process choices
+        for (const auto& choice: child_node["choices"]) {
+            const auto choice_name = choice.first.Scalar();
+            if (!project_summary["choices"].contains(choice_name)) {
+                unprocessed_choices.insert(choice_name);
+                project_summary["choices"][choice_name] = choice.second.as<nlohmann::json>();
+                project_summary["choices"][choice_name]["parent"] = component["name"].as<std::string>();
+            }
+        }
     }
 
 
@@ -189,6 +203,8 @@ namespace yakka
      */
     project::state project::evaluate_dependencies()
     {
+        size_t starting_replacement_count = replaced_components.size();
+
         // Start processing all the required components and features
         while ( !unprocessed_components.empty( ) || !unprocessed_features.empty( ))
         {
@@ -232,6 +248,21 @@ namespace yakka
                 for (const auto& f : new_component->yaml["provides"]["features"])
                     unprocessed_features.insert(f.Scalar());
 
+                // Add all the component choices to the global choice list
+                for (const auto& choice: new_component->yaml["choices"]) {
+                    const auto choice_name = choice.first.Scalar();
+                    if (!project_summary["choices"].contains(choice_name)) {
+                        unprocessed_choices.insert(choice_name);
+                        project_summary["choices"][choice_name] = choice.second.as<nlohmann::json>();
+                        project_summary["choices"][choice_name]["parent"] = new_component->id;
+                    }
+                }
+                
+                // Check for replacements
+                for (const auto& c: new_component->yaml["replaces"]["components"]) {
+                    replaced_components.insert(c.Scalar());
+                }
+
                 // Process all the currently required features. Note new feature will be processed in the features pass
                 for ( auto& f : required_features )
                     if ( new_component->yaml["supports"]["features"][f] )
@@ -274,9 +305,39 @@ namespace yakka
                         process_requirements(c->yaml, c->yaml["supports"]["features"][f]);
                     }
             }
-        };
 
-        if (unknown_components.size() != 0) return project::state::PROJECT_HAS_UNKNOWN_COMPONENTS;
+            // Check if we need to process default choices
+            if (unprocessed_components.empty( ) && unprocessed_features.empty( ) )
+            {
+                for (const auto c: unprocessed_choices)
+                {
+                    const auto& choice = project_summary["choices"][c];
+                    int matches = 0;
+                    if (choice.contains("features"))
+                        matches = std::count_if(choice["features"].begin(), choice["features"].end(), [&](auto j){ return required_features.contains(j.get<std::string>()); });
+                    if (choice.contains("components"))
+                        matches = std::count_if(choice["components"].begin(), choice["components"].end(), [&](auto j){ return required_components.contains(j.get<std::string>()); });
+                    if (matches == 0 && choice.contains("default")) {
+                        log->info("Selecting default choice for {}", c);
+                        if (choice["default"].contains("feature"))
+                            unprocessed_features.insert(choice["default"]["feature"].get<std::string>());
+                        if (choice["default"].contains("component"))
+                            unprocessed_components.insert(choice["default"]["component"].get<std::string>());
+                        break;
+                    }
+                }
+            }
+
+            // Check if we have finished but we've come across replaced components
+            if (unprocessed_components.empty( ) && unprocessed_features.empty( ) && starting_replacement_count != replaced_components.size()) {
+                // Restart the whole process
+                starting_replacement_count = replaced_components.size();
+                
+            }
+        }
+
+        if (unknown_components.size() != 0) 
+            return project::state::PROJECT_HAS_UNKNOWN_COMPONENTS;
 
         return project::state::PROJECT_VALID;
     }
@@ -288,7 +349,6 @@ namespace yakka
             for (auto i: c->yaml["choices"])
             {
                 const auto choice_name = i.first.Scalar();
-                project_summary["choices"][choice_name] = i.second.as<nlohmann::json>();
 
                 int matches = 0;
                 if (i.second["features"])
@@ -730,7 +790,7 @@ namespace yakka
                         template_string = command["template"].get<std::string>();
                         captured_output = try_render(inja_env, template_string, data.is_null() ? generated_json : data, yakkalog);
                         return {captured_output,0};
-                    }    
+                    }
                 }
                 
                 yakkalog->error("Inja template is invalid:\n'{}'", command.dump());
