@@ -149,6 +149,16 @@ namespace yakka
                 for (const auto &i : child_node_provides)
                     unprocessed_features.insert(i.as<std::string>());
         }
+
+        // Process choices
+        for (const auto& choice: child_node["choices"]) {
+            const auto choice_name = choice.first.Scalar();
+            if (!project_summary["choices"].contains(choice_name)) {
+                unprocessed_choices.insert(choice_name);
+                project_summary["choices"][choice_name] = choice.second.as<nlohmann::json>();
+                project_summary["choices"][choice_name]["parent"] = component["name"].as<std::string>();
+            }
+        }
     }
 
 
@@ -232,6 +242,16 @@ namespace yakka
                 for (const auto& f : new_component->yaml["provides"]["features"])
                     unprocessed_features.insert(f.Scalar());
 
+                // Add all the component choices to the global choice list
+                for (const auto& choice: new_component->yaml["choices"]) {
+                    const auto choice_name = choice.first.Scalar();
+                    if (!project_summary["choices"].contains(choice_name)) {
+                        unprocessed_choices.insert(choice_name);
+                        project_summary["choices"][choice_name] = choice.second.as<nlohmann::json>();
+                        project_summary["choices"][choice_name]["parent"] = new_component->id;
+                    }
+                }
+
                 // Process all the currently required features. Note new feature will be processed in the features pass
                 for ( auto& f : required_features )
                     if ( new_component->yaml["supports"]["features"][f] )
@@ -274,9 +294,32 @@ namespace yakka
                         process_requirements(c->yaml, c->yaml["supports"]["features"][f]);
                     }
             }
-        };
 
-        if (unknown_components.size() != 0) return project::state::PROJECT_HAS_UNKNOWN_COMPONENTS;
+            // Check if we need to process default choices
+            if (unprocessed_components.empty( ) && unprocessed_features.empty( ) )
+            {
+                for (const auto c: unprocessed_choices)
+                {
+                    const auto& choice = project_summary["choices"][c];
+                    int matches = 0;
+                    if (choice.contains("features"))
+                        matches = std::count_if(choice["features"].begin(), choice["features"].end(), [&](auto j){ return required_features.contains(j.get<std::string>()); });
+                    if (choice.contains("components"))
+                        matches = std::count_if(choice["components"].begin(), choice["components"].end(), [&](auto j){ return required_components.contains(j.get<std::string>()); });
+                    if (matches == 0 && choice.contains("default")) {
+                        log->info("Selecting default choice for {}", c);
+                        if (choice["default"].contains("feature"))
+                            unprocessed_features.insert(choice["default"]["feature"].get<std::string>());
+                        if (choice["default"].contains("component"))
+                            unprocessed_components.insert(choice["default"]["component"].get<std::string>());
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (unknown_components.size() != 0) 
+            return project::state::PROJECT_HAS_UNKNOWN_COMPONENTS;
 
         return project::state::PROJECT_VALID;
     }
@@ -288,7 +331,6 @@ namespace yakka
             for (auto i: c->yaml["choices"])
             {
                 const auto choice_name = i.first.Scalar();
-                project_summary["choices"][choice_name] = i.second.as<nlohmann::json>();
 
                 int matches = 0;
                 if (i.second["features"])
@@ -730,7 +772,7 @@ namespace yakka
                         template_string = command["template"].get<std::string>();
                         captured_output = try_render(inja_env, template_string, data.is_null() ? generated_json : data, yakkalog);
                         return {captured_output,0};
-                    }    
+                    }
                 }
                 
                 yakkalog->error("Inja template is invalid:\n'{}'", command.dump());

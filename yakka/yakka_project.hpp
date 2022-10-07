@@ -80,6 +80,7 @@ namespace yakka
         // Component processing
         std::unordered_set<std::string> unprocessed_components;
         std::unordered_set<std::string> unprocessed_features;
+        std::unordered_set<std::string> unprocessed_choices;
         std::unordered_set<std::string> required_components;
         std::unordered_set<std::string> required_features;
         std::unordered_set<std::string> commands;
