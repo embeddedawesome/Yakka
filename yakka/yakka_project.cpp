@@ -208,20 +208,20 @@ namespace yakka
             for (const auto& i: temp_component_list)
             {
                 // Convert string to id
-                const auto c = yakka::component_dotname_to_id(i);
+                const auto component_id = yakka::component_dotname_to_id(i);
 
                 // Find the component in the project component database
-                auto component_path = workspace.find_component(c);
+                auto component_path = workspace.find_component(component_id);
                 if ( !component_path )
                 {
                     // log->info("{}: Couldn't find it", c);
-                    unknown_components.insert(c);
+                    unknown_components.insert(component_id);
                     continue;
                 }
 
                 // Add component to the required list and continue if this is not a new component
                 // Insert component and continue if this is not new 
-                if ( required_components.insert( c ).second == false )
+                if ( required_components.insert( component_id ).second == false )
                     continue;
 
                 std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
@@ -256,24 +256,24 @@ namespace yakka
                 for ( auto& f : required_features )
                     if ( new_component->yaml["supports"]["features"][f] )
                     {
-                        log->info("Processing feature '{}' in {}", f, c);
+                        log->info("Processing required feature '{}' in {}", f, component_id);
                         process_requirements(new_component->yaml, new_component->yaml["supports"]["features"][f]);
                     }
 
                 // Process the new components support for all the currently required components
-                for ( auto& d : required_components )
-                    if ( new_component->yaml["supports"]["components"][d] )
+                for ( auto& c : required_components )
+                    if ( new_component->yaml["supports"]["components"][c] )
                     {
-                        log->info("Processing component '{}' in {}", d, c);
-                        process_requirements(new_component->yaml, new_component->yaml["supports"]["components"][d]);
+                        log->info("Processing required component '{}' in {}", c, component_id);
+                        process_requirements(new_component->yaml, new_component->yaml["supports"]["components"][c]);
                     }
                 
                 // Process all the existing components support for the new component
-                for ( auto& d: components)
-                    if (d->yaml["supports"]["components"][c])
+                for ( auto& c: components)
+                    if (c->yaml["supports"]["components"][component_id])
                     {
-                        log->info("Processing component '{}' in {}", c, d->yaml["name"].Scalar());
-                        process_requirements(d->yaml, d->yaml["supports"]["components"][c]);
+                        log->info("Processing component '{}' in {}", component_id, c->yaml["name"].Scalar());
+                        process_requirements(c->yaml, c->yaml["supports"]["components"][component_id]);
                     }
             }
 
@@ -298,14 +298,14 @@ namespace yakka
             // Check if we need to process default choices
             if (unprocessed_components.empty( ) && unprocessed_features.empty( ) )
             {
-                for (const auto c: unprocessed_choices)
+                for (const auto& c: unprocessed_choices)
                 {
                     const auto& choice = project_summary["choices"][c];
                     int matches = 0;
                     if (choice.contains("features"))
-                        matches = std::count_if(choice["features"].begin(), choice["features"].end(), [&](auto j){ return required_features.contains(j.get<std::string>()); });
+                        matches = std::count_if(choice["features"].begin(), choice["features"].end(), [&](const nlohmann::json& j){ return required_features.contains(j.get<std::string>()); });
                     if (choice.contains("components"))
-                        matches = std::count_if(choice["components"].begin(), choice["components"].end(), [&](auto j){ return required_components.contains(j.get<std::string>()); });
+                        matches = std::count_if(choice["components"].begin(), choice["components"].end(), [&](const nlohmann::json& j){ return required_components.contains(j.get<std::string>()); });
                     if (matches == 0 && choice.contains("default")) {
                         log->info("Selecting default choice for {}", c);
                         if (choice["default"].contains("feature"))
