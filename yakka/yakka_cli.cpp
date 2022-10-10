@@ -42,8 +42,15 @@ int main(int argc, char **argv)
     }
     catch (...)
     {
-        std::cerr << "Cannot open yakka.log. No idea why\n";
-        exit(1);
+        try {
+            auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            yakkalog = spdlog::basic_logger_mt("yakkalog", "yakka-" + std::to_string(time) + ".log");
+        }
+        catch (...)
+        {
+            std::cerr << "Cannot open yakka.log";
+            exit(1);
+        }
     }
 
     // Create a workspace
