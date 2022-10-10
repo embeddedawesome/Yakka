@@ -130,11 +130,12 @@ namespace yakka
 
             if (configuration["path"].IsDefined())
             {
-                std::string path = std::getenv("PATH");
+                std::string path = "";
                 for (const auto& p: configuration["path"])
                 {
-                    path += host_os_path_seperator + p.as<std::string>();
+                    path += p.as<std::string>() + host_os_path_seperator;
                 }
+                path += std::getenv("PATH");
                 #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
                 _putenv_s("PATH", path.c_str());
                 #else
