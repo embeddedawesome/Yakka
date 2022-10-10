@@ -61,6 +61,7 @@ int exec( const std::string& command_text, const std::string& arg_text, std::fun
         auto output = p.output();
         std::array<char, 512> buffer;
         size_t count = 0;
+        buffer.fill('\0');
         if (output != nullptr)
         {
             while(1) {
@@ -71,7 +72,14 @@ int exec( const std::string& command_text, const std::string& arg_text, std::fun
                 if (count == buffer.size()-1 || buffer[count] == '\n' )
                 {
                     std::string temp(buffer.data());
-                    function(temp);
+                    try
+                    {
+                        function(temp);
+                    } catch(std::exception e)
+                    {
+                        yakkalog->debug("exec() data processing threw exception '{}'for the following data:\n{}", e.what(), temp);
+                    }
+                    buffer.fill('\0');
                     count = 0;
                 }
                 else
