@@ -154,7 +154,7 @@ namespace yakka
     {
         std::string url    = template_render(node["packages"]["default"]["url"].as<std::string>());
         std::string branch = template_render(node["packages"]["default"]["branch"].as<std::string>());
-        const bool shared_components_write_access = (fs::status(shared_components_path).permissions() & fs::perms::owner_write ) == fs::perms::none;
+        const bool shared_components_write_access = (fs::status(shared_components_path).permissions() & fs::perms::owner_write ) != fs::perms::none;
         fs::path git_location = (node["type"] && node["type"].as<std::string>() == "tool" && shared_components_write_access) ? shared_components_path / "repos" : workspace_path / ".yakka/repos";
         fs::path checkout_location = (node["type"] && node["type"].as<std::string>() == "tool" && shared_components_write_access) ? shared_components_path / "repos" / name : workspace_path / "components" / name;
         return std::async(std::launch::async, [=]() {
