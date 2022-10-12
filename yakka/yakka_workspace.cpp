@@ -97,20 +97,22 @@ namespace yakka
         if (!local && !shared)
             return {};
 
-        auto c = (local) ? local : shared;
-
-        if (c.IsScalar() && fs::exists(c.Scalar()))
-            return c.Scalar();
-        if (c.IsSequence())
+        if (local)
         {
-            if ( c.size( ) == 1 )
-            {
-                if ( fs::exists( c[0].Scalar( ) ) )
-                    return c[0].Scalar( );
-            }
-            else
-                log->error("TODO: Parse multiple matches to the same component ID: '{}'", component_id);
+            if (local.IsScalar() && fs::exists(local.Scalar()))
+                return local.Scalar();
+            if (local.IsSequence() && local.size() == 1 && fs::exists(local[0].Scalar()))
+                return local[0].Scalar();
         }
+
+        if (shared)
+        {
+            if (shared.IsScalar() && fs::exists(shared.Scalar()))
+                return shared.Scalar();
+            if (shared.IsSequence() && shared.size() == 1 && fs::exists(shared[0].Scalar()))
+                return shared[0].Scalar();
+        }
+
         return {};
     }
 
