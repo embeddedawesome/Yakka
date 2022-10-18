@@ -540,7 +540,7 @@ namespace yakka
             local_inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
             local_inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
             local_inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});
-            local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return local_inja_env.render(args[0]->get<std::string>(), this->project_summary);});
+            local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return try_render(local_inja_env, args[0]->get<std::string>(), this->project_summary, log);});
             local_inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) {
                 auto file = std::ifstream(args[0]->get<std::string>()); 
                 return std::string{std::istreambuf_iterator<char>{file}, {}};
@@ -562,12 +562,12 @@ namespace yakka
                     auto v = c_value[path];
                     if (v.is_object())
                         for (const auto& [i_key, i_value]: v.items())
-                            aggregate[i_key] = i_value; //local_inja_env.render(i.second.as<std::string>(), this->project_summary);
+                            aggregate[i_key] = i_value; //try_render(local_inja_env, i.second.as<std::string>(), this->project_summary, log);
                     else if (v.is_array())
                         for (const auto& i: v)
-                            aggregate.push_back(local_inja_env.render(i.get<std::string>(), this->project_summary));
+                            aggregate.push_back(try_render(local_inja_env, i.get<std::string>(), this->project_summary, log));
                     else
-                        aggregate.push_back(local_inja_env.render(v.get<std::string>(), this->project_summary));
+                        aggregate.push_back(try_render(local_inja_env, v.get<std::string>(), this->project_summary, log));
                 }
                 return aggregate;
                 });

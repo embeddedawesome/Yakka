@@ -116,11 +116,6 @@ namespace yakka
         return {};
     }
 
-    std::string workspace::template_render(const std::string input)
-    {
-        return inja_environment.render(input, configuration_json);
-    }
-
     void workspace::load_config_file(const fs::path config_file_path)
     {
         try
@@ -154,8 +149,8 @@ namespace yakka
 
     std::future<fs::path> workspace::fetch_component(const std::string& name, YAML::Node node, std::function<void(size_t)> progress_handler)
     {
-        std::string url    = template_render(node["packages"]["default"]["url"].as<std::string>());
-        std::string branch = template_render(node["packages"]["default"]["branch"].as<std::string>());
+        std::string url    = try_render(inja_environment, node["packages"]["default"]["url"].as<std::string>(), configuration_json, log);
+        std::string branch = try_render(inja_environment, node["packages"]["default"]["branch"].as<std::string>(), configuration_json, log);
         const bool shared_components_write_access = (fs::status(shared_components_path).permissions() & fs::perms::owner_write ) != fs::perms::none;
         fs::path git_location = (node["type"] && node["type"].as<std::string>() == "tool" && shared_components_write_access) ? shared_components_path / "repos" : workspace_path / ".yakka/repos";
         fs::path checkout_location = (node["type"] && node["type"].as<std::string>() == "tool" && shared_components_write_access) ? shared_components_path / "repos" / name : workspace_path / "components" / name;

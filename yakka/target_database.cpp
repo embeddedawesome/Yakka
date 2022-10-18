@@ -42,7 +42,7 @@ namespace yakka {
                     });
 
             local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match.blueprint->parent_path;});
-            local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return local_inja_env.render(args[0]->get<std::string>(), project_summary);});
+            local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return try_render(local_inja_env,  args[0]->get<std::string>(), project_summary, log);});
             local_inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
                 YAML::Node aggregate;
                 const std::string path = args[0]->get<std::string>();
@@ -55,12 +55,12 @@ namespace yakka {
                     
                     if (v.IsMap())
                         for (auto i: v)
-                            aggregate[i.first] = i.second; //local_inja_env.render(i.second.as<std::string>(), this->project_summary);
+                            aggregate[i.first] = i.second; //try_render(local_inja_env, i.second.as<std::string>(), this->project_summary, log);
                     else if (v.IsSequence())
                         for (auto i: v)
-                            aggregate.push_back(local_inja_env.render(i.as<std::string>(), project_summary));
+                            aggregate.push_back(try_render(local_inja_env, i.as<std::string>(), project_summary, log));
                     else
-                        aggregate.push_back(local_inja_env.render(v.as<std::string>(), project_summary));
+                        aggregate.push_back(try_render(local_inja_env, v.as<std::string>(), project_summary, log));
                 }
                 if (aggregate.IsNull())
                     return nlohmann::json();
@@ -96,7 +96,7 @@ namespace yakka {
                 std::string generated_depend;
                 try
                 {
-                    generated_depend = local_inja_env.render( d.name, project_summary );
+                    generated_depend = try_render(local_inja_env, d.name, project_summary, log);
                 }
                 catch ( std::exception& e )
                 {
