@@ -254,7 +254,8 @@ int main(int argc, char **argv)
                     fetch_progress_bars.push_back(new_progress_bar);
                     size_t id = fetch_progress_ui.push_back(*new_progress_bar);
                     fetch_progress_ui.print_progress();
-                    auto result = workspace.fetch_component(i, *node, [&fetch_progress_ui,id](size_t number) {
+                    auto result = workspace.fetch_component(i, *node, [&fetch_progress_ui,id](std::string prefix, size_t number) {
+                            fetch_progress_ui[id].set_option(option::PrefixText{prefix});
                             if (number >= 100)
                             {
                                 fetch_progress_ui[id].set_progress(100);

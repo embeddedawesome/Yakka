@@ -16,7 +16,7 @@ namespace yakka
     public:
         workspace( );
         void init( fs::path workspace_path = ".", fs::path shared_components_path = "." );
-        std::future<fs::path> fetch_component(const std::string& name, YAML::Node node, std::function<void(size_t)> progress_handler);
+        std::future<fs::path> fetch_component(const std::string& name, YAML::Node node, std::function<void(std::string, size_t)> progress_handler);
         void load_component_registries();
         yakka_status add_component_registry(const std::string& url);
         std::optional<YAML::Node> find_registry_component(const std::string& name);
@@ -26,7 +26,7 @@ namespace yakka
         yakka_status fetch_registry(const std::string& url );
         yakka_status update_component(const std::string& name );
 
-        static std::filesystem::path do_fetch_component(const std::string& name, const std::string url, const std::string branch, const fs::path git_location, const fs::path checkout_location, std::function<void(size_t)> progress_handler);
+        static std::filesystem::path do_fetch_component(const std::string& name, const std::string url, const std::string branch, const fs::path git_location, const fs::path checkout_location, std::function<void(std::string, size_t)> progress_handler);
 
     public:
         std::shared_ptr<spdlog::logger> log;

@@ -147,14 +147,14 @@ namespace yakka
 
     }
 
-    std::future<fs::path> workspace::fetch_component(const std::string& name, YAML::Node node, std::function<void(size_t)> progress_handler)
+    std::future<fs::path> workspace::fetch_component(const std::string& name, YAML::Node node, std::function<void(std::string, size_t)> progress_handler)
     {
         std::string url    = try_render(inja_environment, node["packages"]["default"]["url"].as<std::string>(), configuration_json, log);
         std::string branch = try_render(inja_environment, node["packages"]["default"]["branch"].as<std::string>(), configuration_json, log);
         const bool shared_components_write_access = (fs::status(shared_components_path).permissions() & fs::perms::owner_write ) != fs::perms::none;
         fs::path git_location = (node["type"] && node["type"].as<std::string>() == "tool" && shared_components_write_access) ? shared_components_path / "repos" : workspace_path / ".yakka/repos";
         fs::path checkout_location = (node["type"] && node["type"].as<std::string>() == "tool" && shared_components_write_access) ? shared_components_path / "repos" / name : workspace_path / "components" / name;
-        return std::async(std::launch::async, [=]() {
+        return std::async(std::launch::async, [=]() -> fs::path {
                 return do_fetch_component(name, url, branch, git_location, checkout_location, progress_handler);
         });
     }
@@ -198,8 +198,10 @@ namespace yakka
     }
 
     using namespace std::string_literals;
-    fs::path workspace::do_fetch_component(const std::string& name, const std::string url, const std::string branch, const fs::path git_location, const fs::path checkout_location, std::function<void(size_t)> progress_handler)
+    fs::path workspace::do_fetch_component(const std::string& name, const std::string url, const std::string branch, const fs::path git_location, const fs::path checkout_location, std::function<void(std::string, size_t)> progress_handler)
     {
+        auto fetch_log = spdlog::basic_logger_mt("fetchlog", "yakka-fetch-" + name + ".log");
+
         auto yakkalog = spdlog::get("yakkalog");
         enum {
             GIT_COUNTING    = 0,
@@ -231,10 +233,13 @@ namespace yakka
 
         // Of the total time to fetch a Git repo, 10% is allocated to counting, 10% to compressing, and 80% to receiving.
         static const int phase_rates[] = {0, 10, 20, 75, 90};
+        static const std::string phase_names[] = {"Counting", "Compressing", "Receiving", "Resolving", "Checkout"};
         const std::string fetch_string = "-C " + git_location.string() + " clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
 
         auto t1 = std::chrono::high_resolution_clock::now();
         retcode = yakka::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
+            fetch_log->info(data);
+
             std::smatch s;
             if ( phase < GIT_COMPRESSING && data.find("Comp" ) != data.npos ) {phase = GIT_COMPRESSING; }
             if ( phase < GIT_RECEIVING && data.find("Rece") != data.npos ) { phase = GIT_RECEIVING; }
@@ -245,11 +250,11 @@ namespace yakka
                 // yakkalog->info(data);
                 int phase_progress = std::stoi( s[1] );
                 int end_value = std::stoi( s[2] );
-                int progress = phase_rates[phase] + ((phase_rates[phase+1]-phase_rates[phase])*phase_progress)/end_value;
+                int progress = (100*phase_progress)/end_value;
                 // if (progress < old_progress)
                 //   yakkalog->info << name << ": " << "Progress regressed\n" << data << "\n";
                 if (progress != old_progress)
-                    progress_handler(progress);
+                    progress_handler(phase_names[phase], progress);
                 old_progress = progress;
             }
         });
@@ -265,14 +270,15 @@ namespace yakka
         // Checkout instance
         t1 = std::chrono::high_resolution_clock::now();
         retcode = yakka::exec(GIT_STRING, checkout_string, [&](const std::string& data) -> void {
+            fetch_log->info(data);
             std::smatch s;
             if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
             {
                 // yakkalog->info(data);
                 int phase_progress = std::stoi( s[1] );
                 int end_value = std::stoi( s[2] );
-                int progress = phase_rates[GIT_LFS_CHECKOUT] + ((100-phase_rates[GIT_LFS_CHECKOUT])*phase_progress)/end_value;
-                progress_handler(progress);
+                int progress = (100*phase_progress)/end_value;
+                progress_handler("Fetch LFS", progress);
             }
         });
         if (retcode != 0) {
@@ -282,7 +288,7 @@ namespace yakka
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
         yakkalog->info("{}: checkout in {}ms", name, duration);
 
-        progress_handler(100);
+        progress_handler("Complete", 100);
 
         return checkout_location;
     }
