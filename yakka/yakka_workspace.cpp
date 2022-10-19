@@ -232,7 +232,6 @@ namespace yakka
         }       
 
         // Of the total time to fetch a Git repo, 10% is allocated to counting, 10% to compressing, and 80% to receiving.
-        static const int phase_rates[] = {0, 10, 20, 75, 90};
         static const std::string phase_names[] = {"Counting", "Compressing", "Receiving", "Resolving", "Checkout"};
         const std::string fetch_string = "-C " + git_location.string() + " clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
 
