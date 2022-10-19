@@ -166,14 +166,17 @@ int main(int argc, char **argv)
 
     // Process the command line options
     std::string project_name;
+    std::string feature_suffix;
     std::unordered_set<std::string> components;
     std::unordered_set<std::string> features;
     std::unordered_set<std::string> commands;
     for (auto s: result.unmatched())
     {
         // Identify features, commands, and components
-        if (s.front() == '+')
+        if (s.front() == '+') {
+            feature_suffix += s;
             features.insert(s.substr(1));
+        }
         else if (s.back() == '!')
             commands.insert(s.substr(0, s.size() - 1));
         else 
@@ -192,12 +195,9 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // Remove the extra "-"
+    // Remove the extra "-" and add the feature suffix
     project_name.pop_back();
-
-    // Add features to the project name
-    for (const auto& f: features)
-        project_name += "+" + f;
+    project_name += feature_suffix;
 
     // Create a project
     yakka::project project(project_name, workspace, yakkalog);
