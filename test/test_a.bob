@@ -1,0 +1,6 @@
+name: Test A
+
+blueprints:
+  test:
+    process:
+      - echo: 'TEST'

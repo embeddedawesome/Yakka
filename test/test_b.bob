@@ -1,0 +1,5 @@
+name: Test B
+
+replaces:
+  component:
+      - test_a

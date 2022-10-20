@@ -203,6 +203,7 @@ namespace yakka
      */
     project::state project::evaluate_dependencies()
     {
+        std::unordered_map<std::string, std::string> new_replacements;
         size_t starting_replacement_count = replaced_components.size();
 
         // Start processing all the required components and features
@@ -214,20 +215,26 @@ namespace yakka
             for (const auto& i: temp_component_list)
             {
                 // Convert string to id
-                const auto c = yakka::component_dotname_to_id(i);
+                const auto new_component_id = yakka::component_dotname_to_id(i);
+
+                // Check if component has been replaced
+                if (replaced_components.contains(new_component_id))
+                {
+                    continue;
+                }
 
                 // Find the component in the project component database
-                auto component_path = workspace.find_component(c);
+                auto component_path = workspace.find_component(new_component_id);
                 if ( !component_path )
                 {
                     // log->info("{}: Couldn't find it", c);
-                    unknown_components.insert(c);
+                    unknown_components.insert(new_component_id);
                     continue;
                 }
 
                 // Add component to the required list and continue if this is not a new component
                 // Insert component and continue if this is not new 
-                if ( required_components.insert( c ).second == false )
+                if ( required_components.insert( new_component_id ).second == false )
                     continue;
 
                 std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
@@ -258,16 +265,25 @@ namespace yakka
                     }
                 }
                 
-                // Check for replacements
-                for (const auto& c: new_component->yaml["replaces"]["components"]) {
-                    replaced_components.insert(c.Scalar());
+                // Check for replacements if this component hasn't already been parsed in a previous pass
+                if (!replacements.contains(new_component_id)) {
+                    for (const auto& c: new_component->yaml["replaces"]["component"]) {
+                        const auto& replaced = c.Scalar();
+                        if (!replacements.contains(new_component_id) && replaced_components.contains(replaced)) {
+                            log->error("Multiple components replacing {}", replaced);
+                            return project::state::PROJECT_HAS_MULTIPLE_REPLACEMENTS;
+                        }
+                        new_replacements.insert({new_component_id, replaced});
+                        //replaced_components.insert(replaced);
+                        //replacements.insert({new_component_id, replaced});
+                    }
                 }
 
                 // Process all the currently required features. Note new feature will be processed in the features pass
                 for ( auto& f : required_features )
                     if ( new_component->yaml["supports"]["features"][f] )
                     {
-                        log->info("Processing feature '{}' in {}", f, c);
+                        log->info("Processing feature '{}' in {}", f, new_component_id);
                         process_requirements(new_component->yaml, new_component->yaml["supports"]["features"][f]);
                     }
 
@@ -275,16 +291,16 @@ namespace yakka
                 for ( auto& d : required_components )
                     if ( new_component->yaml["supports"]["components"][d] )
                     {
-                        log->info("Processing component '{}' in {}", d, c);
+                        log->info("Processing component '{}' in {}", d, new_component_id);
                         process_requirements(new_component->yaml, new_component->yaml["supports"]["components"][d]);
                     }
                 
                 // Process all the existing components support for the new component
                 for ( auto& d: components)
-                    if (d->yaml["supports"]["components"][c])
+                    if (d->yaml["supports"]["components"][new_component_id])
                     {
-                        log->info("Processing component '{}' in {}", c, d->yaml["name"].Scalar());
-                        process_requirements(d->yaml, d->yaml["supports"]["components"][c]);
+                        log->info("Processing component '{}' in {}", new_component_id, d->yaml["name"].Scalar());
+                        process_requirements(d->yaml, d->yaml["supports"]["components"][new_component_id]);
                     }
             }
 
@@ -314,9 +330,9 @@ namespace yakka
                     const auto& choice = project_summary["choices"][c];
                     int matches = 0;
                     if (choice.contains("features"))
-                        matches = std::count_if(choice["features"].begin(), choice["features"].end(), [&](auto j){ return required_features.contains(j.get<std::string>()); });
+                        matches = std::count_if(choice["features"].begin(), choice["features"].end(), [&](const nlohmann::json& j){ return required_features.contains(j.get<std::string>()); });
                     if (choice.contains("components"))
-                        matches = std::count_if(choice["components"].begin(), choice["components"].end(), [&](auto j){ return required_components.contains(j.get<std::string>()); });
+                        matches = std::count_if(choice["components"].begin(), choice["components"].end(), [&](const nlohmann::json& j){ return required_components.contains(j.get<std::string>()); });
                     if (matches == 0 && choice.contains("default")) {
                         log->info("Selecting default choice for {}", c);
                         if (choice["default"].contains("feature"))
@@ -329,10 +345,28 @@ namespace yakka
             }
 
             // Check if we have finished but we've come across replaced components
-            if (unprocessed_components.empty( ) && unprocessed_features.empty( ) && starting_replacement_count != replaced_components.size()) {
+            if (unprocessed_components.empty( ) && unprocessed_features.empty( ) && new_replacements.size() != 0) {
+                // move new replacements
+                for (const auto& [id, replacement]: new_replacements)
+                {
+                    replaced_components.insert(replacement);
+                    replacements.insert({id, replacement});
+                }
+                new_replacements.clear();
+
                 // Restart the whole process
                 starting_replacement_count = replaced_components.size();
-                
+                required_features.clear();
+                required_components.clear();
+                unprocessed_choices.clear();
+                unprocessed_components.clear();
+                unprocessed_features.clear();
+
+                // Set the initial state
+                for (const auto& c: initial_components)
+                    unprocessed_components.insert(c);
+                for (const auto& f: initial_features)
+                    unprocessed_features.insert(f);
             }
         }
 

@@ -33,6 +33,7 @@ namespace yakka
             PROJECT_HAS_UNKNOWN_COMPONENTS,
             PROJECT_HAS_REMOTE_COMPONENTS,
             PROJECT_HAS_INVALID_COMPONENT,
+            PROJECT_HAS_MULTIPLE_REPLACEMENTS,
             PROJECT_VALID
         };
 
@@ -82,6 +83,7 @@ namespace yakka
         std::unordered_set<std::string> unprocessed_features;
         std::unordered_set<std::string> unprocessed_choices;
         std::unordered_set<std::string> replaced_components;
+        std::unordered_map<std::string, std::string> replacements;
         std::unordered_set<std::string> required_components;
         std::unordered_set<std::string> required_features;
         std::unordered_set<std::string> commands;
