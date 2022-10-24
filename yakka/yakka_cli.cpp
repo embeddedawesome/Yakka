@@ -167,21 +167,21 @@ int main(int argc, char **argv)
     // Process the command line options
     std::string project_name;
     std::string feature_suffix;
-    std::unordered_set<std::string> components;
-    std::unordered_set<std::string> features;
+    std::vector<std::string> components;
+    std::vector<std::string> features;
     std::unordered_set<std::string> commands;
     for (auto s: result.unmatched())
     {
         // Identify features, commands, and components
         if (s.front() == '+') {
             feature_suffix += s;
-            features.insert(s.substr(1));
+            features.push_back(s.substr(1));
         }
         else if (s.back() == '!')
             commands.insert(s.substr(0, s.size() - 1));
         else 
         {
-            components.insert(s);
+            components.push_back(s);
 
             // Compose the project name by concatenation all the components in CLI order.
             // The features will be added at the end
@@ -203,15 +203,15 @@ int main(int argc, char **argv)
     yakka::project project(project_name, workspace, yakkalog);
 
     // Move the CLI parsed data to the project
-    project.unprocessed_components = std::move(components);
-    project.unprocessed_features = std::move(features);
+    // project.unprocessed_components = std::move(components);
+    // project.unprocessed_features = std::move(features);
     project.commands = std::move(commands);
 
     // Add the action as a command
     project.commands.insert(action);
 
     // Init the project
-    project.init_project();
+    project.init_project(components, features);
 
     if (project.evaluate_dependencies() == yakka::project::state::PROJECT_HAS_INVALID_COMPONENT) {
         return 1;

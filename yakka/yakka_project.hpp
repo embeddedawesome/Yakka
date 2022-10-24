@@ -33,6 +33,7 @@ namespace yakka
             PROJECT_HAS_UNKNOWN_COMPONENTS,
             PROJECT_HAS_REMOTE_COMPONENTS,
             PROJECT_HAS_INVALID_COMPONENT,
+            PROJECT_HAS_MULTIPLE_REPLACEMENTS,
             PROJECT_VALID
         };
 
@@ -42,7 +43,7 @@ namespace yakka
         virtual ~project( );
 
         void set_project_directory(const std::string path);
-        void init_project();
+        void init_project(std::vector<std::string> components, std::vector<std::string> features);
         void init_project(const std::string build_string);
         void process_build_string(const std::string build_string);
         void parse_project_string( const std::vector<std::string>& project_string );
@@ -64,8 +65,6 @@ namespace yakka
         void process_construction(indicators::ProgressBar& bar);
         void save_summary();
         void save_blueprints();
-        //std::optional<YAML::Node> find_registry_component(const std::string& name);
-        //std::future<void> fetch_component(const std::string& name, indicators::ProgressBar& bar);
         bool has_data_dependency_changed(std::string data_path, const nlohmann::json left, const nlohmann::json right);
         void create_tasks(const std::string target_name, tf::Task& parent);
 
@@ -76,16 +75,21 @@ namespace yakka
         std::string project_name;
         std::string output_path;
         std::string yakka_home_directory;
+        std::vector<std::string> initial_components;
+        std::vector<std::string> initial_features;
 
         // Component processing
         std::unordered_set<std::string> unprocessed_components;
         std::unordered_set<std::string> unprocessed_features;
         std::unordered_set<std::string> unprocessed_choices;
+        std::unordered_set<std::string> replaced_components;
+        std::unordered_map<std::string, std::string> replacements;
         std::unordered_set<std::string> required_components;
         std::unordered_set<std::string> required_features;
         std::unordered_set<std::string> commands;
         std::unordered_set<std::string> unknown_components;
-        // std::map<std::string, YAML::Node> remote_components;
+        std::vector< std::pair<std::string, std::string> > incomplete_choices;
+        std::vector<std::string> multiple_answer_choices;
 
         YAML::Node  project_summary_yaml;
         std::string project_directory;
@@ -95,38 +99,29 @@ namespace yakka
         //yakka::component_database component_database;
         yakka::blueprint_database blueprint_database;
 
-        workspace& workspace;
-
         nlohmann::json previous_summary;
         nlohmann::json project_summary;
+
+
+        workspace& workspace;
+
 
         // Blueprint evaluation
         inja::Environment inja_environment;
         std::multimap<std::string, std::shared_ptr<blueprint_match> > target_database;
         std::multimap<std::string, construction_task> todo_list;
         int work_task_count;
-        // YAML::Node blueprint_database;
-        // std::multimap<std::string, std::shared_ptr< construction_task > > construction_list;
-        // std::vector<std::string> todo_list;
-        // std::map<std::string, tf::Task> tasks;
         tf::Taskflow taskflow;
         std::atomic<bool> abort_build;
 
-        std::vector< std::pair<std::string, std::string> > incomplete_choices;
-        std::vector<std::string> multiple_answer_choices;
-
-        // std::mutex project_lock;
-
-        // std::vector< std::pair<std::string, YAML::Node> > blueprint_list;
         std::map< std::string, blueprint_command > blueprint_commands;
-
         std::function<void()> task_complete_handler;
+
+    private:
+        void init_project();
     };
 
     std::string try_render(inja::Environment& env, const std::string& input, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log);
     std::pair<std::string, int> run_command( const std::string target, construction_task* task, project* project );
-    // static void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node);
-    // static void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node);
-    // static std::vector<std::string> parse_gcc_dependency_file(const std::string filename);
 } /* namespace yakka */
 

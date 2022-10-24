@@ -37,17 +37,34 @@ namespace yakka
         while (std::getline(ss, word, ' ')) {
             // Identify features, commands, and components
             if (word.front() == '+')
-                this->unprocessed_features.insert(word.substr(1));
+                this->initial_features.push_back(word.substr(1));
             else if (word.back() == '!')
                 this->commands.insert(word.substr(0, word.size() - 1));
             else
-                this->unprocessed_components.insert(word);
+                this->initial_components.push_back(word);
         }
     }
 
     void project::init_project(const std::string build_string)
     {
         process_build_string(build_string);
+
+        for (const auto& c: initial_components)
+            unprocessed_components.insert(c);
+        for (const auto& f: initial_features)
+            unprocessed_features.insert(f);
+        init_project();
+    }
+
+    void project::init_project(std::vector<std::string> components, std::vector<std::string> features)
+    {
+        initial_components = components;
+        initial_features = features;
+
+        for (const auto& c: initial_components)
+            unprocessed_components.insert(c);
+        for (const auto& f: initial_features)
+            unprocessed_features.insert(f);
         init_project();
     }
 
@@ -63,23 +80,10 @@ namespace yakka
             std::ifstream i(project_summary_file);
             i >> project_summary;
             i.close();
-            // project_summary = project_summary_yaml.as<nlohmann::json>();
 
             // Fill required_features with features from project summary
             for (auto& f: project_summary["features"])
                 required_features.insert(f.get<std::string>());
-
-            // Remove the known components from unprocessed_components
-            // component_list_t temp_components;
-            // for (const auto& c: unprocessed_components)
-            //     if (!project_summary["components"][c])
-            //         temp_components.insert(c);
-            // feature_list_t temp_features;
-            // for (const auto& c: unprocessed_features)
-            //     if (!project_summary["features"][c])
-            //         temp_features.insert(c);
-            // unprocessed_components = std::move(temp_components);
-            // unprocessed_features = std::move(temp_features);
 
             project_summary["choices"] = {};
             update_summary();
@@ -199,6 +203,9 @@ namespace yakka
      */
     project::state project::evaluate_dependencies()
     {
+        std::unordered_map<std::string, std::string> new_replacements;
+        size_t starting_replacement_count = replaced_components.size();
+
         // Start processing all the required components and features
         while ( !unprocessed_components.empty( ) || !unprocessed_features.empty( ))
         {
@@ -209,6 +216,12 @@ namespace yakka
             {
                 // Convert string to id
                 const auto component_id = yakka::component_dotname_to_id(i);
+
+                // Check if component has been replaced
+                if (replaced_components.contains(component_id))
+                {
+                    continue;
+                }
 
                 // Find the component in the project component database
                 auto component_path = workspace.find_component(component_id);
@@ -249,6 +262,20 @@ namespace yakka
                         unprocessed_choices.insert(choice_name);
                         project_summary["choices"][choice_name] = choice.second.as<nlohmann::json>();
                         project_summary["choices"][choice_name]["parent"] = new_component->id;
+                    }
+                }
+                
+                // Check for replacements if this component hasn't already been parsed in a previous pass
+                if (!replacements.contains(new_component_id)) {
+                    for (const auto& c: new_component->yaml["replaces"]["component"]) {
+                        const auto& replaced = c.Scalar();
+                        if (!replacements.contains(new_component_id) && replaced_components.contains(replaced)) {
+                            log->error("Multiple components replacing {}", replaced);
+                            return project::state::PROJECT_HAS_MULTIPLE_REPLACEMENTS;
+                        }
+                        new_replacements.insert({new_component_id, replaced});
+                        //replaced_components.insert(replaced);
+                        //replacements.insert({new_component_id, replaced});
                     }
                 }
 
@@ -315,6 +342,31 @@ namespace yakka
                         break;
                     }
                 }
+            }
+
+            // Check if we have finished but we've come across replaced components
+            if (unprocessed_components.empty( ) && unprocessed_features.empty( ) && new_replacements.size() != 0) {
+                // move new replacements
+                for (const auto& [id, replacement]: new_replacements)
+                {
+                    replaced_components.insert(replacement);
+                    replacements.insert({id, replacement});
+                }
+                new_replacements.clear();
+
+                // Restart the whole process
+                starting_replacement_count = replaced_components.size();
+                required_features.clear();
+                required_components.clear();
+                unprocessed_choices.clear();
+                unprocessed_components.clear();
+                unprocessed_features.clear();
+
+                // Set the initial state
+                for (const auto& c: initial_components)
+                    unprocessed_components.insert(c);
+                for (const auto& f: initial_features)
+                    unprocessed_features.insert(f);
             }
         }
 
