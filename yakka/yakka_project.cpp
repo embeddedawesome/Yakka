@@ -204,7 +204,6 @@ namespace yakka
     project::state project::evaluate_dependencies()
     {
         std::unordered_map<std::string, std::string> new_replacements;
-        size_t starting_replacement_count = replaced_components.size();
 
         // Start processing all the required components and features
         while ( !unprocessed_components.empty( ) || !unprocessed_features.empty( ))
@@ -220,6 +219,7 @@ namespace yakka
                 // Check if component has been replaced
                 if (replaced_components.contains(component_id))
                 {
+                    log->info("Skipping {}. Being replaced", component_id);
                     continue;
                 }
 
@@ -266,14 +266,15 @@ namespace yakka
                 }
                 
                 // Check for replacements if this component hasn't already been parsed in a previous pass
-                if (!replacements.contains(new_component_id)) {
+                if (!replacements.contains(component_id)) {
                     for (const auto& c: new_component->yaml["replaces"]["component"]) {
                         const auto& replaced = c.Scalar();
-                        if (!replacements.contains(new_component_id) && replaced_components.contains(replaced)) {
+                        log->info("{} replaces {}", component_id, replaced);
+                        if (!replacements.contains(component_id) && replaced_components.contains(replaced)) {
                             log->error("Multiple components replacing {}", replaced);
                             return project::state::PROJECT_HAS_MULTIPLE_REPLACEMENTS;
                         }
-                        new_replacements.insert({new_component_id, replaced});
+                        new_replacements.insert({component_id, replaced});
                         //replaced_components.insert(replaced);
                         //replacements.insert({new_component_id, replaced});
                     }
@@ -349,24 +350,29 @@ namespace yakka
                 // move new replacements
                 for (const auto& [id, replacement]: new_replacements)
                 {
+                    log->info("Adding {} to replaced_components", replacement);
                     replaced_components.insert(replacement);
                     replacements.insert({id, replacement});
                 }
                 new_replacements.clear();
 
                 // Restart the whole process
-                starting_replacement_count = replaced_components.size();
                 required_features.clear();
                 required_components.clear();
                 unprocessed_choices.clear();
                 unprocessed_components.clear();
                 unprocessed_features.clear();
+                components.clear();
+                project_summary["components"].clear();
 
                 // Set the initial state
                 for (const auto& c: initial_components)
                     unprocessed_components.insert(c);
                 for (const auto& f: initial_features)
                     unprocessed_features.insert(f);
+
+
+                log->info("Start project processing again...");
             }
         }
 
