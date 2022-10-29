@@ -61,6 +61,7 @@ int exec( const std::string& command_text, const std::string& arg_text, std::fun
         auto output = p.output();
         std::array<char, 512> buffer;
         size_t count = 0;
+        buffer.fill('\0');
         if (output != nullptr)
         {
             while(1) {
@@ -71,7 +72,14 @@ int exec( const std::string& command_text, const std::string& arg_text, std::fun
                 if (count == buffer.size()-1 || buffer[count] == '\n' )
                 {
                     std::string temp(buffer.data());
-                    function(temp);
+                    try
+                    {
+                        function(temp);
+                    } catch(std::exception e)
+                    {
+                        yakkalog->debug("exec() data processing threw exception '{}'for the following data:\n{}", e.what(), temp);
+                    }
+                    buffer.fill('\0');
                     count = 0;
                 }
                 else
@@ -364,7 +372,7 @@ std::string component_dotname_to_id(const std::string dotname)
     return dotname.find_last_of(".") != std::string::npos ? dotname.substr(dotname.find_last_of(".")+1) : dotname;
 }
 
-std::string try_render(inja::Environment& env, const std::string& input, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log)
+std::string try_render(inja::Environment& env, const std::string& input, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log = nullptr)
 {
     try
     {
@@ -372,7 +380,10 @@ std::string try_render(inja::Environment& env, const std::string& input, const n
     }
     catch(std::exception& e)
     {
-        log->error("Template error: {}\n{}", input, e.what());
+        if (log != nullptr)
+            log->error("Template error: {}\n{}", input, e.what());
+        else
+            std::cerr << "Template error: " << input << "\n" << e.what() << "\n";
         return "";
     }
 }
@@ -429,11 +440,11 @@ std::pair<std::string, int> run_command( const std::string target, construction_
     inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
     inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});
     inja_env.add_callback("filesize", 1, [&](const inja::Arguments& args) { return fs::file_size(args[0]->get<std::string>());});
-    inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return inja_env.render(args[0]->get<std::string>(), project->project_summary);});
+    inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return try_render(inja_env, args[0]->get<std::string>(), project->project_summary);});
     inja_env.add_callback("render", 2, [&curdir_path, &inja_env, &project](const inja::Arguments& args) {
         auto backup = curdir_path;
         curdir_path = args[1]->get<std::string>();
-        std::string render_output = inja_env.render(args[0]->get<std::string>(), project->project_summary);
+        std::string render_output = try_render(inja_env, args[0]->get<std::string>(), project->project_summary);
         curdir_path = backup;
         return render_output;
         });
@@ -459,16 +470,16 @@ std::pair<std::string, int> run_command( const std::string target, construction_
             if (v.is_object())
                 for (const auto& [i_key, i_value] : v.items())
                 {
-                    aggregate[i_key] = i_value; //inja_env.render(i.second.as<std::string>(), project->project_summary);
+                    aggregate[i_key] = i_value; //try_render(inja_env, i.second.as<std::string>(), project->project_summary, log);
                 }
             else if (v.is_array())
                 for (const auto& [i_key, i_value]: v.items())
                     if (i_value.is_object())
                         aggregate.push_back(i_value);
                     else
-                        aggregate.push_back(inja_env.render(i_value.get<std::string>(), project->project_summary));
+                        aggregate.push_back(try_render(inja_env, i_value.get<std::string>(), project->project_summary));
             else if (!v.is_null())
-                aggregate.push_back(inja_env.render(v.get<std::string>(), project->project_summary));
+                aggregate.push_back(try_render(inja_env, v.get<std::string>(), project->project_summary));
         }
         return aggregate;
     });

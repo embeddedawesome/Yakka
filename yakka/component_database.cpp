@@ -8,9 +8,8 @@
 
 namespace yakka
 {
-    component_database::component_database( fs::path workspace_path ) : workspace_path(workspace_path), database_is_dirty(false)
+    component_database::component_database( ) : database_is_dirty(false)
     {
-        this->workspace_path = workspace_path;
     }
 
     component_database::~component_database( )
@@ -25,25 +24,26 @@ namespace yakka
         database_is_dirty = true;
     }
 
-    void component_database::load( )
+    void component_database::load( fs::path workspace_path )
     {
-        database_filename = workspace_path / "yakka-components.yaml";
+        this->workspace_path = workspace_path;
+        database_filename = this->workspace_path / "yakka-components.yaml";
         auto yakkalog = spdlog::get("yakkalog");
-        if ( !fs::exists( database_filename ) )
+        try
         {
-            scan_for_components( workspace_path );
-            save();
-        }
-        else
-        {
-            try
+            if ( !fs::exists( database_filename ) )
+            {
+                scan_for_components( this->workspace_path );
+                save();
+            }
+            else
             {
                 YAML::Node::operator =( YAML::LoadFile( database_filename.string() ) );
             }
-            catch(...)
-            {
-                yakkalog->error("Could not load component database");
-            }
+        }
+        catch(...)
+        {
+            yakkalog->error("Could not load component database at {}", this->workspace_path.string());
         }
     }
 
@@ -87,76 +87,77 @@ namespace yakka
         if (search_start_path.empty())
             search_start_path = this->workspace_path;
             
-        // add_component(path);
-
-        if (!fs::exists(search_start_path))
+        try
         {
-          yakkalog->error( "Cannot scan for components. Path does not exist: '{}'", search_start_path.generic_string());
-          return;
-        }
+            if (!fs::exists(search_start_path))
+            {
+                yakkalog->error( "Cannot scan for components. Path does not exist: '{}'", search_start_path.generic_string());
+                return;
+            }
 
-        // for (auto &p : glob::rglob({"**/*.bob", "**/*.yakka"}))
-        // {
-        //     add_component(p);
-        // }
-#if 1
-        auto rdi = fs::recursive_directory_iterator( search_start_path );
-        for ( auto p = fs::begin(rdi); p != fs::end(rdi); ++p )
+            auto rdi = fs::recursive_directory_iterator( search_start_path );
+            for ( auto p = fs::begin(rdi); p != fs::end(rdi); ++p )
+            {
+                // Skip any directories that start with '.'
+                if (p->is_directory() && p->path().filename().string().front() == '.') {
+                    p.disable_recursion_pending();
+                    continue;
+                }
+
+                if (p->path().filename().extension() == yakka_component_extension || p->path().filename().extension() == yakka_component_old_extension)
+                {
+                    yakkalog->info("Found {}", p->path().string());
+                    add_component(p->path());
+                }
+    #ifdef SLCC_SUPPORT
+                else if (p.path().filename().extension() == ".slcc")
+                {
+                    parsed_slcc_files.push_back( std::async(std::launch::async, [](fs::path path) {
+                            try
+                            {
+                                slcc uc(path);
+                                uc.convert_to_yakka();
+                                return uc;
+                            }
+                            catch(...)
+                            {
+                                return slcc();
+                            }
+                        }, p.path()));
+                }
+    #endif
+            }
+    #ifdef SLCC_SUPPORT
+            // TODO: SLCC database should be initialized elsewhere
+            if (!slcc::slcc_database["features"])
+                slcc::slcc_database["features"] = YAML::Node();
+
+            if (!slcc::slcc_database["components"])
+                slcc::slcc_database["components"] = YAML::Node();
+
+            for (auto& file: parsed_slcc_files)
+            {
+                file.wait();
+                const auto slcc = file.get();
+                if (slcc.yaml["id"])
+                {
+                    const auto id = slcc.yaml["id"].as<std::string>();
+                    (*this)[id].push_back( slcc.file_path.generic_string() );
+
+                    for (const auto& p: slcc.yaml["provides"])
+                        if (p.IsDefined())
+                            slcc::slcc_database["features"][p["name"]] = id;
+
+                    slcc::slcc_database["components"][id] = slcc.yaml;
+                }
+            }
+    #endif    
+        }
+        catch(...)
         {
-            // Skip any directories that start with '.'
-            if (p->is_directory() && p->path().filename().string().front() == '.') {
-                p.disable_recursion_pending();
-                continue;
-            }
-
-            if (p->path().filename().extension() == yakka_component_extension || p->path().filename().extension() == yakka_component_old_extension)
-            {
-                add_component(p->path());
-            }
-#ifdef SLCC_SUPPORT
-            else if (p.path().filename().extension() == ".slcc")
-            {
-                parsed_slcc_files.push_back( std::async(std::launch::async, [](fs::path path) {
-                        try
-                        {
-                            slcc uc(path);
-                            uc.convert_to_yakka();
-                            return uc;
-                        }
-                        catch(...)
-                        {
-                            return slcc();
-                        }
-                    }, p.path()));
-            }
-#endif
+            yakkalog->error( "Cannot scan for components. Path does not exist: '{}'", search_start_path.generic_string());
+            return;
         }
-#ifdef SLCC_SUPPORT
-        // TODO: SLCC database should be initialized elsewhere
-        if (!slcc::slcc_database["features"])
-            slcc::slcc_database["features"] = YAML::Node();
-
-        if (!slcc::slcc_database["components"])
-            slcc::slcc_database["components"] = YAML::Node();
-
-        for (auto& file: parsed_slcc_files)
-        {
-            file.wait();
-            const auto slcc = file.get();
-            if (slcc.yaml["id"])
-            {
-                const auto id = slcc.yaml["id"].as<std::string>();
-                (*this)[id].push_back( slcc.file_path.generic_string() );
-
-                for (const auto& p: slcc.yaml["provides"])
-                    if (p.IsDefined())
-                        slcc::slcc_database["features"][p["name"]] = id;
-
-                slcc::slcc_database["components"][id] = slcc.yaml;
-            }
-        }
-#endif
-#endif
     }
 
 } /* namespace yakka */

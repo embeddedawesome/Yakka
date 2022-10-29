@@ -10,11 +10,11 @@ namespace yakka
     class component_database : public YAML::Node
     {
     public:
-        component_database( fs::path workspace_path );
+        component_database( );
         virtual ~component_database( );
 
         void insert(const std::string id, fs::path config_file);
-        void load();
+        void load( fs::path workspace_path );
         void save();
         void erase();
         void add_component( fs::path path );

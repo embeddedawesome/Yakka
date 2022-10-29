@@ -37,17 +37,34 @@ namespace yakka
         while (std::getline(ss, word, ' ')) {
             // Identify features, commands, and components
             if (word.front() == '+')
-                this->unprocessed_features.insert(word.substr(1));
+                this->initial_features.push_back(word.substr(1));
             else if (word.back() == '!')
                 this->commands.insert(word.substr(0, word.size() - 1));
             else
-                this->unprocessed_components.insert(word);
+                this->initial_components.push_back(word);
         }
     }
 
     void project::init_project(const std::string build_string)
     {
         process_build_string(build_string);
+
+        for (const auto& c: initial_components)
+            unprocessed_components.insert(c);
+        for (const auto& f: initial_features)
+            unprocessed_features.insert(f);
+        init_project();
+    }
+
+    void project::init_project(std::vector<std::string> components, std::vector<std::string> features)
+    {
+        initial_components = components;
+        initial_features = features;
+
+        for (const auto& c: initial_components)
+            unprocessed_components.insert(c);
+        for (const auto& f: initial_features)
+            unprocessed_features.insert(f);
         init_project();
     }
 
@@ -63,23 +80,10 @@ namespace yakka
             std::ifstream i(project_summary_file);
             i >> project_summary;
             i.close();
-            // project_summary = project_summary_yaml.as<nlohmann::json>();
 
             // Fill required_features with features from project summary
             for (auto& f: project_summary["features"])
                 required_features.insert(f.get<std::string>());
-
-            // Remove the known components from unprocessed_components
-            // component_list_t temp_components;
-            // for (const auto& c: unprocessed_components)
-            //     if (!project_summary["components"][c])
-            //         temp_components.insert(c);
-            // feature_list_t temp_features;
-            // for (const auto& c: unprocessed_features)
-            //     if (!project_summary["features"][c])
-            //         temp_features.insert(c);
-            // unprocessed_components = std::move(temp_components);
-            // unprocessed_features = std::move(temp_features);
 
             project_summary["choices"] = {};
             update_summary();
@@ -149,6 +153,16 @@ namespace yakka
                 for (const auto &i : child_node_provides)
                     unprocessed_features.insert(i.as<std::string>());
         }
+
+        // Process choices
+        for (const auto& choice: child_node["choices"]) {
+            const auto choice_name = choice.first.Scalar();
+            if (!project_summary["choices"].contains(choice_name)) {
+                unprocessed_choices.insert(choice_name);
+                project_summary["choices"][choice_name] = choice.second.as<nlohmann::json>();
+                project_summary["choices"][choice_name]["parent"] = component["name"].as<std::string>();
+            }
+        }
     }
 
 
@@ -189,6 +203,8 @@ namespace yakka
      */
     project::state project::evaluate_dependencies()
     {
+        std::unordered_map<std::string, std::string> new_replacements;
+
         // Start processing all the required components and features
         while ( !unprocessed_components.empty( ) || !unprocessed_features.empty( ))
         {
@@ -198,20 +214,27 @@ namespace yakka
             for (const auto& i: temp_component_list)
             {
                 // Convert string to id
-                const auto c = yakka::component_dotname_to_id(i);
+                const auto component_id = yakka::component_dotname_to_id(i);
+
+                // Check if component has been replaced
+                if (replaced_components.contains(component_id))
+                {
+                    log->info("Skipping {}. Being replaced", component_id);
+                    continue;
+                }
 
                 // Find the component in the project component database
-                auto component_path = workspace.find_component(c);
+                auto component_path = workspace.find_component(component_id);
                 if ( !component_path )
                 {
                     // log->info("{}: Couldn't find it", c);
-                    unknown_components.insert(c);
+                    unknown_components.insert(component_id);
                     continue;
                 }
 
                 // Add component to the required list and continue if this is not a new component
                 // Insert component and continue if this is not new 
-                if ( required_components.insert( c ).second == false )
+                if ( required_components.insert( component_id ).second == false )
                     continue;
 
                 std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
@@ -232,28 +255,53 @@ namespace yakka
                 for (const auto& f : new_component->yaml["provides"]["features"])
                     unprocessed_features.insert(f.Scalar());
 
+                // Add all the component choices to the global choice list
+                for (const auto& choice: new_component->yaml["choices"]) {
+                    const auto choice_name = choice.first.Scalar();
+                    if (!project_summary["choices"].contains(choice_name)) {
+                        unprocessed_choices.insert(choice_name);
+                        project_summary["choices"][choice_name] = choice.second.as<nlohmann::json>();
+                        project_summary["choices"][choice_name]["parent"] = new_component->id;
+                    }
+                }
+                
+                // Check for replacements if this component hasn't already been parsed in a previous pass
+                if (!replacements.contains(component_id)) {
+                    for (const auto& c: new_component->yaml["replaces"]["component"]) {
+                        const auto& replaced = c.Scalar();
+                        log->info("{} replaces {}", component_id, replaced);
+                        if (!replacements.contains(component_id) && replaced_components.contains(replaced)) {
+                            log->error("Multiple components replacing {}", replaced);
+                            return project::state::PROJECT_HAS_MULTIPLE_REPLACEMENTS;
+                        }
+                        new_replacements.insert({component_id, replaced});
+                        //replaced_components.insert(replaced);
+                        //replacements.insert({new_component_id, replaced});
+                    }
+                }
+
                 // Process all the currently required features. Note new feature will be processed in the features pass
                 for ( auto& f : required_features )
                     if ( new_component->yaml["supports"]["features"][f] )
                     {
-                        log->info("Processing feature '{}' in {}", f, c);
+                        log->info("Processing required feature '{}' in {}", f, component_id);
                         process_requirements(new_component->yaml, new_component->yaml["supports"]["features"][f]);
                     }
 
                 // Process the new components support for all the currently required components
-                for ( auto& d : required_components )
-                    if ( new_component->yaml["supports"]["components"][d] )
+                for ( auto& c : required_components )
+                    if ( new_component->yaml["supports"]["components"][c] )
                     {
-                        log->info("Processing component '{}' in {}", d, c);
-                        process_requirements(new_component->yaml, new_component->yaml["supports"]["components"][d]);
+                        log->info("Processing required component '{}' in {}", c, component_id);
+                        process_requirements(new_component->yaml, new_component->yaml["supports"]["components"][c]);
                     }
                 
                 // Process all the existing components support for the new component
-                for ( auto& d: components)
-                    if (d->yaml["supports"]["components"][c])
+                for ( auto& c: components)
+                    if (c->yaml["supports"]["components"][component_id])
                     {
-                        log->info("Processing component '{}' in {}", c, d->yaml["name"].Scalar());
-                        process_requirements(d->yaml, d->yaml["supports"]["components"][c]);
+                        log->info("Processing component '{}' in {}", component_id, c->yaml["name"].Scalar());
+                        process_requirements(c->yaml, c->yaml["supports"]["components"][component_id]);
                     }
             }
 
@@ -274,9 +322,62 @@ namespace yakka
                         process_requirements(c->yaml, c->yaml["supports"]["features"][f]);
                     }
             }
-        };
 
-        if (unknown_components.size() != 0) return project::state::PROJECT_HAS_UNKNOWN_COMPONENTS;
+            // Check if we need to process default choices
+            if (unprocessed_components.empty( ) && unprocessed_features.empty( ) )
+            {
+                for (const auto& c: unprocessed_choices)
+                {
+                    const auto& choice = project_summary["choices"][c];
+                    int matches = 0;
+                    if (choice.contains("features"))
+                        matches = std::count_if(choice["features"].begin(), choice["features"].end(), [&](const nlohmann::json& j){ return required_features.contains(j.get<std::string>()); });
+                    if (choice.contains("components"))
+                        matches = std::count_if(choice["components"].begin(), choice["components"].end(), [&](const nlohmann::json& j){ return required_components.contains(j.get<std::string>()); });
+                    if (matches == 0 && choice.contains("default")) {
+                        log->info("Selecting default choice for {}", c);
+                        if (choice["default"].contains("feature"))
+                            unprocessed_features.insert(choice["default"]["feature"].get<std::string>());
+                        if (choice["default"].contains("component"))
+                            unprocessed_components.insert(choice["default"]["component"].get<std::string>());
+                        break;
+                    }
+                }
+            }
+
+            // Check if we have finished but we've come across replaced components
+            if (unprocessed_components.empty( ) && unprocessed_features.empty( ) && new_replacements.size() != 0) {
+                // move new replacements
+                for (const auto& [id, replacement]: new_replacements)
+                {
+                    log->info("Adding {} to replaced_components", replacement);
+                    replaced_components.insert(replacement);
+                    replacements.insert({id, replacement});
+                }
+                new_replacements.clear();
+
+                // Restart the whole process
+                required_features.clear();
+                required_components.clear();
+                unprocessed_choices.clear();
+                unprocessed_components.clear();
+                unprocessed_features.clear();
+                components.clear();
+                project_summary["components"].clear();
+
+                // Set the initial state
+                for (const auto& c: initial_components)
+                    unprocessed_components.insert(c);
+                for (const auto& f: initial_features)
+                    unprocessed_features.insert(f);
+
+
+                log->info("Start project processing again...");
+            }
+        }
+
+        if (unknown_components.size() != 0) 
+            return project::state::PROJECT_HAS_UNKNOWN_COMPONENTS;
 
         return project::state::PROJECT_VALID;
     }
@@ -288,7 +389,6 @@ namespace yakka
             for (auto i: c->yaml["choices"])
             {
                 const auto choice_name = i.first.Scalar();
-                project_summary["choices"][choice_name] = i.second.as<nlohmann::json>();
 
                 int matches = 0;
                 if (i.second["features"])
@@ -448,7 +548,155 @@ namespace yakka
         }
     }
 
-    
+    void project::add_to_target_database( const std::string target )
+    {
+        bool blueprint_match_found = false;
+
+        for ( const auto& blueprint : blueprint_database.blueprints )
+        {
+            auto match = std::make_shared<blueprint_match>();
+
+            // Check if rule is a regex, otherwise do a string comparison
+            if ( blueprint.second->regex.has_value() )
+            {
+                std::smatch s;
+                if (!std::regex_match(target, s, std::regex { blueprint.first } ) )
+                    continue;
+
+                // arg_count starts at 0 as the first match is the entire string
+                for ( auto& regex_match : s )
+                    match->regex_matches.push_back(regex_match.str( ));
+            }
+            else
+            {
+                if (target != blueprint.first )
+                    continue;
+
+                match->regex_matches.push_back(target);
+            }
+
+            // Found a match. Create a blueprint match object
+            blueprint_match_found = true;
+            match->blueprint = blueprint.second;
+
+            inja::Environment local_inja_env;
+            local_inja_env.add_callback("$", 1, [&match](const inja::Arguments& args) { return match->regex_matches[ args[0]->get<int>() ];});
+            local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match->blueprint->parent_path;});
+            local_inja_env.add_callback("dir", 1, [](inja::Arguments& args) { 
+                auto path = std::filesystem::path{args.at(0)->get<std::string>()}.relative_path();
+                if (path.has_filename()) return path.parent_path().string();
+                else return path.string();
+                });
+            local_inja_env.add_callback("glob", [](inja::Arguments& args) {
+                nlohmann::json aggregate = nlohmann::json::array();
+                std::vector<std::string> string_args;
+                for (const auto& i: args)
+                    string_args.push_back(i->get<std::string>());
+                for (auto &p : glob::rglob(string_args))
+                    aggregate.push_back(p.generic_string());
+                return aggregate;
+            });
+            local_inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
+            local_inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
+            local_inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});
+            local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return try_render(local_inja_env, args[0]->get<std::string>(), this->project_summary, log);});
+            local_inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) {
+                auto file = std::ifstream(args[0]->get<std::string>()); 
+                return std::string{std::istreambuf_iterator<char>{file}, {}};
+            });
+            local_inja_env.add_callback("load_yaml", 1, [&](const inja::Arguments& args) {
+                auto yaml_data = YAML::LoadFile(args[0]->get<std::string>());
+                return yaml_data.as<nlohmann::json>();
+            });
+            local_inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
+                nlohmann::json aggregate;
+                auto path = json_pointer(args[0]->get<std::string>());
+                // Loop through components, check if object path exists, if so add it to the aggregate
+                for (const auto& [c_key, c_value]: this->project_summary["components"].items())
+                {
+                    // auto v = json_path(c.value(), path);
+                    if (!c_value.contains(path))
+                        continue;
+                    
+                    auto v = c_value[path];
+                    if (v.is_object())
+                        for (const auto& [i_key, i_value]: v.items())
+                            aggregate[i_key] = i_value; //try_render(local_inja_env, i.second.as<std::string>(), this->project_summary, log);
+                    else if (v.is_array())
+                        for (const auto& i: v)
+                            aggregate.push_back(try_render(local_inja_env, i.get<std::string>(), this->project_summary, log));
+                    else
+                        aggregate.push_back(try_render(local_inja_env, v.get<std::string>(), this->project_summary, log));
+                }
+                return aggregate;
+                });
+
+            // Run template engine on dependencies
+            for ( auto d : blueprint.second->dependencies )
+            {
+                switch (d.type)
+                {
+                    case blueprint::dependency::DEPENDENCY_FILE_DEPENDENCY:
+                    {
+                        const std::string generated_dependency_file = try_render(local_inja_env,  d.name, project_summary, log );
+                        auto dependencies = parse_gcc_dependency_file(generated_dependency_file);
+                        match->dependencies.insert( std::end( match->dependencies ), std::begin( dependencies ), std::end( dependencies ) );
+                        continue;
+                    }
+                    case blueprint::dependency::DATA_DEPENDENCY:
+                    {
+                        std::string data_name = try_render(local_inja_env, d.name, project_summary, log);
+                        if (data_name.front() != data_dependency_identifier)
+                            data_name.insert(0,1, data_dependency_identifier);
+                        match->dependencies.push_back(data_name);
+                        continue;
+                    }
+                    default:
+                        break;
+                }
+
+                // Generate full dependency string by applying template engine
+                std::string generated_depend;
+                try
+                {
+                    generated_depend = local_inja_env.render( d.name, project_summary );
+                }
+                catch ( std::exception& e )
+                {
+                    log->error("Couldn't apply template: '{}'\n{}", d.name, e.what());
+                    return;
+                }
+
+                // Check if the input was a YAML array construct
+                if ( generated_depend.front( ) == '[' && generated_depend.back( ) == ']' )
+                {
+                    // Load the generated dependency string as YAML and push each item individually
+                    try {
+                        auto generated_node = YAML::Load( generated_depend );
+                        for ( auto i : generated_node ) {
+                            auto temp = i.Scalar();
+                            match->dependencies.push_back( temp.starts_with("./") ? temp.substr(2) : temp );
+                        }
+                    } catch ( std::exception& e ) {
+                        std::cerr << "Failed to parse dependency: " << d.name << "\n";
+                    }
+                }
+                else
+                {
+                    match->dependencies.push_back( generated_depend.starts_with("./") ? generated_depend.substr(2) : generated_depend );
+                }
+            }
+
+            target_database.insert(std::make_pair(target, match));
+        }
+
+        if (!blueprint_match_found)
+        {
+            if (!fs::exists( target ))
+                log->info("No blueprint for '{}'", target);
+            // task_database.insert(std::make_pair(target, std::make_shared<blueprint_node>(target)));
+        }
+    }
 
     void project::load_common_commands()
     {
@@ -583,7 +831,7 @@ namespace yakka
                         template_string = command["template"].get<std::string>();
                         captured_output = try_render(inja_env, template_string, data.is_null() ? generated_json : data, yakkalog);
                         return {captured_output,0};
-                    }    
+                    }
                 }
                 
                 yakkalog->error("Inja template is invalid:\n'{}'", command.dump());

@@ -42,12 +42,20 @@ int main(int argc, char **argv)
     }
     catch (...)
     {
-        std::cerr << "Cannot open yakka.log. No idea why\n";
-        exit(1);
+        try {
+            auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            yakkalog = spdlog::basic_logger_mt("yakkalog", "yakka-" + std::to_string(time) + ".log");
+        }
+        catch (...)
+        {
+            std::cerr << "Cannot open yakka.log";
+            exit(1);
+        }
     }
 
     // Create a workspace
-    yakka::workspace workspace(".", yakka::get_yakka_shared_home());
+    yakka::workspace workspace;
+    workspace.init(".", yakka::get_yakka_shared_home());
 
     cxxopts::Options options("yakka", "Yakka the embedded builder. Ver " + yakka_version.to_string());
     options.allow_unrecognised_options();
@@ -158,19 +166,22 @@ int main(int argc, char **argv)
 
     // Process the command line options
     std::string project_name;
-    std::unordered_set<std::string> components;
-    std::unordered_set<std::string> features;
+    std::string feature_suffix;
+    std::vector<std::string> components;
+    std::vector<std::string> features;
     std::unordered_set<std::string> commands;
     for (auto s: result.unmatched())
     {
         // Identify features, commands, and components
-        if (s.front() == '+')
-            features.insert(s.substr(1));
+        if (s.front() == '+') {
+            feature_suffix += s;
+            features.push_back(s.substr(1));
+        }
         else if (s.back() == '!')
             commands.insert(s.substr(0, s.size() - 1));
         else 
         {
-            components.insert(s);
+            components.push_back(s);
 
             // Compose the project name by concatenation all the components in CLI order.
             // The features will be added at the end
@@ -184,28 +195,23 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // Remove the extra "-"
+    // Remove the extra "-" and add the feature suffix
     project_name.pop_back();
-
-    // Add features to the project name
-    for (const auto& f: features)
-        project_name += "+" + f;
-
-    workspace.init();
+    project_name += feature_suffix;
 
     // Create a project
     yakka::project project(project_name, workspace, yakkalog);
 
     // Move the CLI parsed data to the project
-    project.unprocessed_components = std::move(components);
-    project.unprocessed_features = std::move(features);
+    // project.unprocessed_components = std::move(components);
+    // project.unprocessed_features = std::move(features);
     project.commands = std::move(commands);
 
     // Add the action as a command
     project.commands.insert(action);
 
     // Init the project
-    project.init_project();
+    project.init_project(components, features);
 
     if (project.evaluate_dependencies() == yakka::project::state::PROJECT_HAS_INVALID_COMPONENT) {
         return 1;
@@ -248,7 +254,8 @@ int main(int argc, char **argv)
                     fetch_progress_bars.push_back(new_progress_bar);
                     size_t id = fetch_progress_ui.push_back(*new_progress_bar);
                     fetch_progress_ui.print_progress();
-                    auto result = workspace.fetch_component(i, *node, [&fetch_progress_ui,id](size_t number) {
+                    auto result = workspace.fetch_component(i, *node, [&fetch_progress_ui,id](std::string prefix, size_t number) {
+                            fetch_progress_ui[id].set_option(option::PrefixText{prefix});
                             if (number >= 100)
                             {
                                 fetch_progress_ui[id].set_progress(100);
