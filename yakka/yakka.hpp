@@ -38,6 +38,12 @@ namespace yakka {
         int retcode;
     };
 
+    struct project_description
+    {
+        std::vector<std::string> components;
+        std::vector<std::string> features;
+    };
+
     enum yakka_status
     {
         SUCCESS = 0,

@@ -16,6 +16,7 @@ namespace yakka
     project::project(  const std::string project_name, yakka::workspace& workspace, std::shared_ptr<spdlog::logger> log ) : project_name(project_name), yakka_home_directory("/.yakka"), project_directory("."), workspace(workspace)
     {
         this->log = log;
+        this->abort_build = false;
     }
 
     project::~project( )
@@ -217,9 +218,10 @@ namespace yakka
                 const auto component_id = yakka::component_dotname_to_id(i);
 
                 // Check if component has been replaced
-                if (replaced_components.contains(component_id))
+                if (replacements.contains(component_id))
                 {
-                    log->info("Skipping {}. Being replaced", component_id);
+                    log->info("Skipping {}. Being replaced by {}", component_id, replacements[component_id]);
+                    unprocessed_components.insert(replacements[component_id]);
                     continue;
                 }
 
@@ -265,19 +267,19 @@ namespace yakka
                     }
                 }
                 
-                // Check for replacements if this component hasn't already been parsed in a previous pass
-                if (!replacements.contains(component_id)) {
-                    for (const auto& c: new_component->yaml["replaces"]["component"]) {
-                        const auto& replaced = c.Scalar();
-                        log->info("{} replaces {}", component_id, replaced);
-                        if (!replacements.contains(component_id) && replaced_components.contains(replaced)) {
+                for (const auto& c: new_component->yaml["replaces"]["component"]) {
+                    const auto& replaced = c.Scalar();
+                    
+                    if (replacements.contains(replaced)) {
+                        if (replacements[replaced] != component_id) {
                             log->error("Multiple components replacing {}", replaced);
                             return project::state::PROJECT_HAS_MULTIPLE_REPLACEMENTS;
                         }
-                        new_replacements.insert({component_id, replaced});
-                        //replaced_components.insert(replaced);
-                        //replacements.insert({new_component_id, replaced});
+                        continue;
                     }
+
+                    log->info("{} replaces {}", component_id, replaced);
+                    new_replacements.insert({replaced, component_id});
                 }
 
                 // Process all the currently required features. Note new feature will be processed in the features pass
@@ -348,11 +350,11 @@ namespace yakka
             // Check if we have finished but we've come across replaced components
             if (unprocessed_components.empty( ) && unprocessed_features.empty( ) && new_replacements.size() != 0) {
                 // move new replacements
-                for (const auto& [id, replacement]: new_replacements)
+                for (const auto& [replacement, id]: new_replacements)
                 {
                     log->info("Adding {} to replaced_components", replacement);
-                    replaced_components.insert(replacement);
-                    replacements.insert({id, replacement});
+                    // replaced_components.insert(replacement);
+                    replacements.insert({replacement, id});
                 }
                 new_replacements.clear();
 
@@ -479,7 +481,8 @@ namespace yakka
                 auto tasks = target_database.targets.equal_range(t);
 
                 std::for_each(tasks.first, tasks.second, [&new_targets](auto& i) {
-                    new_targets.insert(new_targets.end(), i.second->dependencies.begin(), i.second->dependencies.end());
+                    if (i.second)
+                        new_targets.insert(new_targets.end(), i.second->dependencies.begin(), i.second->dependencies.end());
                 });
             }
 
@@ -548,155 +551,6 @@ namespace yakka
         }
     }
 
-    void project::add_to_target_database( const std::string target )
-    {
-        bool blueprint_match_found = false;
-
-        for ( const auto& blueprint : blueprint_database.blueprints )
-        {
-            auto match = std::make_shared<blueprint_match>();
-
-            // Check if rule is a regex, otherwise do a string comparison
-            if ( blueprint.second->regex.has_value() )
-            {
-                std::smatch s;
-                if (!std::regex_match(target, s, std::regex { blueprint.first } ) )
-                    continue;
-
-                // arg_count starts at 0 as the first match is the entire string
-                for ( auto& regex_match : s )
-                    match->regex_matches.push_back(regex_match.str( ));
-            }
-            else
-            {
-                if (target != blueprint.first )
-                    continue;
-
-                match->regex_matches.push_back(target);
-            }
-
-            // Found a match. Create a blueprint match object
-            blueprint_match_found = true;
-            match->blueprint = blueprint.second;
-
-            inja::Environment local_inja_env;
-            local_inja_env.add_callback("$", 1, [&match](const inja::Arguments& args) { return match->regex_matches[ args[0]->get<int>() ];});
-            local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match->blueprint->parent_path;});
-            local_inja_env.add_callback("dir", 1, [](inja::Arguments& args) { 
-                auto path = std::filesystem::path{args.at(0)->get<std::string>()}.relative_path();
-                if (path.has_filename()) return path.parent_path().string();
-                else return path.string();
-                });
-            local_inja_env.add_callback("glob", [](inja::Arguments& args) {
-                nlohmann::json aggregate = nlohmann::json::array();
-                std::vector<std::string> string_args;
-                for (const auto& i: args)
-                    string_args.push_back(i->get<std::string>());
-                for (auto &p : glob::rglob(string_args))
-                    aggregate.push_back(p.generic_string());
-                return aggregate;
-            });
-            local_inja_env.add_callback("notdir", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.filename();});
-            local_inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
-            local_inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});
-            local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return try_render(local_inja_env, args[0]->get<std::string>(), this->project_summary, log);});
-            local_inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) {
-                auto file = std::ifstream(args[0]->get<std::string>()); 
-                return std::string{std::istreambuf_iterator<char>{file}, {}};
-            });
-            local_inja_env.add_callback("load_yaml", 1, [&](const inja::Arguments& args) {
-                auto yaml_data = YAML::LoadFile(args[0]->get<std::string>());
-                return yaml_data.as<nlohmann::json>();
-            });
-            local_inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
-                nlohmann::json aggregate;
-                auto path = json_pointer(args[0]->get<std::string>());
-                // Loop through components, check if object path exists, if so add it to the aggregate
-                for (const auto& [c_key, c_value]: this->project_summary["components"].items())
-                {
-                    // auto v = json_path(c.value(), path);
-                    if (!c_value.contains(path))
-                        continue;
-                    
-                    auto v = c_value[path];
-                    if (v.is_object())
-                        for (const auto& [i_key, i_value]: v.items())
-                            aggregate[i_key] = i_value; //try_render(local_inja_env, i.second.as<std::string>(), this->project_summary, log);
-                    else if (v.is_array())
-                        for (const auto& i: v)
-                            aggregate.push_back(try_render(local_inja_env, i.get<std::string>(), this->project_summary, log));
-                    else
-                        aggregate.push_back(try_render(local_inja_env, v.get<std::string>(), this->project_summary, log));
-                }
-                return aggregate;
-                });
-
-            // Run template engine on dependencies
-            for ( auto d : blueprint.second->dependencies )
-            {
-                switch (d.type)
-                {
-                    case blueprint::dependency::DEPENDENCY_FILE_DEPENDENCY:
-                    {
-                        const std::string generated_dependency_file = try_render(local_inja_env,  d.name, project_summary, log );
-                        auto dependencies = parse_gcc_dependency_file(generated_dependency_file);
-                        match->dependencies.insert( std::end( match->dependencies ), std::begin( dependencies ), std::end( dependencies ) );
-                        continue;
-                    }
-                    case blueprint::dependency::DATA_DEPENDENCY:
-                    {
-                        std::string data_name = try_render(local_inja_env, d.name, project_summary, log);
-                        if (data_name.front() != data_dependency_identifier)
-                            data_name.insert(0,1, data_dependency_identifier);
-                        match->dependencies.push_back(data_name);
-                        continue;
-                    }
-                    default:
-                        break;
-                }
-
-                // Generate full dependency string by applying template engine
-                std::string generated_depend;
-                try
-                {
-                    generated_depend = local_inja_env.render( d.name, project_summary );
-                }
-                catch ( std::exception& e )
-                {
-                    log->error("Couldn't apply template: '{}'\n{}", d.name, e.what());
-                    return;
-                }
-
-                // Check if the input was a YAML array construct
-                if ( generated_depend.front( ) == '[' && generated_depend.back( ) == ']' )
-                {
-                    // Load the generated dependency string as YAML and push each item individually
-                    try {
-                        auto generated_node = YAML::Load( generated_depend );
-                        for ( auto i : generated_node ) {
-                            auto temp = i.Scalar();
-                            match->dependencies.push_back( temp.starts_with("./") ? temp.substr(2) : temp );
-                        }
-                    } catch ( std::exception& e ) {
-                        std::cerr << "Failed to parse dependency: " << d.name << "\n";
-                    }
-                }
-                else
-                {
-                    match->dependencies.push_back( generated_depend.starts_with("./") ? generated_depend.substr(2) : generated_depend );
-                }
-            }
-
-            target_database.insert(std::make_pair(target, match));
-        }
-
-        if (!blueprint_match_found)
-        {
-            if (!fs::exists( target ))
-                log->info("No blueprint for '{}'", target);
-            // task_database.insert(std::make_pair(target, std::make_shared<blueprint_node>(target)));
-        }
-    }
 
     void project::load_common_commands()
     {
@@ -1009,6 +863,8 @@ namespace yakka
         // XXX: Start time should be determined at the start of the executable and not here
         auto start_time = fs::file_time_type::clock::now();
 
+        //log->info("Create tasks for: {}", target_name);
+
         // Check if this target has already been processed
         const auto& existing_todo = todo_list.equal_range(target_name);
         if (existing_todo.first != existing_todo.second)
@@ -1027,7 +883,7 @@ namespace yakka
         // If there is no targets then it must be a leaf node (source file, data dependency, etc)
         if (targets.first == targets.second)
         {
-            //log->info("Creating task for {}", target_name);
+            //log->info("{}: leaf node", target_name);
             auto new_todo = todo_list.insert(std::make_pair(target_name, construction_task()));
             auto task = taskflow.placeholder();
 
@@ -1050,10 +906,9 @@ namespace yakka
                 task.data(&new_todo->second).work([=]() {
                     auto d = static_cast<construction_task*>(task.data());
                     d->last_modified = fs::last_write_time(target_name);
-                    // log->info("{}: timestamp {}", target_name, d->last_modified.time_since_epoch().count());
+                    //log->info("{}: timestamp {}", target_name, (uint)d->last_modified.time_since_epoch().count());
                     return;
                 });
-                
             }
             else
             {
@@ -1066,6 +921,7 @@ namespace yakka
 
         for (auto i=targets.first; i != targets.second; ++i)
         {
+            // log->info("{}: Not a leaf node", target_name);
             ++work_task_count;
             auto new_todo = todo_list.insert(std::make_pair(target_name, construction_task()));
             new_todo->second.match = i->second;
@@ -1081,11 +937,12 @@ namespace yakka
                     log->info("{} already done", target_name);
                     return;
                 }
+                if (fs::exists(target_name)) { 
+                    d->last_modified = fs::last_write_time(target_name);
+                    // log->info("{}: timestamp {}", target_name, (uint)d->last_modified.time_since_epoch().count());
+                }
                 if (d->match)
                 {
-                    if (fs::exists(target_name))
-                        d->last_modified = fs::last_write_time(target_name);
-
                     // Check if there are no dependencies
                     if (d->match->dependencies.size() == 0)
                     {
@@ -1109,10 +966,13 @@ namespace yakka
                         {
                             auto temp = todo_list.equal_range(j);
                             auto temp_element = std::max_element(temp.first, temp.second, [](auto const& i, auto const& j) { return i.second.last_modified < j.second.last_modified;});
-                            if (max_element == todo_list.end() || temp_element->second.last_modified > max_element->second.last_modified)
+                            //log->info("{}: Check max element {}: {} vs {}", target_name, temp_element->first, (int64_t)temp_element->second.last_modified.time_since_epoch().count(), (int64_t)max_element->second.last_modified.time_since_epoch().count());
+                            if (max_element == todo_list.end() || temp_element->second.last_modified > max_element->second.last_modified) { 
                                 max_element = temp_element;
+                            }
                         }
-                        if (!fs::exists(target_name) || max_element->second.last_modified > d->last_modified)
+                        //log->info("{}: Max element is {}", target_name, max_element->first);
+                        if (!fs::exists(target_name) || max_element->second.last_modified.time_since_epoch() > d->last_modified.time_since_epoch())
                         {
                             log->info("{}: Updating because of {}",target_name, max_element->first);
                             auto [output, retcode] = yakka::run_command(i->first, d, this);
@@ -1142,9 +1002,12 @@ namespace yakka
             new_todo->second.task = task;
             new_todo->second.task.precede(parent);
 
-            // For each dependency described in blueprint, retrieve or create task, add relationship, and add item to todo list 
-            for (auto& dep_target: i->second->dependencies)
-                create_tasks(dep_target.starts_with("./") ? dep_target.substr(2) : dep_target, new_todo->second.task);
+            // For each dependency described in blueprint, retrieve or create task, add relationship, and add item to todo list
+            if (i->second)
+                for (auto& dep_target: i->second->dependencies)
+                    create_tasks(dep_target.starts_with("./") ? dep_target.substr(2) : dep_target, new_todo->second.task);
+            // else
+            //     log->info("{} does not have blueprint match", i->first);
         }
     }
 

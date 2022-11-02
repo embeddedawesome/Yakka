@@ -34,7 +34,7 @@ namespace yakka
         // construction_task_state state;
         // std::future<std::pair<std::string, int>> thread_result;
 
-        construction_task() : last_modified(fs::file_time_type::min()) {}
+        construction_task() : last_modified(fs::file_time_type::min()), match(nullptr) {}
     };
 
     class project
@@ -93,7 +93,7 @@ namespace yakka
         std::unordered_set<std::string> unprocessed_components;
         std::unordered_set<std::string> unprocessed_features;
         std::unordered_set<std::string> unprocessed_choices;
-        std::unordered_set<std::string> replaced_components;
+        //std::unordered_set<std::string> replaced_components;
         std::unordered_map<std::string, std::string> replacements;
         std::unordered_set<std::string> required_components;
         std::unordered_set<std::string> required_features;

@@ -200,7 +200,7 @@ namespace yakka
     using namespace std::string_literals;
     fs::path workspace::do_fetch_component(const std::string& name, const std::string url, const std::string branch, const fs::path git_location, const fs::path checkout_location, std::function<void(std::string, size_t)> progress_handler)
     {
-        auto fetch_log = spdlog::basic_logger_mt("fetchlog", "yakka-fetch-" + name + ".log");
+        auto fetch_log = spdlog::basic_logger_mt("fetchlog-"+name, "yakka-fetch-" + name + ".log");
 
         auto yakkalog = spdlog::get("yakkalog");
         enum {
