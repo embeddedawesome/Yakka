@@ -46,25 +46,25 @@
     <detaileddescription>
     </detaileddescription>
     <inheritancegraph>
-      <node id="22">
+      <node id="25">
         <label>tf::cudaLinearCapturing</label>
         <link refid="classtf_1_1cudaLinearCapturing"/>
-        <childnode refid="21" relation="public-inheritance">
+        <childnode refid="24" relation="public-inheritance">
         </childnode>
       </node>
-      <node id="23">
+      <node id="26">
         <label>tf::cudaRoundRobinCapturing</label>
         <link refid="classtf_1_1cudaRoundRobinCapturing"/>
-        <childnode refid="21" relation="public-inheritance">
+        <childnode refid="24" relation="public-inheritance">
         </childnode>
       </node>
-      <node id="21">
+      <node id="24">
         <label>tf::cudaCapturingBase</label>
       </node>
-      <node id="24">
+      <node id="27">
         <label>tf::cudaSequentialCapturing</label>
         <link refid="classtf_1_1cudaSequentialCapturing"/>
-        <childnode refid="21" relation="public-inheritance">
+        <childnode refid="24" relation="public-inheritance">
         </childnode>
       </node>
     </inheritancegraph>

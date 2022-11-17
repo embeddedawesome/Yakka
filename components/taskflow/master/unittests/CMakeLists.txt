@@ -4,8 +4,9 @@ include(${TF_3RD_PARTY_DIR}/doctest/doctest.cmake)
 
 list(APPEND TF_UNITTESTS 
   utility 
-  tsq 
-  serializer 
+  work_stealing 
+  #serializer 
+  priorities
   basics 
   asyncs
   subflows
@@ -19,6 +20,9 @@ list(APPEND TF_UNITTESTS
   sorting
   pipelines
   scalable_pipelines
+  runtimes
+  data_pipelines
+  workers
 )
 
 foreach(unittest IN LISTS TF_UNITTESTS)

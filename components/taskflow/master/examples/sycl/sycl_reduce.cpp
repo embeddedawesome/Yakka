@@ -1,7 +1,8 @@
 // This program demonstrates how to performs a parallel reduction
 // using syclFlow.
 
-#include <taskflow/syclflow.hpp>
+#include <taskflow/sycl/syclflow.hpp>
+#include <taskflow/sycl/algorithm/reduce.hpp>
 
 int main(int argc, char* argv[]) {
 
@@ -18,7 +19,7 @@ int main(int argc, char* argv[]) {
   auto res1 = sycl::malloc_shared<int>(1, queue);
   auto res2 = sycl::malloc_shared<int>(1, queue);
   auto hres = 0;
-  
+
   // initialize the data
   for(size_t i=0; i<N; i++) {
     data[i] = ::rand()%100;
@@ -28,13 +29,13 @@ int main(int argc, char* argv[]) {
   *res2 = 10;
 
   tf::syclDefaultExecutionPolicy policy(queue);
-  
+
   tf::sycl_reduce(policy, data, data+N, res1, [](int a, int b){ return a+b; });
-  
+
   //// perform reduction
   //tf::syclFlow syclflow(queue);
   //
-  //// res1 = res1 + data[0] + data[1] + ... 
+  //// res1 = res1 + data[0] + data[1] + ...
   //syclflow.reduce(
   //  data, data+N, res1, [](int a, int b){ return a+b; }
   //);
@@ -46,7 +47,7 @@ int main(int argc, char* argv[]) {
 
   //syclflow.offload();
   //
-  //// inspect 
+  //// inspect
   //if(hres + 10 != *res1 || hres != *res2) {
   //  throw std::runtime_error("incorrect result");
   //}

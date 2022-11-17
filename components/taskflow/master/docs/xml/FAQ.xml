@@ -56,7 +56,7 @@
 <para>New contributors are always welcome! Please visit <ref refid="Contributing" kindref="compound">Contributing</ref>.</para></sect2>
 <sect2 id="FAQ_1GeneralQuestion16">
 <title>Q16: Does Taskflow support pipeline parallelism?</title>
-<para>Yes, Taskflow has a specialized programming model to create a task-parallel pipeline scheduling framework. Please visit <ref refid="ParallelPipeline" kindref="compound">Parallel Pipeline</ref>.</para><para><hruler/>
+<para>Yes, Taskflow has a specialized programming model to create a pipeline scheduling framework. Please visit <ref refid="TaskParallelPipeline" kindref="compound">Task-parallel Pipeline</ref> and <ref refid="DataParallelPipeline" kindref="compound">Data-parallel Pipeline</ref>.</para><para><hruler/>
 </para></sect2>
 </sect1>
 <sect1 id="FAQ_1ProgrammingQuestions">

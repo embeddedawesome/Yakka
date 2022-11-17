@@ -188,8 +188,13 @@
 <codeline><highlight class="normal">f3(B)</highlight></codeline>
 <codeline><highlight class="normal">f3(C)</highlight></codeline>
 <codeline><highlight class="normal">stopped</highlight></codeline>
-</programlisting> </para></sect2>
+</programlisting></para></sect2>
 </sect1>
+<sect1 id="GraphProcessingPipeline_1GraphPipelineReference">
+<title>Reference</title>
+<para>We have applied the graph processing pipeline technique to speed up a circuit analysis problem. Details can be referred to our publication below:</para><para><itemizedlist>
+<listitem><para>Cheng-Hsiang Chiu and Tsung-Wei Huang, "<ulink url="https://tsung-wei-huang.github.io/papers/dac2022.pdf">Efficient Timing Propagation with Simultaneous Structural and Pipeline Parallelisms</ulink>," <emphasis>ACM/IEEE Design Automation Conference (DAC)</emphasis>, San Francisco, CA, 2022 </para></listitem></itemizedlist>
+</para></sect1>
     </detaileddescription>
   </compounddef>
 </doxygen>

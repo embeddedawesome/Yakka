@@ -52,7 +52,7 @@ tell the compiler to include the headers under @c taskflow/.
 
 @code{.shell-session}
 ~$ git clone https://github.com/taskflow/taskflow.git  # clone it only once
-~$ g++ -std=c++17 simple.cpp -I taskflow/taskflow -O2 -pthread -o simple
+~$ g++ -std=c++17 simple.cpp -I taskflow/ -O2 -pthread -o simple
 ~$ ./simple
 TaskA
 TaskC 
@@ -332,8 +332,9 @@ the following organizations for sponsoring the %Taskflow project!
 
 | <!-- --> | <!-- --> | <!-- --> | <!-- --> |
 |:-- -----:|:--------:|:--------:|:--------:|
-|<img src="images/utah-ece-logo.png">|<img src="images/nsf.png"> | <img src="images/darpa.png"> | <img src="images/NumFocus.png">|
-|<img src="images/nvidia-logo.png">| | | |
+|@image html "images/utah-ece-logo.png" |@image html "images/nsf.png"|@image html "images/darpa.png"|@image html "images/NumFocus.png"|
+|@image html "images/nvidia-logo.png" | | | |
+
 
 
 @section License License

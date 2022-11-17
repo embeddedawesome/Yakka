@@ -1,20 +1,16 @@
 namespace tf {
 
-/** @page release-3-4-0 Release 3.4.0 (Master)
+/** @page release-3-4-0 Release 3.4.0 (2022/05/23)
 
-%Taskflow 3.4.0 is the newest developing line to new features and improvements 
-we continue to support.
-It is also where this documentation is generated.
-Many things are considered @em experimental and may change or break from time to time.
-While it may be difficult to be keep all things consistent when introducing new features, 
-we continue to try our best to ensure backward compatibility.
+%Taskflow 3.4.0 is the 5th release in the 3.x line! 
+This release includes several new changes, such as pipeline parallelism,
+deadlock-free execution methods, documentation, examples, and unit tests.
 
 @tableofcontents
 
 @section release-3-4-0_download Download
 
-To download the newest version of %Taskflow, please clone the master branch 
-from <a href="https://github.com/taskflow/taskflow">%Taskflow's GitHub</a>.
+%Taskflow 3.4.0 can be downloaded from <a href="https://github.com/taskflow/taskflow/releases/tag/v3.4.0">here</a>.
 
 @section release-3-4-0_system_requirements System Requirements
 
@@ -32,50 +28,71 @@ To use %Taskflow v3.4.0, you need a compiler that supports C++17:
 
 @section release-3-4-0_summary Release Summary
 
+This release enhances our task-parallel pipeline programming model
+and executor methods, supplied with several new examples and unit tests.
+
 @section release-3-4-0_new_features New Features
 
 @subsection release-3-4-0_taskflow_core Taskflow Core
 
 + Improved the pipeline performance using vertical stack optimization
 + Added tf::ScalablePipeline to allow programming variable lengths of pipes
++ Added tf::Runtime::run_and_wait to allow spawning a subflow
++ Added tf::Executor::run_and_wait to allow running taskflows from a worker
 + Added an example of attaching data to a task (examples/attach_data.cpp)
 + Added an example of text processing pipeline (examples/parallel_text_pipeline.cpp)
 + Added an example of graph processing pipeline (examples/parallel_graph_pipeline.cpp)
 + Added an example of taskflow processing pipeline (examples/parallel_taskflow_pipeline.cpp)
++ Added an example of running a task graph from a worker (examples/run_and_wait.cpp)
 
 @subsection release-3-4-0_cudaflow cudaFlow
 
++ Added tf::cudaStream as a move-only, RAII-styled wrapper over a native CUDA stream
++ Added tf::cudaEvent as a move-only, RAII-styled wrapper over a native CUDA event
+
 @subsection release-3-4-0_syclflow syclFlow
+
+There is no update on %syclFlow in this release.
 
 @subsection release-3-4-0_utilities Utilities
 
-@subsection release-3-4-0_profiler Taskflow Profiler (TFProf)
++ Removed serializer to improve compilation speed
 
 @section release-3-4-0_bug_fixes Bug Fixes 
 
-+ Fixed compilation error by non-portable include of `immintrin.h` ([#371](https://github.com/taskflow/taskflow/issues/371))
-+ Fixed compilation error by old version of doctest ([#372](https://github.com/taskflow/taskflow/issues/372))
++ Fixed the compilation error due to non-portable include of `immintrin.h` ([#371](https://github.com/taskflow/taskflow/issues/371))
++ Fixed the compilation error due to using old version of doctest ([#372](https://github.com/taskflow/taskflow/issues/372))
++ Fixed the infinite loop bug due to unexpected share states in pipeline ([#402](https://github.com/taskflow/taskflow/issues/402))
 
 If you encounter any potential bugs, please submit an issue at @IssueTracker.
 
 @section release-3-4-0_breaking_changes Breaking Changes
 
++ Replaced tf::Runtime::run with tf::Runtime::run_and_wait to comply with tf::Executor::run_and_wait
+
 @section release-3-4-0_deprecated_items Deprecated and Removed Items 
+
+There are no deprecated items in this release.
 
 @section release-3-4-0_documentation Documentation
 
-+ Revised @ref ParallelPipeline
-  + Added @ref ParallelPipelineLearnMore
++ Revised @ref ExecuteTaskflow
+  + Added @ref ExecuteATaskflowFromAnInternalWorker
++ Revised @ref CUDASTDExecutionPolicy
++ Revised @ref TaskParallelPipeline
+  + Added @ref TaskParallelPipelineLearnMore
 + Revised @ref Examples
   + Added @ref TextProcessingPipeline
   + Added @ref GraphProcessingPipeline
   + Added @ref TaskflowProcessingPipeline
-+ Added @ref ParallelScalablePipeline
++ Added @ref TaskParallelScalablePipeline
 
 @section release-3-4-0_miscellaneous_items Miscellaneous Items
 
 We have published %Taskflow in the following venues:
-  1. Dian-Lun Lin and Tsung-Wei Huang, &quot;[Accelerating Large Sparse Neural Network Inference using GPU Task Graph Parallelism](https://ieeexplore.ieee.org/document/9664223),&quot; <em>IEEE Transactions on Parallel and Distributed Systems (TPDS)</em>, accepted, 2022
+  + Dian-Lun Lin and Tsung-Wei Huang, &quot;[Accelerating Large Sparse Neural Network Inference using GPU Task Graph Parallelism](https://ieeexplore.ieee.org/document/9664223),&quot; <em>IEEE Transactions on Parallel and Distributed Systems (TPDS)</em>, 2022
+  + Cheng-Hsiang Chiu and Tsung-Wei Huang, &quot;[Composing %Pipeline Parallelism using Control %Taskflow %Graph](https://doi.org/10.1145/3502181.3533714),&quot; <em>ACM International Symposium on High-Performance Parallel and Distributed Computing (HPDC)</em>, Minneapolis, Minnesota, 2022
+  + Cheng-Hsiang Chiu and Tsung-Wei Huang, &quot;[Efficient Timing Propagation with Simultaneous Structural and Pipeline Parallelisms](https://tsung-wei-huang.github.io/papers/dac2022.pdf),&quot; <em>ACM/IEEE Design Automation Conference (DAC)</em>, San Francisco, CA, 2022
 
 Please do not hesitate to contact @twhuang if you intend to collaborate with us 
 on using %Taskflow in your scientific computing projects.
@@ -83,3 +100,5 @@ on using %Taskflow in your scientific computing projects.
 */
 
 }
+
+

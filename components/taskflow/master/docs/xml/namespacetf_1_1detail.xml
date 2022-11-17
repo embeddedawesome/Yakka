@@ -718,7 +718,7 @@
         </inbodydescription>
         <location file="/home/twhuang/Code/taskflow/taskflow/cuda/algorithm/merge.hpp" line="152" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/cuda/algorithm/merge.hpp" bodystart="152" bodyend="164"/>
       </memberdef>
-      <memberdef kind="function" id="merge_8hpp_1a3a98425f735a9b9cb1511a62f9d40665" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+      <memberdef kind="function" id="merge_8hpp_1a87f27d6553efe6c32e4eaef800d2787c" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
         <templateparamlist>
           <param>
             <type>unsigned</type>
@@ -740,8 +740,8 @@
             <type>typename b_it</type>
           </param>
         </templateparamlist>
-        <type>__device__ std::enable_if_t&lt; !(<ref refid="cpp/types/is_pointer" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::is_pointer</ref>&lt; a_it &gt;::value &amp;&amp;<ref refid="cpp/types/is_pointer" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::is_pointer</ref>&lt; b_it &gt;::value), cudaArray&lt; T, vt &gt; &gt;</type>
-        <definition>__device__ std::enable_if_t&lt; !(std::is_pointer&lt;a_it&gt;::value &amp;&amp; std::is_pointer&lt;b_it&gt;::value), cudaArray&lt;T, vt&gt; &gt; tf::detail::load_two_streams_reg</definition>
+        <type>__device__ std::enable_if_t&lt; !(<ref refid="cpp/types/is_pointer" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::is_pointer</ref>&lt; a_it &gt;::value &amp;&amp;<ref refid="cpp/types/is_pointer" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::is_pointer</ref>&lt; b_it &gt;::value), cudaArray&lt; T, vt &gt;&gt;</type>
+        <definition>__device__ std::enable_if_t&lt; !(std::is_pointer&lt;a_it&gt;::value &amp;&amp; std::is_pointer&lt;b_it&gt;::value), cudaArray&lt;T, vt&gt;&gt; tf::detail::load_two_streams_reg</definition>
         <argsstring>(a_it a, unsigned a_count, b_it b, unsigned b_count, unsigned tid)</argsstring>
         <name>load_two_streams_reg</name>
         <param>
@@ -893,7 +893,7 @@
         </inbodydescription>
         <location file="/home/twhuang/Code/taskflow/taskflow/cuda/algorithm/merge.hpp" line="193" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/cuda/algorithm/merge.hpp" bodystart="193" bodyend="208"/>
       </memberdef>
-      <memberdef kind="function" id="merge_8hpp_1a99e94783ee7afabbffd3c9a2058b658c" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+      <memberdef kind="function" id="merge_8hpp_1a9f8cf7550f2b00d99ffa12aa30374237" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
         <templateparamlist>
           <param>
             <type>unsigned</type>
@@ -915,8 +915,8 @@
             <type>typename b_it</type>
           </param>
         </templateparamlist>
-        <type>__device__ std::enable_if_t&lt; !(<ref refid="cpp/types/is_pointer" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::is_pointer</ref>&lt; a_it &gt;::value &amp;&amp;<ref refid="cpp/types/is_pointer" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::is_pointer</ref>&lt; b_it &gt;::value), cudaArray&lt; T, vt &gt; &gt;</type>
-        <definition>__device__ std::enable_if_t&lt; !(std::is_pointer&lt;a_it&gt;::value &amp;&amp; std::is_pointer&lt;b_it&gt;::value), cudaArray&lt;T, vt&gt; &gt; tf::detail::cuda_gather_two_streams_strided</definition>
+        <type>__device__ std::enable_if_t&lt; !(<ref refid="cpp/types/is_pointer" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::is_pointer</ref>&lt; a_it &gt;::value &amp;&amp;<ref refid="cpp/types/is_pointer" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::is_pointer</ref>&lt; b_it &gt;::value), cudaArray&lt; T, vt &gt;&gt;</type>
+        <definition>__device__ std::enable_if_t&lt; !(std::is_pointer&lt;a_it&gt;::value &amp;&amp; std::is_pointer&lt;b_it&gt;::value), cudaArray&lt;T, vt&gt;&gt; tf::detail::cuda_gather_two_streams_strided</definition>
         <argsstring>(a_it a, unsigned a_count, b_it b, unsigned b_count, cudaArray&lt; unsigned, vt &gt; indices, unsigned tid)</argsstring>
         <name>cuda_gather_two_streams_strided</name>
         <param>

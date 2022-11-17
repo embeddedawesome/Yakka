@@ -142,32 +142,32 @@
     <detaileddescription>
     </detaileddescription>
     <inheritancegraph>
-      <node id="211">
+      <node id="235">
         <label>tf::SmallVectorTemplateCommon&lt; tf::Semaphore *&gt;</label>
-        <childnode refid="206" relation="public-inheritance">
+        <childnode refid="230" relation="public-inheritance">
         </childnode>
       </node>
-      <node id="209">
+      <node id="233">
         <label>tf::SmallVectorTemplateCommon&lt; T &gt;</label>
-        <childnode refid="206" relation="public-inheritance">
+        <childnode refid="230" relation="public-inheritance">
         </childnode>
       </node>
-      <node id="207">
+      <node id="231">
         <label>tf::SmallVectorTemplateCommon&lt; Node * &gt;</label>
-        <childnode refid="206" relation="public-inheritance">
+        <childnode refid="230" relation="public-inheritance">
         </childnode>
       </node>
-      <node id="210">
+      <node id="234">
         <label>tf::SmallVectorTemplateCommon&lt; tf::Semaphore * &gt;</label>
-        <childnode refid="206" relation="public-inheritance">
+        <childnode refid="230" relation="public-inheritance">
         </childnode>
       </node>
-      <node id="206">
+      <node id="230">
         <label>tf::SmallVectorBase</label>
       </node>
-      <node id="208">
+      <node id="232">
         <label>tf::SmallVectorTemplateCommon&lt; Node *&gt;</label>
-        <childnode refid="206" relation="public-inheritance">
+        <childnode refid="230" relation="public-inheritance">
         </childnode>
       </node>
     </inheritancegraph>
