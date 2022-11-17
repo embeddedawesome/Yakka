@@ -18,6 +18,8 @@
 using namespace indicators;
 using namespace std::chrono_literals;
 
+void run_taskflow(yakka::project& project);
+
 tf::Task& create_tasks(yakka::project& project, const std::string& name, std::map<std::string, tf::Task>& tasks, tf::Taskflow& taskflow);
 static const semver::version yakka_version {
     #include "yakka_version.h"
@@ -394,14 +396,26 @@ int main(int argc, char **argv)
 
     project.load_common_commands();
 
-    // Task flow test
+    run_taskflow(project);
+    
+    auto yakka_end_time = fs::file_time_type::clock::now();
+    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(yakka_end_time - yakka_start_time).count() << " milliseconds" << std::endl;
+
+    console->flush();
+    show_console_cursor(true);
+    
+    return 0;
+}
+
+
+void run_taskflow(yakka::project& project)
+{
     project.work_task_count = 0;
     std::atomic<int> execution_progress = 0;
     tf::Executor executor;
     auto finish = project.taskflow.emplace([&]() { execution_progress = 100; } );
     for (auto& i: project.commands)
         project.create_tasks(i, finish);
-
     
     ProgressBar building_bar {
         option::BarWidth{ 50 },
@@ -415,6 +429,7 @@ int main(int argc, char **argv)
     };
      
     auto execution_future = executor.run(project.taskflow);
+    
     do
     {
         building_bar.set_option(option::PostfixText{
@@ -427,36 +442,4 @@ int main(int argc, char **argv)
         std::to_string(project.work_task_count) + "/" + std::to_string(project.work_task_count)
     });
     building_bar.set_progress(project.work_task_count);
-
-    auto yakka_end_time = fs::file_time_type::clock::now();
-    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(yakka_end_time - yakka_start_time).count() << " milliseconds" << std::endl;
-
-#if 0
-
-    project.load_common_commands();
-
-    if (project.todo_list.size() != 0)
-    {
-        ProgressBar building_bar {
-            option::BarWidth{ 50 },
-            option::ShowPercentage{ true },
-            option::PrefixText{ "Building " }
-        };
-
-        // auto construction_start_time = fs::file_time_type::clock::now();
-
-        project.process_construction(building_bar);
-
-        // auto construction_end_time = fs::file_time_type::clock::now();
-
-        // std::cout << "Building complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(construction_end_time - construction_start_time).count() << " milliseconds" << std::endl;
-    }
-
-    auto yakka_end_time = fs::file_time_type::clock::now();
-    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(yakka_end_time - yakka_start_time).count() << " milliseconds" << std::endl;
-#endif
-
-    console->flush();
-    show_console_cursor(true);
-    return 0;
 }
