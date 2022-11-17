@@ -382,9 +382,25 @@ std::string try_render(inja::Environment& env, const std::string& input, const n
     {
         if (log != nullptr)
             log->error("Template error: {}\n{}", input, e.what());
-        else
-            std::cerr << "Template error: " << input << "\n" << e.what() << "\n";
-        return "";
+        
+        std::cerr << "Template error: " << input << "\n" << e.what() << "\n";
+        exit(-1);
+    }
+}
+
+std::string try_render_file(inja::Environment& env, const std::string& filename, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log = nullptr)
+{
+    try
+    {
+        return env.render_file(filename, data);
+    }
+    catch(std::exception& e)
+    {
+        if (log != nullptr)
+            log->error("Template error: {}\n{}", filename, e.what());
+
+        std::cerr << "Template error: " << filename << "\n" << e.what() << "\n";
+        exit(-1);
     }
 }
 

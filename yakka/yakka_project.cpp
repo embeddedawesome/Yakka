@@ -677,7 +677,7 @@ namespace yakka
                     if (command.contains("template_file"))
                     {
                         template_filename = try_render(inja_env, command["template_file"].get<std::string>(), generated_json, yakkalog);
-                        captured_output = inja_env.render_file(template_filename, data.is_null() ? generated_json : data);
+                        captured_output = try_render_file(inja_env, template_filename, data.is_null() ? generated_json : data, yakkalog);
                         return {captured_output,0};
                     }
                     else if (command.contains("template"))
