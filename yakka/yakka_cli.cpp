@@ -130,13 +130,13 @@ int main(int argc, char **argv)
     else if (action == "update")
     {
         // Find all the component repos in .yakka
-        for (auto d: fs::directory_iterator(".yakka/repos"))
-            if (d.is_directory())
-            {
-                const auto name = d.path().filename().generic_string();
-                std::cout << "Updating: " << name << "\n";
-                workspace.update_component(name);
-            }
+        //for (auto d: fs::directory_iterator(".yakka/repos"))
+        for (auto& i: result.unmatched())
+        {
+            // const auto name = d.path().filename().generic_string();
+            std::cout << "Updating: " << i << "\n";
+            workspace.update_component(i);
+        }
 
         std::cout << "Complete\n";
         return 0;
@@ -394,7 +394,6 @@ int main(int argc, char **argv)
 
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
     yakkalog->info("{}ms to process blueprints", duration);
-
     project.load_common_commands();
 
     run_taskflow(project);
