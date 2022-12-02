@@ -54,6 +54,7 @@ int main(int argc, char **argv)
             exit(1);
         }
     }
+    yakkalog->flush_on(spdlog::level::level_enum::trace);
 
     // Create a workspace
     yakka::workspace workspace;
