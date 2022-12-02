@@ -267,8 +267,9 @@ namespace yakka
                     }
                 }
                 
-                for (const auto& c: new_component->yaml["replaces"]["component"]) {
-                    const auto& replaced = c.Scalar();
+                // for (const auto& c: new_component->yaml["replaces"]["component"]) {
+                if (new_component->yaml["replaces"]["component"]) {
+                    const auto& replaced = new_component->yaml["replaces"]["component"].Scalar();
                     
                     if (replacements.contains(replaced)) {
                         if (replacements[replaced] != component_id) {
