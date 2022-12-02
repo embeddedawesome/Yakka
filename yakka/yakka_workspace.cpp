@@ -16,16 +16,22 @@ namespace yakka
 {
     workspace::workspace( )
     {
-        configuration["host_os"] = host_os_string;
-        configuration["executable_extension"] = executable_extension;
-        configuration_json = configuration.as<nlohmann::json>();
     }
 
-    void workspace::init(fs::path workspace_path, fs::path shared_components_path)
+    void workspace::init(fs::path workspace_path)
     {
         log = spdlog::get("yakkalog");
 
+        // Load the local configuration
         this->workspace_path = workspace_path;
+        load_config_file(workspace_path / "config.yaml");
+
+        // Try determine the shared home
+        if (yakka_shared_home.empty())
+        {
+            yakka_shared_home = get_yakka_shared_home();
+        }
+
         try {
             if (!fs::exists(shared_components_path))
                 fs::create_directories(shared_components_path);
@@ -34,9 +40,9 @@ namespace yakka
         }
         catch(...)
         {
+            log->error("Failed to load shared component path");
         }
 
-        load_config_file(workspace_path / "config.yaml");
 
         if (!fs::exists(this->workspace_path / ".yakka/registries"))
             fs::create_directories(this->workspace_path / ".yakka/registries");
@@ -48,9 +54,12 @@ namespace yakka
 
         if (!this->shared_components_path.empty())
         {
-            load_config_file(this->shared_components_path / "/config.yaml");
             shared_database.load(this->shared_components_path);
         }
+
+        configuration["host_os"] = host_os_string;
+        configuration["executable_extension"] = executable_extension;
+        configuration_json = configuration.as<nlohmann::json>();
     }
 
     void workspace::load_component_registries()
@@ -123,7 +132,7 @@ namespace yakka
             if (!fs::exists(config_file_path))
                 return;
             
-            auto configuration = YAML::LoadFile( config_file_path.string() );
+            configuration = YAML::LoadFile( config_file_path.string() );
 
             if (configuration["path"].IsDefined())
             {
@@ -138,6 +147,11 @@ namespace yakka
                 #else
                 setenv("PATH", path.c_str(), 1);
                 #endif
+            }
+
+            if (configuration["home"].IsDefined())
+            {
+                yakka_shared_home = fs::path(configuration["home"].Scalar());
             }
         }
         catch ( std::exception &e )
@@ -215,14 +229,22 @@ namespace yakka
 
         try
         {
-             if (!fs::exists(git_location)) {
-            yakkalog->info("Creating {}", git_location.string());
-            fs::create_directories(git_location);
+            // If the clone location already exists then something probably went wrong so delete it and it will try again
+            if (!fs::exists(git_location))
+            {
+                yakkalog->info("Creating {}", git_location.string());
+                fs::create_directories(git_location);
             }
 
             if (!fs::exists(checkout_location)) {
                 yakkalog->info("Creating {}", checkout_location.string());
                 fs::create_directories(checkout_location);
+            }
+
+            if (fs::exists(git_location / name))
+            {
+                yakkalog->info("Removing {}", (git_location / name).string());
+                fs::remove_all(git_location / name);
             }
         }
         catch(const std::exception& e)
@@ -233,7 +255,7 @@ namespace yakka
 
         // Of the total time to fetch a Git repo, 10% is allocated to counting, 10% to compressing, and 80% to receiving.
         static const std::string phase_names[] = {"Counting", "Compressing", "Receiving", "Resolving", "Checkout"};
-        const std::string fetch_string = "-C " + git_location.string() + " clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
+        const std::string fetch_string = "-C '" + git_location.string() + "' clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
 
         auto t1 = std::chrono::high_resolution_clock::now();
         retcode = yakka::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
@@ -264,7 +286,7 @@ namespace yakka
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
         yakkalog->info("{}: cloned in {}ms", name, duration);
 
-        const std::string checkout_string     = "--git-dir "s + git_location.string() + "/" + name + "/.git --work-tree " + checkout_location.string() + " checkout " + branch + " --force";
+        const std::string checkout_string     = "--git-dir '"s + git_location.string() + "/" + name + "/.git' --work-tree '" + checkout_location.string() + "' checkout " + branch + " --force";
 
         // Checkout instance
         t1 = std::chrono::high_resolution_clock::now();
@@ -292,5 +314,26 @@ namespace yakka
         return checkout_location;
     }
 
+    
+    /**
+     * @brief Returns the path corresponding to the home directory of BOB
+     *        Typically this would be ~/.yakka or /Users/<username>/.yakka or $HOME/.yakka
+     * @return std::string
+     */
+    fs::path workspace::get_yakka_shared_home()
+    {
+        // Try read HOME environment variable
+        char* sys_home = std::getenv("HOME");
+        if (sys_home != nullptr)
+            return fs::path(sys_home) / ".yakka";
 
+        // If that fails we can try the Windows version HOMEDRIVE + HOMEPATH
+        char* sys_homepath = std::getenv("HOMEPATH");
+        char* sys_homedrive = std::getenv("HOMEDRIVE");
+        if (sys_homepath != nullptr && sys_homedrive != nullptr)
+            return fs::path(std::string(sys_homedrive) + std::string(sys_homepath)) / ".yakka";
+
+        // Otherwise we default to using the local .yakka folder
+        return ".yakka";
+    }
 }
