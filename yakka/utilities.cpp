@@ -384,7 +384,8 @@ std::string try_render(inja::Environment& env, const std::string& input, const n
             log->error("Template error: {}\n{}", input, e.what());
         
         std::cerr << "Template error: " << input << "\n" << e.what() << "\n";
-        exit(-1);
+        //exit(-1);
+        return "";
     }
 }
 
@@ -400,7 +401,8 @@ std::string try_render_file(inja::Environment& env, const std::string& filename,
             log->error("Template error: {}\n{}", filename, e.what());
 
         std::cerr << "Template error: " << filename << "\n" << e.what() << "\n";
-        exit(-1);
+        //exit(-1);
+        return "";
     }
 }
 
