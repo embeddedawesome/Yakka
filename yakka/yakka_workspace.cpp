@@ -32,11 +32,11 @@ namespace yakka
             yakka_shared_home = get_yakka_shared_home();
         }
 
+        this->shared_components_path = yakka_shared_home / ".yakka";
+
         try {
             if (!fs::exists(shared_components_path))
                 fs::create_directories(shared_components_path);
-            
-            this->shared_components_path = shared_components_path;
         }
         catch(...)
         {

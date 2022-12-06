@@ -40,6 +40,6 @@ namespace yakka
         inja::Environment inja_environment;
         component_database local_database;
         component_database shared_database;
-        fs::path yakka_shared_home;
+        std::filesystem::path yakka_shared_home;
     };
 }
