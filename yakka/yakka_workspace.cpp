@@ -32,7 +32,7 @@ namespace yakka
             yakka_shared_home = get_yakka_shared_home();
         }
 
-        this->shared_components_path = yakka_shared_home / ".yakka";
+        this->shared_components_path = yakka_shared_home;
 
         try {
             if (!fs::exists(shared_components_path))
@@ -255,7 +255,7 @@ namespace yakka
 
         // Of the total time to fetch a Git repo, 10% is allocated to counting, 10% to compressing, and 80% to receiving.
         static const std::string phase_names[] = {"Counting", "Compressing", "Receiving", "Resolving", "Checkout"};
-        const std::string fetch_string = "-C '" + git_location.string() + "' clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
+        const std::string fetch_string = "-C \"" + git_location.string() + "\" clone " + url + " " + name + " -b " + branch + " --progress --single-branch --no-checkout";
 
         auto t1 = std::chrono::high_resolution_clock::now();
         retcode = yakka::exec(GIT_STRING, fetch_string, [&](std::string& data) -> void {
@@ -286,7 +286,7 @@ namespace yakka
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
         yakkalog->info("{}: cloned in {}ms", name, duration);
 
-        const std::string checkout_string     = "--git-dir '"s + git_location.string() + "/" + name + "/.git' --work-tree '" + checkout_location.string() + "' checkout " + branch + " --force";
+        const std::string checkout_string     = "--git-dir \""s + git_location.string() + "/" + name + "/.git\" --work-tree \"" + checkout_location.string() + "\" checkout " + branch + " --force";
 
         // Checkout instance
         t1 = std::chrono::high_resolution_clock::now();
