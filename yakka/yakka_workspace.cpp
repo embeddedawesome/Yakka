@@ -193,7 +193,13 @@ namespace yakka
         // This function could be async like fetch_component
         auto yakkalog = spdlog::get("yakkalog");
         auto console = spdlog::get("yakkaconsole");
-        const std::string git_directory_string = "--git-dir .yakka/repos/" + name + "/.git --work-tree components/" + name + " ";
+        std::string git_directory_string;
+        if (local_database[name])
+            git_directory_string = "--git-dir .yakka/repos/" + name + "/.git --work-tree components/" + name + " ";
+        else if (shared_database[name])
+            git_directory_string = "-C " + shared_components_path.string() + "/repos/" + name + " ";
+        else
+            return FAIL;
 
         auto [stash_output, stash_result] = yakka::exec(GIT_STRING, git_directory_string + "stash");
         if (stash_result != 0) 
