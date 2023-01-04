@@ -276,11 +276,10 @@ namespace yakka
                             log->error("Multiple components replacing {}", replaced);
                             return project::state::PROJECT_HAS_MULTIPLE_REPLACEMENTS;
                         }
-                        continue;
+                    } else {
+                        log->info("{} replaces {}", component_id, replaced);
+                        new_replacements.insert({replaced, component_id});
                     }
-
-                    log->info("{} replaces {}", component_id, replaced);
-                    new_replacements.insert({replaced, component_id});
                 }
 
                 // Process all the currently required features. Note new feature will be processed in the features pass
