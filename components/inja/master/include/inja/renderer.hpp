@@ -216,7 +216,10 @@ class Renderer : public NodeVisitor {
     } break;
     case Op::Equal: {
       const auto args = get_arguments<2>(node);
-      make_result(*args[0] == *args[1]);
+      if (!args[0] || !args[1])
+        make_result(false);
+      else
+        make_result(*args[0] == *args[1]);
     } break;
     case Op::NotEqual: {
       const auto args = get_arguments<2>(node);
