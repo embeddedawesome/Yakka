@@ -1,6 +1,7 @@
 #include "target_database.hpp"
 #include "blueprint_database.hpp"
 #include "inja/inja.hpp"
+#include "yakka.hpp"
 #include <regex>
 
 namespace yakka {
@@ -130,6 +131,46 @@ namespace yakka {
             if (!fs::exists( target ))
                 log->info("No blueprint for '{}'", target);
             // task_database.insert(std::make_pair(target, std::make_shared<blueprint_node>(target)));
+        }
+    }
+
+    void target_database::generate_target_database(std::vector<std::string> commands )
+    {
+        std::vector<std::string> new_targets;
+        std::unordered_set<std::string> processed_targets;
+        std::vector<std::string> unprocessed_targets;
+
+        for (const auto& c: commands)
+            unprocessed_targets.push_back(c);
+
+        while (!unprocessed_targets.empty())
+        {
+            for (const auto& t: unprocessed_targets)
+            {
+                // Add to processed targets and check if it's already been processed
+                if (processed_targets.insert(t).second == false)
+                    continue;
+
+                // Do not add to task database if it's a data dependency. There is special processing of these.
+                if (t.front() == yakka::data_dependency_identifier)
+                    continue;
+
+                // Check if target is not in the database. Note task_database is a multimap
+                if (targets.find(t) == targets.end())
+                {
+                    const auto match = blueprint_database.find_match(t, this->project_summary);
+                    targets.insert({t, match});
+                }
+                auto tasks = targets.equal_range(t);
+
+                std::for_each(tasks.first, tasks.second, [&new_targets](auto& i) {
+                    if (i.second)
+                        new_targets.insert(new_targets.end(), i.second->dependencies.begin(), i.second->dependencies.end());
+                });
+            }
+
+            unprocessed_targets.clear();
+            unprocessed_targets.swap(new_targets);
         }
     }
 }

@@ -3,13 +3,13 @@ name: xcode toolchain
 flags:
   cpp:
     global:
-      - -O3 
+      - -O3
       - -std=c++2a
       - -g
 
   ld:
     global:
-      - -O3 
+      - -O3
       - -lpthread
 
 tools:

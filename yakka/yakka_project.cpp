@@ -1,7 +1,6 @@
 #include "yakka_project.hpp"
 #include "utilities.hpp"
 #include "spdlog/spdlog.h"
-#include "glob/glob.h"
 #include <fstream>
 #include <chrono>
 #include <thread>
@@ -447,6 +446,8 @@ namespace yakka
                 {
                     std::string blueprint_string = try_render(inja_environment,  b_value.contains("regex") ? b_value["regex"].get<std::string>() : b_key, project_summary, log);
                     log->info("Blueprint: {}", blueprint_string);
+                    //blueprint_database.blueprints[blueprint_string].push_back(b_value);
+                    //b_value["parent_path"] = c_value["directory"];
                     blueprint_database.blueprints.insert({blueprint_string, std::make_shared<blueprint>(blueprint_string, b_value, c_value["directory"].get<std::string>())});
                 }
     }
@@ -635,6 +636,10 @@ namespace yakka
             else if (command.contains("replace"))
             {
                 captured_output = std::regex_replace(captured_output, regex_search, command["replace"].get<std::string>());
+            }
+            else if (command.contains("match"))
+            {
+                captured_output = std::regex_replace(captured_output, regex_search, command["match"].get<std::string>(), std::regex_constants::format_no_copy);
             }
             else
             {
@@ -856,6 +861,13 @@ namespace yakka
             datafile.close();
             return {captured_output,0};
         };
+
+        blueprint_commands["new_project"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
+            auto yakkalog = spdlog::get("yakkalog");
+            const auto project_string = command.get<std::string>();
+            yakka::project new_project(project_string, workspace, yakkalog);
+            new_project.init_project(project_string);
+        }
     }
 
     void project::create_tasks(const std::string target_name, tf::Task& parent)

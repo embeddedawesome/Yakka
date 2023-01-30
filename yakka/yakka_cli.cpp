@@ -63,7 +63,7 @@ int main(int argc, char **argv)
     options.add_options()
         ("h,help", "Print usage")
         ("r,refresh", "Refresh component database", cxxopts::value<bool>()->default_value("false"))
-        ("action",  "Select from 'register', 'list', 'update', 'git', or a command", cxxopts::value<std::string>());
+        ("action", "Select from 'register', 'list', 'update', 'git', or a command", cxxopts::value<std::string>());
 
     options.parse_positional({"action"});
     auto result = options.parse(argc, argv);
@@ -115,12 +115,7 @@ int main(int argc, char **argv)
         {
             std::cout << registry.second["name"] << "\n";
             for (auto c: registry.second["provides"]["components"])
-            {
                 std::cout << "  - " << c.first << "\n";
-                // auto instance = db[c.first.as<std::string>()];
-                // if (instance)
-                //     std::cout << instance << "\n";
-            }
         }
         return 0;
     }

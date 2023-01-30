@@ -61,6 +61,20 @@ namespace yakka
             local_inja_env.add_callback("absolute_dir", 1, [](inja::Arguments& args) { return std::filesystem::absolute(args.at(0)->get<std::string>());});
             local_inja_env.add_callback("extension", 1, [](inja::Arguments& args) { return std::filesystem::path{args.at(0)->get<std::string>()}.extension().string().substr(1);});
             local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return local_inja_env.render(args[0]->get<std::string>(), project_summary);});
+            local_inja_env.add_callback("select", 1, [&](const inja::Arguments& args) { 
+                nlohmann::json choice;
+                for (const auto option: args.at(0)->items()) {
+                    const auto option_type = option.key();
+                    const auto option_name = option.value();
+                    if ( (option_type == "feature" && project_summary["features"].contains( option_name)) ||
+                         (option_type == "component" && project_summary["components"].contains( option_name)))
+                    { 
+                        assert(choice.is_null());
+                        choice = option_name;
+                    }
+                }
+                return choice;
+            });
             local_inja_env.add_callback("read_file", 1, [&](const inja::Arguments& args) {
                 auto file = std::ifstream(args[0]->get<std::string>()); 
                 return std::string{std::istreambuf_iterator<char>{file}, {}};
