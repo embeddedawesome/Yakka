@@ -382,34 +382,30 @@ std::string try_render(inja::Environment& env, const std::string& input, const n
     {
         if (log != nullptr)
             log->error("Template error: {}\n{}", input, e.what());
-        else
-            std::cerr << "Template error: " << input << "\n" << e.what() << "\n";
+        
+        std::cerr << "Template error: " << input << "\n" << e.what() << "\n";
+        //exit(-1);
         return "";
     }
 }
 
-
-/**
- * @brief Returns the path corresponding to the home directory of BOB
- *        Typically this would be ~/.yakka or /Users/<username>/.yakka or $HOME/.yakka
- * @return std::string
- */
-fs::path get_yakka_shared_home()
+std::string try_render_file(inja::Environment& env, const std::string& filename, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log = nullptr)
 {
-    // Try read HOME environment variable
-    char* sys_home = std::getenv("HOME");
-    if (sys_home != nullptr)
-        return fs::path(sys_home) / ".yakka";
+    try
+    {
+        return env.render_file(filename, data);
+    }
+    catch(std::exception& e)
+    {
+        if (log != nullptr)
+            log->error("Template error: {}\n{}", filename, e.what());
 
-    // If that fails we can try the Windows version HOMEDRIVE + HOMEPATH
-    char* sys_homepath = std::getenv("HOMEPATH");
-    char* sys_homedrive = std::getenv("HOMEDRIVE");
-    if (sys_homepath != nullptr && sys_homedrive != nullptr)
-        return fs::path(std::string(sys_homedrive) + std::string(sys_homepath)) / ".yakka";
-
-    // Otherwise we default to using the local .yakka folder
-    return ".yakka";
+        std::cerr << "Template error: " << filename << "\n" << e.what() << "\n";
+        //exit(-1);
+        return "";
+    }
 }
+
 
 std::pair<std::string, int> run_command( const std::string target, construction_task* task, project* project )
 {

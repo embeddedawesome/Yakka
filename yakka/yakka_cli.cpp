@@ -18,6 +18,10 @@
 using namespace indicators;
 using namespace std::chrono_literals;
 
+static void evaluate_project_dependencies(yakka::workspace& workspace, yakka::project& project);
+static void evaluate_project_choices(yakka::workspace& workspace, yakka::project& project);
+static void run_taskflow(yakka::project& project);
+
 tf::Task& create_tasks(yakka::project& project, const std::string& name, std::map<std::string, tf::Task>& tasks, tf::Taskflow& taskflow);
 static const semver::version yakka_version {
     #include "yakka_version.h"
@@ -52,10 +56,11 @@ int main(int argc, char **argv)
             exit(1);
         }
     }
+    yakkalog->flush_on(spdlog::level::level_enum::trace);
 
     // Create a workspace
     yakka::workspace workspace;
-    workspace.init(".", yakka::get_yakka_shared_home());
+    workspace.init(".");
 
     cxxopts::Options options("yakka", "Yakka the embedded builder. Ver " + yakka_version.to_string());
     options.allow_unrecognised_options();
@@ -63,6 +68,7 @@ int main(int argc, char **argv)
     options.add_options()
         ("h,help", "Print usage")
         ("r,refresh", "Refresh component database", cxxopts::value<bool>()->default_value("false"))
+        ("n,no-eval", "Skip the dependency and choice evaluation", cxxopts::value<bool>()->default_value("false"))
         ("action", "Select from 'register', 'list', 'update', 'git', or a command", cxxopts::value<std::string>());
 
     options.parse_positional({"action"});
@@ -122,13 +128,13 @@ int main(int argc, char **argv)
     else if (action == "update")
     {
         // Find all the component repos in .yakka
-        for (auto d: fs::directory_iterator(".yakka/repos"))
-            if (d.is_directory())
-            {
-                const auto name = d.path().filename().generic_string();
-                std::cout << "Updating: " << name << "\n";
-                workspace.update_component(name);
-            }
+        //for (auto d: fs::directory_iterator(".yakka/repos"))
+        for (auto& i: result.unmatched())
+        {
+            // const auto name = d.path().filename().generic_string();
+            std::cout << "Updating: " << i << "\n";
+            workspace.update_component(i);
+        }
 
         std::cout << "Complete\n";
         return 0;
@@ -156,8 +162,6 @@ int main(int argc, char **argv)
 
     // Action must be a command. Drop the !
     action.pop_back();
-    
-    auto t1 = std::chrono::high_resolution_clock::now();
 
     // Process the command line options
     std::string project_name;
@@ -208,9 +212,108 @@ int main(int argc, char **argv)
     // Init the project
     project.init_project(components, features);
 
-    if (project.evaluate_dependencies() == yakka::project::state::PROJECT_HAS_INVALID_COMPONENT) {
-        return 1;
+    if (!result["no-eval"].as<bool>()) {
+        evaluate_project_dependencies(workspace, project);
+        evaluate_project_choices(workspace, project);
+    } else {
+        console->info("Skipping project evalutaion");
+
+        for (const auto &i : components)
+        {
+            // Convert string to id
+            const auto component_id = yakka::component_dotname_to_id(i);
+            // Find the component in the project component database
+            auto component_path = workspace.find_component(component_id);
+            if (!component_path)
+            {
+                // log->info("{}: Couldn't find it", c);
+                continue;
+            }
+
+            // Add component to the required list and continue if this is not a new component
+            // Insert component and continue if this is not new
+            if (project.required_components.insert(component_id).second == false)
+                continue;
+
+            std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
+            if (!new_component->parse_file(component_path.value(), project.blueprint_database).IsNull())
+                project.components.push_back(new_component);
+        }
     }
+
+    yakkalog->info("Required features:");
+    for (auto f: project.required_features)
+        yakkalog->info("- {}", f);
+
+    project.generate_project_summary();
+    project.save_summary();
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+    project.parse_blueprints();
+    project.generate_target_database();
+    auto t2 = std::chrono::high_resolution_clock::now();
+
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+    yakkalog->info("{}ms to process blueprints", duration);
+    project.load_common_commands();
+
+    run_taskflow(project);
+    
+    auto yakka_end_time = fs::file_time_type::clock::now();
+    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(yakka_end_time - yakka_start_time).count() << " milliseconds" << std::endl;
+
+    console->flush();
+    show_console_cursor(true);
+    
+    return 0;
+}
+
+
+void run_taskflow(yakka::project& project)
+{
+    project.work_task_count = 0;
+    std::atomic<int> execution_progress = 0;
+    tf::Executor executor;
+    auto finish = project.taskflow.emplace([&]() { execution_progress = 100; } );
+    for (auto& i: project.commands)
+        project.create_tasks(i, finish);
+    
+    ProgressBar building_bar {
+        option::BarWidth{ 50 },
+        option::ShowPercentage{ true },
+        option::PrefixText{ "Building " },
+        option::MaxProgress{project.work_task_count}
+    };
+
+    project.task_complete_handler = [&]() {
+        ++execution_progress;
+    };
+     
+    auto execution_future = executor.run(project.taskflow);
+    
+    do
+    {
+        building_bar.set_option(option::PostfixText{
+            std::to_string(execution_progress) + "/" + std::to_string(project.work_task_count)
+        });
+        building_bar.set_progress(execution_progress);
+    } while (execution_future.wait_for(500ms) != std::future_status::ready);
+
+    building_bar.set_option(option::PostfixText{
+        std::to_string(project.work_task_count) + "/" + std::to_string(project.work_task_count)
+    });
+    building_bar.set_progress(project.work_task_count);
+}
+
+static void evaluate_project_dependencies(yakka::workspace& workspace, yakka::project& project)
+{
+    auto console = spdlog::get("yakkaconsole");
+    auto yakkalog = spdlog::get("yakkalog");
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+
+    if (project.evaluate_dependencies() == yakka::project::state::PROJECT_HAS_INVALID_COMPONENT)
+        exit(1);
 
     // If we're missing a component, update the component database and try again
     if (!project.unknown_components.empty())
@@ -269,7 +372,9 @@ int main(int argc, char **argv)
             {
                 for (const auto& i: project.unknown_components)
                     console->error("Cannot fetch {}", i);
-                return 0;
+                console->flush();
+                yakkalog->flush();
+                exit(0);
             }
 
             // Wait for one of the components to be complete
@@ -327,6 +432,12 @@ int main(int argc, char **argv)
     auto t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
     yakkalog->info("{}ms to process components", duration);
+}
+
+static void evaluate_project_choices(yakka::workspace& workspace, yakka::project& project)
+{
+    auto console = spdlog::get("yakkaconsole");
+    auto yakkalog = spdlog::get("yakkalog");
 
     project.evaluate_choices();
 
@@ -361,7 +472,7 @@ int main(int argc, char **argv)
                 console->error("ERROR: Choice data is invalid");
             }
         }
-        return 0;
+        exit(0);
     }
     if (!project.multiple_answer_choices.empty())
     {
@@ -369,89 +480,6 @@ int main(int argc, char **argv)
         {
             console->error("Choice {} - Has multiple selections", a);
         }
-        return -1;
+        exit(-1);
     }
-
-    yakkalog->info("Required features:");
-    for (auto f: project.required_features)
-        yakkalog->info("- {}", f);
-
-    project.generate_project_summary();
-    project.save_summary();
-
-    t1 = std::chrono::high_resolution_clock::now();
-    project.parse_blueprints();
-    project.generate_target_database();
-    t2 = std::chrono::high_resolution_clock::now();
-
-    duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    yakkalog->info("{}ms to process blueprints", duration);
-
-    project.load_common_commands();
-
-    // Task flow test
-    project.work_task_count = 0;
-    std::atomic<int> execution_progress = 0;
-    tf::Executor executor;
-    auto finish = project.taskflow.emplace([&]() { execution_progress = 100; } );
-    for (auto& i: project.commands)
-        project.create_tasks(i, finish);
-
-    
-    ProgressBar building_bar {
-        option::BarWidth{ 50 },
-        option::ShowPercentage{ true },
-        option::PrefixText{ "Building " },
-        option::MaxProgress{project.work_task_count}
-    };
-
-    project.task_complete_handler = [&]() {
-        ++execution_progress;
-    };
-     
-    auto execution_future = executor.run(project.taskflow);
-    do
-    {
-        building_bar.set_option(option::PostfixText{
-            std::to_string(execution_progress) + "/" + std::to_string(project.work_task_count)
-        });
-        building_bar.set_progress(execution_progress);
-    } while (execution_future.wait_for(500ms) != std::future_status::ready);
-
-    building_bar.set_option(option::PostfixText{
-        std::to_string(project.work_task_count) + "/" + std::to_string(project.work_task_count)
-    });
-    building_bar.set_progress(project.work_task_count);
-
-    auto yakka_end_time = fs::file_time_type::clock::now();
-    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(yakka_end_time - yakka_start_time).count() << " milliseconds" << std::endl;
-
-#if 0
-
-    project.load_common_commands();
-
-    if (project.todo_list.size() != 0)
-    {
-        ProgressBar building_bar {
-            option::BarWidth{ 50 },
-            option::ShowPercentage{ true },
-            option::PrefixText{ "Building " }
-        };
-
-        // auto construction_start_time = fs::file_time_type::clock::now();
-
-        project.process_construction(building_bar);
-
-        // auto construction_end_time = fs::file_time_type::clock::now();
-
-        // std::cout << "Building complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(construction_end_time - construction_start_time).count() << " milliseconds" << std::endl;
-    }
-
-    auto yakka_end_time = fs::file_time_type::clock::now();
-    std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(yakka_end_time - yakka_start_time).count() << " milliseconds" << std::endl;
-#endif
-
-    console->flush();
-    show_console_cursor(true);
-    return 0;
 }

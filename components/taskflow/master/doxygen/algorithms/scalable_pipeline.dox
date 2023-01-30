@@ -1,10 +1,10 @@
 namespace tf {
 
-/** @page ParallelScalablePipeline Parallel Scalable Pipeline
+/** @page TaskParallelScalablePipeline Task-parallel Scalable Pipeline
 
 @tableofcontents
 
-Unlike tf::Pipeline (see @ref ParallelPipeline) that instantiates all pipes
+Unlike tf::Pipeline (see @ref TaskParallelPipeline) that instantiates all pipes
 at the construction time,
 %Taskflow provides a scalable alternative called tf::ScalablePipeline
 to allow variable assignments of pipes using range iterators.
@@ -137,7 +137,7 @@ of the pipeline task.
 @section ResetAPlaceholderScalablePipeline Reset a Placeholder Scalable Pipeline 
 
 It is possible to create a scalable pipeline as a placeholder 
-using the constructor overload tf::ScalablePipeline(size_t num_lines) and reset 
+using the constructor tf::ScalablePipeline(size_t num_lines) and reset 
 it to another range later in the application.
 The following code creates a task to emplace
 a range of pipes and reset the pipeline
@@ -180,6 +180,16 @@ a valid structure before running it.
 A valid pipeline must have at least one parallel line and one pipe,
 where the first pipe is a serial type.
 
+Similarly, you can create an empty scalable pipeline using the default
+constructor tf::ScalablePipeline() and reset it later in your program.
+
+@code{.cpp}
+std::vector<tf::Pipe<std::function<void(tf::Pipeflow&)>>> pipes;
+tf::ScalablePipeline<typename decltype(pipes)::iterator> spl; 
+// create pipes ...
+spl.reset(num_lines, pipes.begin(), pipes.end());
+@endcode
+
 @section ScalablePipelineUseOtherIteratorTypes Use Other Iterator Types
 
 When assigning a range to a scalable pipeline,
@@ -204,10 +214,12 @@ tf::ScalablePipeline spl2(num_lines, list.begin(), list.end());
 
 Visit the following pages to learn more about pipeline:
 
-1. @ref ParallelPipeline
-2. @ref TextProcessingPipeline
-3. @ref GraphProcessingPipeline
-4. @ref TaskflowProcessingPipeline
+1. @ref TaskParallelPipeline
+2. @ref DataParallelPipeline
+3. @ref TextProcessingPipeline
+4. @ref GraphProcessingPipeline
+5. @ref TaskflowProcessingPipeline
+
 
 */
 

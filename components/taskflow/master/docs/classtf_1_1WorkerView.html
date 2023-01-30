@@ -49,7 +49,7 @@
           <span class="m-breadcrumb"><a href="namespacetf.html">tf</a>::<wbr/></span>WorkerView <span class="m-thin">class</span>
         </h1>
         <p>class to create an immutable view of a worker in an executor</p>
-        <div class="m-block m-default">
+        <nav class="m-block m-default">
           <h3>Contents</h3>
           <ul>
             <li>
@@ -59,7 +59,7 @@
               </ul>
             </li>
           </ul>
-        </div>
+        </nav>
 <p>An executor keeps a set of internal worker threads to run tasks. A worker view provides users an immutable interface to observe when a worker runs a task, and the view object is only accessible from an observer derived from <a href="classtf_1_1ObserverInterface.html" class="m-doc">tf::<wbr />ObserverInterface</a>.</p>
         <section id="pub-methods">
           <h2><a href="#pub-methods">Public functions</a></h2>
@@ -67,7 +67,7 @@
             <dt>
               <span class="m-doc-wrap-bumper">auto <a href="#ab12c901b0bd8a9f1fa33d305a32ae259" class="m-doc">id</a>(</span><span class="m-doc-wrap">) const -&gt; size_t</span>
             </dt>
-            <dd>queries the worker id associated with the executor</dd>
+            <dd>queries the worker id associated with its parent executor</dd>
             <dt id="afb99c27c8224732921fadb98ceff42e4">
               <span class="m-doc-wrap-bumper">auto <a href="#afb99c27c8224732921fadb98ceff42e4" class="m-doc-self">queue_size</a>(</span><span class="m-doc-wrap">) const -&gt; size_t</span>
             </dt>
@@ -84,7 +84,7 @@
             <h3>
               <span class="m-doc-wrap-bumper">size_t tf::<wbr />WorkerView::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#ab12c901b0bd8a9f1fa33d305a32ae259" class="m-doc-self">id</a>(</span><span class="m-doc-wrap">) const</span></span>
             </h3>
-            <p>queries the worker id associated with the executor</p>
+            <p>queries the worker id associated with its parent executor</p>
 <p>A worker id is a unsigned integer in the range <code>[0, N)</code>, where <code>N</code> is the number of workers spawned at the construction time of the executor.</p>
           </div></section>
         </section>
@@ -126,8 +126,8 @@
     </div>
   </div>
 </div>
-<script src="search-v1.js"></script>
-<script src="searchdata-v1.js" async="async"></script>
+<script src="search-v2.js"></script>
+<script src="searchdata-v2.js" async="async"></script>
 <footer><nav>
   <div class="m-container">
     <div class="m-row">

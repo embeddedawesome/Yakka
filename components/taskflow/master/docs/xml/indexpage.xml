@@ -32,7 +32,7 @@
 <codeline><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>0;</highlight></codeline>
 <codeline><highlight class="normal">}</highlight></codeline>
 </programlisting></para><para>Taskflow is <emphasis>header-only</emphasis> and there is no wrangle with installation. To compile the program, clone the Taskflow project and tell the compiler to include the headers under <computeroutput>taskflow/</computeroutput>.</para><para><programlisting filename=".shell-session"><codeline><highlight class="normal">~$<sp/>git<sp/>clone<sp/>https://github.com/taskflow/taskflow.git<sp/><sp/>#<sp/>clone<sp/>it<sp/>only<sp/>once</highlight></codeline>
-<codeline><highlight class="normal">~$<sp/>g++<sp/>-std=c++17<sp/>simple.cpp<sp/>-I<sp/>taskflow/taskflow<sp/>-O2<sp/>-pthread<sp/>-o<sp/>simple</highlight></codeline>
+<codeline><highlight class="normal">~$<sp/>g++<sp/>-std=c++17<sp/>simple.cpp<sp/>-I<sp/>taskflow/<sp/>-O2<sp/>-pthread<sp/>-o<sp/>simple</highlight></codeline>
 <codeline><highlight class="normal">~$<sp/>./simple</highlight></codeline>
 <codeline><highlight class="normal">TaskA</highlight></codeline>
 <codeline><highlight class="normal">TaskC<sp/></highlight></codeline>
@@ -90,7 +90,7 @@
 <codeline><highlight class="normal"><sp/><sp/><ref refid="classtf_1_1cudaTask" kindref="compound">tf::cudaTask</ref><sp/>h2d_y<sp/>=<sp/>cf.<ref refid="classtf_1_1cudaFlow_1af03e04771b655f9e629eb4c22e19b19f" kindref="member">copy</ref>(dy,<sp/>hy.data(),<sp/>N).name(</highlight><highlight class="stringliteral">&quot;h2d_y&quot;</highlight><highlight class="normal">);</highlight></codeline>
 <codeline><highlight class="normal"><sp/><sp/><ref refid="classtf_1_1cudaTask" kindref="compound">tf::cudaTask</ref><sp/>d2h_x<sp/>=<sp/>cf.<ref refid="classtf_1_1cudaFlow_1af03e04771b655f9e629eb4c22e19b19f" kindref="member">copy</ref>(hx.data(),<sp/>dx,<sp/>N).name(</highlight><highlight class="stringliteral">&quot;d2h_x&quot;</highlight><highlight class="normal">);</highlight></codeline>
 <codeline><highlight class="normal"><sp/><sp/><ref refid="classtf_1_1cudaTask" kindref="compound">tf::cudaTask</ref><sp/>d2h_y<sp/>=<sp/>cf.<ref refid="classtf_1_1cudaFlow_1af03e04771b655f9e629eb4c22e19b19f" kindref="member">copy</ref>(hy.data(),<sp/>dy,<sp/>N).name(</highlight><highlight class="stringliteral">&quot;d2h_y&quot;</highlight><highlight class="normal">);</highlight></codeline>
-<codeline><highlight class="normal"><sp/><sp/><ref refid="classtf_1_1cudaTask" kindref="compound">tf::cudaTask</ref><sp/>saxpy<sp/>=<sp/>cf.<ref refid="classtf_1_1cudaFlow_1adb731be71bdd436dfb5e36e6213a9a17" kindref="member">kernel</ref>((N+255)/256,<sp/>256,<sp/>0,<sp/>saxpy,<sp/>N,<sp/>2.0f,<sp/>dx,<sp/>dy)</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><ref refid="classtf_1_1cudaTask" kindref="compound">tf::cudaTask</ref><sp/>saxpy<sp/>=<sp/>cf.<ref refid="classtf_1_1cudaFlow_1aa6e734462c8b8d922f44e621f94b104c" kindref="member">kernel</ref>((N+255)/256,<sp/>256,<sp/>0,<sp/>saxpy,<sp/>N,<sp/>2.0f,<sp/>dx,<sp/>dy)</highlight></codeline>
 <codeline><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>.<ref refid="classtf_1_1cudaTask_1ab81b4f71a44af8d61758524f0c274962" kindref="member">name</ref>(</highlight><highlight class="stringliteral">&quot;saxpy&quot;</highlight><highlight class="normal">);<sp/><sp/></highlight><highlight class="comment">//<sp/>parameters<sp/>to<sp/>the<sp/>saxpy<sp/>kernel</highlight><highlight class="normal"></highlight></codeline>
 <codeline><highlight class="normal"><sp/><sp/>saxpy.<ref refid="classtf_1_1cudaTask_1a4a9ca1a34bac47e4c9b04eb4fb2f7775" kindref="member">succeed</ref>(h2d_x,<sp/>h2d_y)</highlight></codeline>
 <codeline><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/>.<ref refid="classtf_1_1cudaTask_1abdd68287ec4dff4216af34d1db44d1b4" kindref="member">precede</ref>(d2h_x,<sp/>d2h_y);</highlight></codeline>
@@ -230,13 +230,13 @@ Taskflow works on Linux, Windows, and Mac OS X.</para></sect1>
 <entry thead="yes"><para></para></entry><entry thead="yes"><para></para></entry><entry thead="yes"><para></para></entry><entry thead="yes"><para></para></entry></row>
 <row>
 <entry thead="no"><para><image type="html" name="utah-ece-logo.png"></image>
-  </para></entry><entry thead="no"><para><image type="html" name="nsf.png"></image>
-  </para></entry><entry thead="no"><para><image type="html" name="darpa.png"></image>
-  </para></entry><entry thead="no"><para><image type="html" name="NumFocus.png"></image>
-   </para></entry></row>
+ </para></entry><entry thead="no"><para><image type="html" name="nsf.png"></image>
+ </para></entry><entry thead="no"><para><image type="html" name="darpa.png"></image>
+ </para></entry><entry thead="no"><para><image type="html" name="NumFocus.png"></image>
+  </para></entry></row>
 <row>
 <entry thead="no"><para><image type="html" name="nvidia-logo.png"></image>
-  </para></entry><entry thead="no"><para></para></entry><entry thead="no"><para></para></entry><entry thead="no"><para></para></entry></row>
+ </para></entry><entry thead="no"><para></para></entry><entry thead="no"><para></para></entry><entry thead="no"><para></para></entry></row>
 </table>
 </para></sect1>
 <sect1 id="index_1License">

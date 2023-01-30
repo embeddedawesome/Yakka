@@ -50,7 +50,7 @@
         </detaileddescription>
         <inbodydescription>
         </inbodydescription>
-        <location file="/home/twhuang/Code/taskflow/taskflow/cuda/cuda_optimizer.hpp" line="147" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/cuda/cuda_optimizer.hpp" bodystart="150" bodyend="172"/>
+        <location file="/home/twhuang/Code/taskflow/taskflow/cuda/cuda_optimizer.hpp" line="147" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/cuda/cuda_optimizer.hpp" bodystart="150" bodyend="165"/>
       </memberdef>
       </sectiondef>
     <briefdescription>
@@ -58,24 +58,24 @@
     <detaileddescription>
 <para>A sequential capturing algorithm finds a topological order of the described graph and captures dependent GPU tasks using a single stream. All GPU tasks run sequentially without breaking inter dependencies. </para>    </detaileddescription>
     <inheritancegraph>
-      <node id="67">
+      <node id="70">
         <label>tf::cudaCapturingBase</label>
       </node>
-      <node id="66">
+      <node id="69">
         <label>tf::cudaSequentialCapturing</label>
         <link refid="classtf_1_1cudaSequentialCapturing"/>
-        <childnode refid="67" relation="public-inheritance">
+        <childnode refid="70" relation="public-inheritance">
         </childnode>
       </node>
     </inheritancegraph>
     <collaborationgraph>
-      <node id="69">
+      <node id="72">
         <label>tf::cudaCapturingBase</label>
       </node>
-      <node id="68">
+      <node id="71">
         <label>tf::cudaSequentialCapturing</label>
         <link refid="classtf_1_1cudaSequentialCapturing"/>
-        <childnode refid="69" relation="public-inheritance">
+        <childnode refid="72" relation="public-inheritance">
         </childnode>
       </node>
     </collaborationgraph>

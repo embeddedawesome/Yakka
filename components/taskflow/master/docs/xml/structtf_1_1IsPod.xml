@@ -13,22 +13,22 @@
     <detaileddescription>
     </detaileddescription>
     <inheritancegraph>
-      <node id="137">
+      <node id="150">
         <label>std::integral_constant&lt; bool, std::is_standard_layout&lt; T &gt;::value &amp;&amp;std::is_trivial&lt; T &gt;::value &gt;</label>
       </node>
-      <node id="136">
+      <node id="149">
         <label>tf::IsPod&lt; T &gt;</label>
-        <childnode refid="137" relation="public-inheritance">
+        <childnode refid="150" relation="public-inheritance">
         </childnode>
       </node>
     </inheritancegraph>
     <collaborationgraph>
-      <node id="139">
+      <node id="152">
         <label>std::integral_constant&lt; bool, std::is_standard_layout&lt; T &gt;::value &amp;&amp;std::is_trivial&lt; T &gt;::value &gt;</label>
       </node>
-      <node id="138">
+      <node id="151">
         <label>tf::IsPod&lt; T &gt;</label>
-        <childnode refid="139" relation="public-inheritance">
+        <childnode refid="152" relation="public-inheritance">
         </childnode>
       </node>
     </collaborationgraph>

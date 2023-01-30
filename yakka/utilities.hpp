@@ -28,4 +28,5 @@ std::vector<std::string> parse_gcc_dependency_file(const std::string filename);
 std::string component_dotname_to_id(const std::string dotname);
 fs::path get_yakka_shared_home();
 std::string try_render(inja::Environment& env, const std::string& input, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log);
+std::string try_render_file(inja::Environment& env, const std::string& filename, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log);
 }

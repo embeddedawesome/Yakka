@@ -36,10 +36,12 @@ cmake_policy(POP)
 #find_package(TBB REQUIRED tbb_preview)
 find_package(TBB REQUIRED)
 #cmake_policy(POP)
+message(STATUS "TBB_IMPORTED_TARGETS: ${TBB_IMPORTED_TARGETS}")
 
 # -----------------------------------------------------------------------------
 # Benchmarks
 # -----------------------------------------------------------------------------
+
 
 ## benchmark 1: wavefront computing
 add_executable(
@@ -264,6 +266,37 @@ target_link_libraries(
 )
 set_target_properties(graph_pipeline PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
 
+## benchmark 13: comparison with simple thread pool
+add_executable(
+  thread_pool
+  ${TF_BENCHMARK_DIR}/thread_pool/thread_pool.cpp
+)
+target_include_directories(thread_pool PRIVATE ${PROJECT_SOURCE_DIR}/3rd-party/CLI11)
+target_link_libraries(
+  thread_pool
+  ${PROJECT_NAME}
+  ${TBB_IMPORTED_TARGETS}
+  ${OpenMP_CXX_LIBRARIES}
+  tf::default_settings
+)
+set_target_properties(thread_pool PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
+
+## benchmark 14: data_pipeline
+#add_executable(
+#  data_pipeline
+#  ${TF_BENCHMARK_DIR}/data_pipeline/main.cpp
+#  ${TF_BENCHMARK_DIR}/data_pipeline/tbb.cpp
+#  ${TF_BENCHMARK_DIR}/data_pipeline/taskflow.cpp
+#)
+#target_include_directories(data_pipeline PRIVATE ${PROJECT_SOURCE_DIR}/3rd-party/CLI11)
+#target_link_libraries(
+#  data_pipeline 
+#  ${PROJECT_NAME} 
+#  ${TBB_IMPORTED_TARGETS} 
+#  ${OpenMP_CXX_LIBRARIES} 
+#  tf::default_settings
+#)
+#set_target_properties(data_pipeline PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
 
 ###############################################################################
 # CUDA benchmarks

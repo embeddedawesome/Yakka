@@ -40,7 +40,7 @@ Taskflow works on Linux, Windows, and Mac OS X.</para></sect1>
 <para>Starting from v3.3, using <ref refid="classtf_1_1cudaFlow" kindref="compound">tf::cudaFlow</ref> needs to include the header, <computeroutput>taskflow/cuda/cudaflow.hpp</computeroutput>. See <ref refid="release-3-3-0_1release-3-3-0_breaking_changes" kindref="member">Breaking Changes</ref>.</para></sect2>
 <sect2 id="release-3-3-0_1release-3-3-0_syclflow">
 <title>syclFlow</title>
-<para>This release does not have any upcate on syclFlow.</para></sect2>
+<para>This release does not have any update on syclFlow.</para></sect2>
 <sect2 id="release-3-3-0_1release-3-3-0_utilities">
 <title>Utilities</title>
 <para><itemizedlist>
@@ -48,7 +48,7 @@ Taskflow works on Linux, Windows, and Mac OS X.</para></sect1>
 </para></sect2>
 <sect2 id="release-3-3-0_1release-3-3-0_profiler">
 <title>Taskflow Profiler (TFProf)</title>
-<para>This release does not have any upcate on the profiler.</para></sect2>
+<para>This release does not have any update on the profiler.</para></sect2>
 </sect1>
 <sect1 id="release-3-3-0_1release-3-3-0_bug_fixes">
 <title>Bug Fixes</title>
@@ -76,7 +76,7 @@ Taskflow works on Linux, Windows, and Mac OS X.</para></sect1>
 <listitem><para><ref refid="ConditionalTasking_1CreateAMultiConditionTask" kindref="member">Create a Multi-condition Task</ref></para></listitem></itemizedlist>
 </para></listitem><listitem><para>Revised <ref refid="GPUTaskingcudaFlow" kindref="compound">GPU Tasking (cudaFlow)</ref></para></listitem><listitem><para>Revised <ref refid="GPUTaskingcudaFlowCapturer" kindref="compound">GPU Tasking (cudaFlowCapturer)</ref></para></listitem><listitem><para>Revised <ref refid="LimitTheMaximumConcurrency" kindref="compound">Limit the Maximum Concurrency</ref><itemizedlist>
 <listitem><para><ref refid="LimitTheMaximumConcurrency_1DefineAConflictGraph" kindref="member">Define a Conflict Graph</ref></para></listitem></itemizedlist>
-</para></listitem><listitem><para>Revised <ref refid="ParallelSort" kindref="compound">Parallel Sort</ref> to add header-include information</para></listitem><listitem><para>Revised <ref refid="ParallelReduction" kindref="compound">Parallel Reduction</ref> to add header-include information</para></listitem><listitem><para>Revised <ref refid="cudaFlowAlgorithms" kindref="compound">cudaFlow Algorithms</ref> to add header-include information</para></listitem><listitem><para>Revised <ref refid="cudaStandardAlgorithms" kindref="compound">CUDA Standard Algorithms</ref> to add header-include information</para></listitem><listitem><para>Added <ref refid="RuntimeTasking" kindref="compound">Runtime Tasking</ref></para></listitem><listitem><para>Added <ref refid="ParallelTransforms" kindref="compound">Parallel Transforms</ref></para></listitem><listitem><para>Added <ref refid="ParallelPipeline" kindref="compound">Parallel Pipeline</ref></para></listitem></itemizedlist>
+</para></listitem><listitem><para>Revised <ref refid="ParallelSort" kindref="compound">Parallel Sort</ref> to add header-include information</para></listitem><listitem><para>Revised <ref refid="ParallelReduction" kindref="compound">Parallel Reduction</ref> to add header-include information</para></listitem><listitem><para>Revised <ref refid="cudaFlowAlgorithms" kindref="compound">cudaFlow Algorithms</ref> to add header-include information</para></listitem><listitem><para>Revised <ref refid="cudaStandardAlgorithms" kindref="compound">CUDA Standard Algorithms</ref> to add header-include information</para></listitem><listitem><para>Added <ref refid="RuntimeTasking" kindref="compound">Runtime Tasking</ref></para></listitem><listitem><para>Added <ref refid="ParallelTransforms" kindref="compound">Parallel Transforms</ref></para></listitem><listitem><para>Added <ref refid="TaskParallelPipeline" kindref="compound">Task-parallel Pipeline</ref></para></listitem></itemizedlist>
 </para></sect1>
 <sect1 id="release-3-3-0_1release-3-3-0_miscellaneous_items">
 <title>Miscellaneous Items</title>

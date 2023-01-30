@@ -1,6 +1,6 @@
 #pragma once
 
-#include <algorithm> 
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <chrono>
@@ -11,9 +11,9 @@
 #include <cmath>
 #include <atomic>
 
-inline std::vector<double> vec;
+inline std::vector<std::string> vec;
 
-std::chrono::microseconds measure_time_taskflow(unsigned);
-std::chrono::microseconds measure_time_tbb(unsigned);
-std::chrono::microseconds measure_time_omp(unsigned);
+std::chrono::microseconds measure_time_taskflow(size_t);
+std::chrono::microseconds measure_time_tbb(size_t);
+std::chrono::microseconds measure_time_omp(size_t);
 

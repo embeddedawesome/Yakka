@@ -34,7 +34,7 @@ struct Graph {
     std::ifstream ifs(path);
 
     if(!ifs) throw std::runtime_error("failed to open the file");
-    
+
     ifs >> num_nodes >> num_edges;
 
     nodes.resize(num_nodes);
@@ -50,8 +50,8 @@ struct Graph {
     }
   }
 
-  Graph(int V, int E, int cuda_ratio) : 
-    num_nodes {V}, 
+  Graph(int V, int E, int cuda_ratio) :
+    num_nodes {V},
     num_edges {E},
     num_gpus  {static_cast<int>(tf::cuda_get_num_devices())} {
 
@@ -115,6 +115,8 @@ __global__ void add(T* x, T* y, T* z, int n) {
     z[i] = x[i] + y[i];
   }
 }
+
+inline int N = 1024; 
 
 std::chrono::microseconds measure_time_taskflow(const Graph&, unsigned, unsigned);
 std::chrono::microseconds measure_time_tbb(const Graph&, unsigned, unsigned);

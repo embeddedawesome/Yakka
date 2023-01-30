@@ -110,7 +110,7 @@ tell the compiler to include the [headers](./taskflow/).
 
 ```bash
 ~$ git clone https://github.com/taskflow/taskflow.git  # clone it only once
-~$ g++ -std=c++17 simple.cpp -I taskflow/taskflow -O2 -pthread -o simple
+~$ g++ -std=c++17 examples/simple.cpp -I. -O2 -pthread -o simple
 ~$ ./simple
 TaskA
 TaskC 
@@ -283,7 +283,7 @@ tf::Executor executor;
 tf::Taskflow taskflow;
 
 // create asynchronous tasks directly from an executor
-tf::future<std::optional<int>> future = executor.async([](){ 
+tf::Future<std::optional<int>> future = executor.async([](){ 
   std::cout << "async task returns 1\n";
   return 1;
 }); 
@@ -301,7 +301,7 @@ executor.run(taskflow).wait();
 
 The executor provides several *thread-safe* methods to run a taskflow. 
 You can run a taskflow once, multiple times, or until a stopping criteria is met. 
-These methods are non-blocking with a `tf::future<void>` return 
+These methods are non-blocking with a `tf::Future<void>` return 
 to let you query the execution status. 
 
 ```cpp

@@ -14,7 +14,7 @@ cmake_minimum_required (VERSION 3.12)
 MESSAGE(STATUS "CMAKE_ROOT: " ${CMAKE_ROOT})
 
 # Project name
-project(Taskflow VERSION 3.4.0 LANGUAGES CXX)
+project(Taskflow VERSION 3.5.0 LANGUAGES CXX)
 
 # build options
 option(TF_BUILD_BENCHMARKS "Enables builds of benchmarks" OFF)
@@ -22,7 +22,6 @@ option(TF_BUILD_CUDA "Enables builds of cuda code" OFF)
 option(TF_BUILD_SYCL "Enables builds of sycl code" OFF)
 option(TF_BUILD_TESTS "Enables builds of tests" ON)
 option(TF_BUILD_EXAMPLES "Enables builds of examples" ON)
-option(TF_BUILD_PROFILER "Enables builds of profiler" OFF)
 
 # project-specific variables
 set(TF_UTEST_DIR ${PROJECT_SOURCE_DIR}/unittests)
@@ -188,7 +187,7 @@ if(TF_BUILD_SYCL)
   list(APPEND TF_SYCL_OPTIONS -fsycl -fsycl-unnamed-lambda)
   if(TF_BUILD_SYCL_BITCODE STREQUAL "ptx64")
     message(STATUS "Configuring SYCL compiler options to CUDA ptx64 ...")
-    list(APPEND TF_SYCL_OPTIONS -fsycl-targets=nvptx64-nvidia-cuda-sycldevice)
+    list(APPEND TF_SYCL_OPTIONS -fsycl-targets=nvptx64-nvidia-cuda)
   endif()
 endif()
 
@@ -263,12 +262,12 @@ message(STATUS "CMAKE_INSTALL_FULL_LIBDIR: " ${CMAKE_INSTALL_FULL_LIBDIR})
 message(STATUS "CMAKE_MODULE_PATH: " ${CMAKE_MODULE_PATH})
 message(STATUS "CMAKE_PREFIX_PATH: " ${CMAKE_PREFIX_PATH})
 message(STATUS "TF_BUILD_BENCHMARKS: " ${TF_BUILD_BENCHMARKS})
+message(STATUS "TF_BUILD_PROFILER: " ${TF_BUILD_PROFILER})
 message(STATUS "TF_BUILD_CUDA: " ${TF_BUILD_CUDA})
 message(STATUS "TF_BUILD_SYCL: " ${TF_BUILD_SYCL})
 message(STATUS "TF_BUILD_SYCL_BITCODE: " ${TF_BUILD_SYCL_BITCODE})
 message(STATUS "TF_BUILD_TESTS: " ${TF_BUILD_TESTS})
 message(STATUS "TF_BUILD_EXAMPLES: " ${TF_BUILD_EXAMPLES})
-message(STATUS "TF_BUILD_PROFILER: " ${TF_BUILD_PROFILER})
 message(STATUS "TF_UTEST_DIR: " ${TF_UTEST_DIR})
 message(STATUS "TF_EXAMPLE_DIR: " ${TF_EXAMPLE_DIR})
 message(STATUS "TF_BENCHMARK_DIR: " ${TF_BENCHMARK_DIR})
@@ -300,13 +299,6 @@ target_include_directories(${PROJECT_NAME} INTERFACE
 )
 
 # -----------------------------------------------------------------------------
-# profiler program 
-# -----------------------------------------------------------------------------
-if(TF_BUILD_PROFILER)
-  add_subdirectory(tfprof/server)
-endif(TF_BUILD_PROFILER)
-
-# -----------------------------------------------------------------------------
 # Example program 
 # -----------------------------------------------------------------------------
 if(TF_BUILD_EXAMPLES)
@@ -319,6 +311,14 @@ endif(TF_BUILD_EXAMPLES)
 if(TF_BUILD_TESTS)
   add_subdirectory(unittests)
 endif(TF_BUILD_TESTS)
+
+# -----------------------------------------------------------------------------
+# Profiler
+# -----------------------------------------------------------------------------
+
+if(TF_BUILD_PROFILER)
+  add_subdirectory(tfprof/server)
+endif(TF_BUILD_PROFILER)
 
 # -----------------------------------------------------------------------------
 # Benchmarking

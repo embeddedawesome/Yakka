@@ -41,7 +41,7 @@ Each entry is expanded as a template string and there is support for entries tha
       - '[{% for name, component in components %}{% for source in component.sources %}{{project_output}}/components/{{name}}/{{source}}.o, {% endfor %}{% endfor %}]'
 ```
 
-Blueprints can also depend on specific data within component files by defining a data dependency. Data dependencies can apply to a specific component or can use a wildcard "*" to depend on a data path in every component in the project. During blueprint evaluation BOB will determine if those specific data entries have been modified since the previous run.
+Blueprints can also depend on specific data within component files by defining a data dependency. Data dependencies can apply to a specific component or can use a wildcard "*" to depend on a data path in every component in the project. During blueprint evaluation Yakka will determine if those specific data entries have been modified since the previous run.
 
 *Data dependency examples*
 ```

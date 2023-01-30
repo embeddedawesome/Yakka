@@ -34,7 +34,7 @@ namespace yakka
         // construction_task_state state;
         // std::future<std::pair<std::string, int>> thread_result;
 
-        construction_task() : last_modified(fs::file_time_type::min()), match(nullptr) {}
+        construction_task() : match(nullptr), last_modified(fs::file_time_type::min()) {}
     };
 
     class project

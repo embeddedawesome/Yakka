@@ -14,7 +14,7 @@
         </detaileddescription>
         <inbodydescription>
         </inbodydescription>
-        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="341" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="341" bodyend="-1"/>
+        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="368" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="368" bodyend="-1"/>
       </memberdef>
       <memberdef kind="variable" id="structtf_1_1Node_1_1cudaFlow_1a52cc8b73d22d81c7d86ef4c406a08687" prot="public" static="no" mutable="no">
         <type><ref refid="cpp/memory/unique_ptr" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::unique_ptr</ref>&lt; CustomGraphBase &gt;</type>
@@ -27,7 +27,7 @@
         </detaileddescription>
         <inbodydescription>
         </inbodydescription>
-        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="343" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="343" bodyend="-1"/>
+        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="370" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="370" bodyend="-1"/>
       </memberdef>
       </sectiondef>
       <sectiondef kind="public-func">
@@ -58,7 +58,7 @@
         </detaileddescription>
         <inbodydescription>
         </inbodydescription>
-        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="339" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="483" bodyend="486"/>
+        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="366" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="512" bodyend="515"/>
       </memberdef>
       </sectiondef>
     <briefdescription>
@@ -66,23 +66,23 @@
     <detaileddescription>
     </detaileddescription>
     <collaborationgraph>
-      <node id="36">
+      <node id="45">
         <label>std::function&lt; void(tf::Executor &amp;, Node *)&gt;</label>
       </node>
-      <node id="35">
+      <node id="44">
         <label>tf::Node::cudaFlow</label>
-        <childnode refid="36" relation="usage">
+        <childnode refid="45" relation="usage">
           <edgelabel>work</edgelabel>
         </childnode>
-        <childnode refid="37" relation="usage">
+        <childnode refid="46" relation="usage">
           <edgelabel>graph</edgelabel>
         </childnode>
       </node>
-      <node id="37">
+      <node id="46">
         <label>std::unique_ptr&lt; CustomGraphBase &gt;</label>
       </node>
     </collaborationgraph>
-    <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="336" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="336" bodyend="344"/>
+    <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="363" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="363" bodyend="371"/>
     <listofallmembers>
       <member refid="structtf_1_1Node_1_1cudaFlow_1a72f9999f8a3e5e79cd2ef1b678e62a67" prot="public" virt="non-virtual"><scope>tf::Node::cudaFlow</scope><name>cudaFlow</name></member>
       <member refid="structtf_1_1Node_1_1cudaFlow_1a52cc8b73d22d81c7d86ef4c406a08687" prot="public" virt="non-virtual"><scope>tf::Node::cudaFlow</scope><name>graph</name></member>

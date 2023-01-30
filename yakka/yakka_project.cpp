@@ -266,19 +266,19 @@ namespace yakka
                     }
                 }
                 
-                for (const auto& c: new_component->yaml["replaces"]["component"]) {
-                    const auto& replaced = c.Scalar();
+                // for (const auto& c: new_component->yaml["replaces"]["component"]) {
+                if (new_component->yaml["replaces"]["component"]) {
+                    const auto& replaced = new_component->yaml["replaces"]["component"].Scalar();
                     
                     if (replacements.contains(replaced)) {
                         if (replacements[replaced] != component_id) {
                             log->error("Multiple components replacing {}", replaced);
                             return project::state::PROJECT_HAS_MULTIPLE_REPLACEMENTS;
                         }
-                        continue;
+                    } else {
+                        log->info("{} replaces {}", component_id, replaced);
+                        new_replacements.insert({replaced, component_id});
                     }
-
-                    log->info("{} replaces {}", component_id, replaced);
-                    new_replacements.insert({replaced, component_id});
                 }
 
                 // Process all the currently required features. Note new feature will be processed in the features pass
@@ -682,7 +682,7 @@ namespace yakka
                     if (command.contains("template_file"))
                     {
                         template_filename = try_render(inja_env, command["template_file"].get<std::string>(), generated_json, yakkalog);
-                        captured_output = inja_env.render_file(template_filename, data.is_null() ? generated_json : data);
+                        captured_output = try_render_file(inja_env, template_filename, data.is_null() ? generated_json : data, yakkalog);
                         return {captured_output,0};
                     }
                     else if (command.contains("template"))

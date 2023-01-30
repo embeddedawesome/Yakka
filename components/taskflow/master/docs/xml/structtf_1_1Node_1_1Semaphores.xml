@@ -14,7 +14,7 @@
         </detaileddescription>
         <inbodydescription>
         </inbodydescription>
-        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="372" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="372" bodyend="-1"/>
+        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="399" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="399" bodyend="-1"/>
       </memberdef>
       <memberdef kind="variable" id="structtf_1_1Node_1_1Semaphores_1ae8315d3611ad7b475f62dda20aa36445" prot="public" static="no" mutable="no">
         <type><ref refid="classtf_1_1SmallVector" kindref="compound">SmallVector</ref>&lt; <ref refid="classtf_1_1Semaphore" kindref="compound">Semaphore</ref> * &gt;</type>
@@ -27,7 +27,7 @@
         </detaileddescription>
         <inbodydescription>
         </inbodydescription>
-        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="373" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="373" bodyend="-1"/>
+        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="400" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="400" bodyend="-1"/>
       </memberdef>
       </sectiondef>
     <briefdescription>
@@ -35,39 +35,39 @@
     <detaileddescription>
     </detaileddescription>
     <collaborationgraph>
-      <node id="187">
+      <node id="211">
         <label>tf::Node::Semaphores</label>
-        <childnode refid="188" relation="usage">
+        <childnode refid="212" relation="usage">
           <edgelabel>to_release</edgelabel>
           <edgelabel>to_acquire</edgelabel>
         </childnode>
       </node>
-      <node id="191">
+      <node id="215">
         <label>tf::SmallVectorTemplateCommon&lt; T &gt;</label>
-        <childnode refid="192" relation="public-inheritance">
+        <childnode refid="216" relation="public-inheritance">
         </childnode>
       </node>
-      <node id="190">
+      <node id="214">
         <label>tf::SmallVectorTemplateBase&lt; T, IsPod&lt; T &gt;::value &gt;</label>
-        <childnode refid="191" relation="public-inheritance">
+        <childnode refid="215" relation="public-inheritance">
         </childnode>
       </node>
-      <node id="192">
+      <node id="216">
         <label>tf::SmallVectorBase</label>
       </node>
-      <node id="189">
+      <node id="213">
         <label>tf::SmallVectorImpl&lt; tf::Semaphore * &gt;</label>
-        <childnode refid="190" relation="public-inheritance">
+        <childnode refid="214" relation="public-inheritance">
         </childnode>
       </node>
-      <node id="188">
+      <node id="212">
         <label>tf::SmallVector&lt; tf::Semaphore *&gt;</label>
         <link refid="classtf_1_1SmallVector"/>
-        <childnode refid="189" relation="public-inheritance">
+        <childnode refid="213" relation="public-inheritance">
         </childnode>
       </node>
     </collaborationgraph>
-    <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="371" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="371" bodyend="374"/>
+    <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="398" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="398" bodyend="401"/>
     <listofallmembers>
       <member refid="structtf_1_1Node_1_1Semaphores_1a38c40511dbc9e8f719398c316752b2c1" prot="public" virt="non-virtual"><scope>tf::Node::Semaphores</scope><name>to_acquire</name></member>
       <member refid="structtf_1_1Node_1_1Semaphores_1ae8315d3611ad7b475f62dda20aa36445" prot="public" virt="non-virtual"><scope>tf::Node::Semaphores</scope><name>to_release</name></member>
