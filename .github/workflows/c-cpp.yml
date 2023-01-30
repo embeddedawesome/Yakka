@@ -1,4 +1,4 @@
-name: BOB Build
+name: Yakka Build
 
 on:
   push:
@@ -7,17 +7,18 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  build_linux:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v2
-    - name: build_linux
-      if: runner.os == 'Linux'
-      run: make bob clang link!
-    - name: build_windows
-      if: runner.os == 'Windows'
-      run: make bob msvc link!
-    - name: build_macos
-      if: runner.os == 'MacOS'
-      run: make bob clang link!
+    - uses: actions/checkout@v3
+    - run: yakka-linux link! yakka_cli clang
+  build_windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - run: yakka-windows link! yakka_cli msvc
+  build_macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - run: yakka-mac link! yakka_cli xcode

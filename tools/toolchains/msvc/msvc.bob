@@ -9,7 +9,7 @@ flags:
   cpp:
     global:
       - /Fm /c /EHsc /Ox /Zi /FS -MT /utf-8 /std:c++20
-      - -I"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.33.31629\\include" 
+      - -I"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.34.31933\\include" 
       - -I"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\um"
       - -I"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\shared" 
       - -I"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\ucrt"
@@ -23,12 +23,12 @@ flags:
       - -DEBUG:FULL
       - -OPT:NOICF
       - -LIBPATH:"C:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/um/x64"
-      - -LIBPATH:"C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.33.31629/lib/onecore/x64"
+      - -LIBPATH:"C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.34.31933/lib/onecore/x64"
       - -LIBPATH:"C:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/ucrt/x64"
 
 tools:
-  cl: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.33.31629/bin/Hostx64/x64/cl.exe"
-  link: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.33.31629/bin/Hostx64/x64/link.exe"
+  cl: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.34.31933/bin/Hostx64/x64/cl.exe"
+  link: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.34.31933/bin/Hostx64/x64/link.exe"
 
 blueprints:
   link:
