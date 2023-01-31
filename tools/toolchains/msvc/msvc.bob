@@ -1,18 +1,24 @@
 name: Microsoft Visual C compiler
 
+tooling:
+  build_tool_path: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.34.31933"
+  kit:
+    path: "C:/Program Files (x86)/Windows Kits/10"
+    version: "10.0.19041.0"
+
 windows_sdk:
   directory: 
-    find_directory: "C:\\Program Files (x86)\\Windows Kits\\10"
+    find_directory: "C:/Program Files (x86)/Windows Kits/10"
   version: '{{ first( windows_sdk/directory/* ) }}'
 
 flags:
   cpp:
     global:
       - /Fm /c /EHsc /Ox /Zi /FS -MT /utf-8 /std:c++20
-      - -I"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.34.31933\\include" 
-      - -I"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\um"
-      - -I"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\shared" 
-      - -I"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\ucrt"
+      - -I"{{components.msvc.tooling.build_tool_path}}/include" 
+      - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/um"
+      - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/shared" 
+      - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/ucrt"
       - -DEBUG:FULL
 
   ld:
@@ -22,13 +28,13 @@ flags:
       - -OPT:REF
       - -DEBUG:FULL
       - -OPT:NOICF
-      - -LIBPATH:"C:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/um/x64"
-      - -LIBPATH:"C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.34.31933/lib/onecore/x64"
-      - -LIBPATH:"C:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/ucrt/x64"
+      - -LIBPATH:"{{components.msvc.tooling.kit.path}}/Lib/{{components.msvc.tooling.kit.version}}/um/x64"
+      - -LIBPATH:"{{components.msvc.tooling.build_tool_path}}/lib/onecore/x64"
+      - -LIBPATH:"{{components.msvc.tooling.kit.path}}/Lib/{{components.msvc.tooling.kit.version}}/ucrt/x64"
 
 tools:
-  cl: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.34.31933/bin/Hostx64/x64/cl.exe"
-  link: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.34.31933/bin/Hostx64/x64/link.exe"
+  cl: "{{components.msvc.tooling.build_tool_path}}/bin/Hostx64/x64/cl.exe"
+  link: "{{components.msvc.tooling.build_tool_path}}/bin/Hostx64/x64/link.exe"
 
 blueprints:
   link:
@@ -58,7 +64,7 @@ blueprints:
           - '/*/sources'
           - '/*/flags/ld/global'
     process:
-      - inja: "-MAP:\"{{project_output}}/{{project_name}}.map\" {% for name,component in components %}{% for flag in component.flags.ld.global %}{{flag}} {% endfor %}{%endfor%} -PDB:\"{{project_output}}/{{project_name}}.pdb\" {% for name, component in components %}{%if existsIn(component,\"sources\") %}{% for source in component/sources %}{{project_output}}/components/{{name}}/{{source}}.o {% endfor %}{% endif %}{% endfor %} Shlwapi.lib"
+      - inja: "-MAP:\"{{project_output}}/{{project_name}}.map\" {% for name,component in components %}{% for flag in component.flags.ld.global %}{{render(flag)}} {% endfor %}{%endfor%} -PDB:\"{{project_output}}/{{project_name}}.pdb\" {% for name, component in components %}{%if existsIn(component,\"sources\") %}{% for source in component/sources %}{{project_output}}/components/{{name}}/{{source}}.o {% endfor %}{% endif %}{% endfor %} Shlwapi.lib"
       - save:
     
   global_compiler_options:
@@ -70,7 +76,7 @@ blueprints:
           - '/*/defines/global'
     process:
       - inja: "{% for name,component in components %}
-          {% if existsIn(component, \"flags\") and existsIn(component.flags, $(1)) %}{% for flag in at(component.flags, $(1)).global %}{{flag}} {% endfor %}{%endif%}
+          {% if existsIn(component, \"flags\") and existsIn(component.flags, $(1)) %}{% for flag in at(component.flags, $(1)).global %}{{render(flag)}} {% endfor %}{%endif%}
           {%- for include in component.includes.global %}-I{{component.directory}}/{{include}} {% endfor %}
           {%- for define in component.defines.global %}-D{{define}} {% endfor %}
           {%endfor%}
@@ -88,7 +94,7 @@ blueprints:
     process:
       - create_directory: '{{$(0)}}'
       - inja: "{% set component=at(components,$(1)) %}
-          {% if existsIn(component, \"flags\")%}{% for flag in at(component.flags, $(2)).local %}{{flag}} {% endfor %}{%endif%}
+          {% if existsIn(component, \"flags\")%}{% for flag in at(component.flags, $(2)).local %}{{render(flag)}} {% endfor %}{%endif%}
           {% for include in component.includes.local %}-I{{component.directory}}/{{include}} {% endfor %}
           {% for define in component.defines.local %}-D{{define}} {% endfor %}"
       - save:

@@ -43,7 +43,7 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
-    - run: ./yakka-mac link! yakka_cli xcode
+    - run: ./yakka-macos link! yakka_cli xcode
     - run: mv ${{github.workspace}}/output/yakka_cli-xcode/yakka_cli-xcode ${{github.workspace}}/output/yakka_cli-xcode/yakka-macos
     - uses: actions/upload-artifact@v3
       with:
