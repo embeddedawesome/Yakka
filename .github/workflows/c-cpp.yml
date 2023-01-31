@@ -8,7 +8,7 @@ on:
 
 jobs:
   build_linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
     - run: ./yakka-linux link! yakka_cli clang
@@ -21,7 +21,7 @@ jobs:
     - uses: actions/upload-artifact@v3
       if: failure()
       with:
-        name: Build log
+        name: Linux build log
         path: ${{github.workspace}}/yakka.log
   build_windows:
     runs-on: windows-latest
@@ -41,7 +41,7 @@ jobs:
     - uses: actions/upload-artifact@v3
       if: failure()
       with:
-        name: Build log
+        name: Windows build log
         path: ${{github.workspace}}/yakka.log
   build_macos:
     runs-on: macos-latest
@@ -57,5 +57,5 @@ jobs:
     - uses: actions/upload-artifact@v3
       if: failure()
       with:
-        name: Build log
+        name: MacOS build log
         path: ${{github.workspace}}/yakka.log
