@@ -34,7 +34,7 @@ flags:
 
 tools:
   cl: "cl.exe"
-  link: " link.exe"
+  link: "link.exe"
 
 blueprints:
   link:
