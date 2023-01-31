@@ -27,6 +27,7 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v3
+    - run: 'dir env:'
     - run: ./yakka-windows link! yakka_cli msvc
     - run: mv ${{github.workspace}}/output/yakka_cli-msvc/yakka_cli-msvc.exe ${{github.workspace}}/output/yakka_cli-msvc/yakka-windows.exe
     - uses: actions/upload-artifact@v3
