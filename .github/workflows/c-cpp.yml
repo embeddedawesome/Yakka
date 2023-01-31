@@ -28,7 +28,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - run: ./yakka-windows link! yakka_cli msvc
-    - run: rename ${{github.workspace}}/output/yakka_cli-msvc/yakka_cli-msvc.exe ${{github.workspace}}/output/yakka_cli-msvc/yakka-windows.exe
+    - run: mv ${{github.workspace}}/output/yakka_cli-msvc/yakka_cli-msvc.exe ${{github.workspace}}/output/yakka_cli-msvc/yakka-windows.exe
     - uses: actions/upload-artifact@v3
       with:
         name: Windows executable
