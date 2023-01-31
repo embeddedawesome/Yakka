@@ -862,12 +862,12 @@ namespace yakka
             return {captured_output,0};
         };
 
-        blueprint_commands["new_project"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
+        blueprint_commands["new_project"] = [this]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
             auto yakkalog = spdlog::get("yakkalog");
             const auto project_string = command.get<std::string>();
             yakka::project new_project(project_string, workspace, yakkalog);
             new_project.init_project(project_string);
-        }
+        };
     }
 
     void project::create_tasks(const std::string target_name, tf::Task& parent)
