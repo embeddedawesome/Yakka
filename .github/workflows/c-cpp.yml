@@ -19,10 +19,10 @@ jobs:
         path: ${{github.workspace}}/output/yakka_cli-clang/yakka-linux
         if-no-files-found: error
     - uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: Build log
-          path: ${{github.workspace}}/yakka.log
+      if: failure()
+      with:
+        name: Build log
+        path: ${{github.workspace}}/yakka.log
   build_windows:
     runs-on: windows-latest
     steps:
@@ -35,10 +35,10 @@ jobs:
         path: ${{github.workspace}}/output/yakka_cli-msvc/yakka-windows.exe
         if-no-files-found: error
     - uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: Build log
-          path: ${{github.workspace}}/yakka.log
+      if: failure()
+      with:
+        name: Build log
+        path: ${{github.workspace}}/yakka.log
   build_macos:
     runs-on: macos-latest
     steps:
@@ -51,7 +51,7 @@ jobs:
         path: ${{github.workspace}}/output/yakka_cli-xcode/yakka-macos
         if-no-files-found: error
     - uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: Build log
-          path: ${{github.workspace}}/yakka.log
+      if: failure()
+      with:
+        name: Build log
+        path: ${{github.workspace}}/yakka.log
