@@ -867,6 +867,7 @@ namespace yakka
             const auto project_string = command.get<std::string>();
             yakka::project new_project(project_string, workspace, yakkalog);
             new_project.init_project(project_string);
+            return {"",0};
         };
     }
 
