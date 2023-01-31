@@ -11,14 +11,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - run: yakka-linux link! yakka_cli clang
+    - run: ./yakka-linux link! yakka_cli clang
+    - run: mv ${{github.workspace}}/output/yakka_cli-clang/yakka_cli-clang ${{github.workspace}}/output/yakka_cli-clang/yakka-linux
+    - uses: actions/upload-artifacts@v3
+      with:
+        name: MacOS executable
+        path: ${{github.workspace}}/output/yakka_cli-clang/yakka-linux
+        if-no-files-found: error
+    - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: Build log
+          path: ${{github.workspace}}/yakka.log
   build_windows:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v3
-    - run: yakka-windows link! yakka_cli msvc
+    - run: ./yakka-windows link! yakka_cli msvc
+    - run: rename ${{github.workspace}}/output/yakka_cli-msvc/yakka_cli-msvc.exe ${{github.workspace}}/output/yakka_cli-msvc/yakka-windows.exe
+    - uses: actions/upload-artifacts@v3
+      with:
+        name: Windows executable
+        path: ${{github.workspace}}/output/yakka_cli-msvc/yakka-windows.exe
+        if-no-files-found: error
+    - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: Build log
+          path: ${{github.workspace}}/yakka.log
   build_macos:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
-    - run: yakka-mac link! yakka_cli xcode
+    - run: ./yakka-mac link! yakka_cli xcode
+    - run: mv ${{github.workspace}}/output/yakka_cli-xcode/yakka_cli-xcode ${{github.workspace}}/output/yakka_cli-xcode/yakka-macos
+    - uses: actions/upload-artifacts@v3
+      with:
+        name: MacOS executable
+        path: ${{github.workspace}}/output/yakka_cli-xcode/yakka-macos
+        if-no-files-found: error
+    - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: Build log
+          path: ${{github.workspace}}/yakka.log
