@@ -265,7 +265,10 @@ int main(int argc, char **argv)
     console->flush();
     show_console_cursor(true);
     
-    return 0;
+    if (project.abort_build)
+        return -1;
+    else
+        return 0;
 }
 
 

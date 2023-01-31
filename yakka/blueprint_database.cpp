@@ -63,7 +63,7 @@ namespace yakka
             local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return local_inja_env.render(args[0]->get<std::string>(), project_summary);});
             local_inja_env.add_callback("select", 1, [&](const inja::Arguments& args) { 
                 nlohmann::json choice;
-                for (const auto option: args.at(0)->items()) {
+                for (const auto& option: args.at(0)->items()) {
                     const auto option_type = option.key();
                     const auto option_name = option.value();
                     if ( (option_type == "feature" && project_summary["features"].contains( option_name)) ||
