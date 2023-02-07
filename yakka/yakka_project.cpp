@@ -838,9 +838,33 @@ namespace yakka
             auto yakkalog = spdlog::get("yakkalog");
             try 
             {
-                std::string source      = try_render(inja_env, command["source"].get<std::string>( ), generated_json, yakkalog);
                 std::string destination = try_render(inja_env, command["destination"].get<std::string>( ), generated_json, yakkalog);
-                std::filesystem::copy(source, destination, std::filesystem::copy_options::recursive);
+                if (command.contains("source")) {
+                    std::string source = try_render(inja_env, command["source"].get<std::string>( ), generated_json, yakkalog);
+                    std::filesystem::copy(source, destination + "/" + source, std::filesystem::copy_options::recursive);
+                } else if (command.contains("list")) {
+                    nlohmann::json list = command["list"];
+                    if (command["list"].is_string()) {
+                        std::string list_yaml_string = try_render(inja_env, command["list"].get<std::string>( ), generated_json, yakkalog);
+                        list = YAML::Load(list_yaml_string).as<nlohmann::json>();
+                    } 
+                    
+                    if (list.contains("folders"))
+                        for (const auto& f: list["folders"]) {
+                            std::string source = try_render(inja_env, f.get<std::string>( ), generated_json, yakkalog);
+                            auto dest = destination + "/" + source;
+                            std::filesystem::create_directories(dest);
+                            std::filesystem::copy(source, dest, std::filesystem::copy_options::recursive);
+                        }
+                    if (list.contains("files"))
+                        for (const auto& f: list["files"]) {
+                            std::string source = try_render(inja_env, f.get<std::string>( ), generated_json, yakkalog);
+                            std::filesystem::copy(source, destination);
+                        }
+                } else {
+                    yakkalog->error("'copy' command missing 'source' or 'list' while processing {}", target);    
+                    return {"",-1};
+                }
             }
             catch (std::exception& e)
             {
