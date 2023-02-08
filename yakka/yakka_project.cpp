@@ -779,6 +779,20 @@ namespace yakka
             return {captured_output,0};
         };
 
+        blueprint_commands["rmdir"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
+            auto yakkalog = spdlog::get("yakkalog");
+            std::string path = command.get<std::string>( );
+            path = try_render(inja_env, path, generated_json, yakkalog);
+            // Put some checks here
+            std::error_code ec;
+            fs::remove_all(path, ec);
+            if (!ec)
+            {
+                yakkalog->error("'rmdir' command failed {}\n", ec.message());
+            }
+            return {captured_output,0};
+        };
+
         blueprint_commands["pack"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
             auto yakkalog = spdlog::get("yakkalog");
             std::vector<std::byte> data_output;
