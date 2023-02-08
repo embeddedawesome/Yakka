@@ -69,7 +69,7 @@ int exec( const std::string& command_text, const std::string& arg_text, std::fun
                 if ( feof(output) )
                     break;
 
-                if (count == buffer.size()-1 || buffer[count] == '\n' )
+                if (count == buffer.size()-1 || buffer[count] == '\r' || buffer[count] == '\n' )
                 {
                     std::string temp(buffer.data());
                     try
