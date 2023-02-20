@@ -860,7 +860,7 @@ namespace yakka
                 std::string destination = try_render(inja_env, command["destination"].get<std::string>( ), generated_json, yakkalog);
                 if (command.contains("source")) {
                     std::string source = try_render(inja_env, command["source"].get<std::string>( ), generated_json, yakkalog);
-                    std::filesystem::copy(source, destination + "/" + source, std::filesystem::copy_options::recursive);
+                    std::filesystem::copy(source, destination + "/" + source, std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
                 } else if (command.contains("list")) {
                     nlohmann::json list = command["list"];
                     if (command["list"].is_string()) {
@@ -873,12 +873,12 @@ namespace yakka
                             std::string source = try_render(inja_env, f.get<std::string>( ), generated_json, yakkalog);
                             auto dest = destination + "/" + source;
                             std::filesystem::create_directories(dest);
-                            std::filesystem::copy(source, dest, std::filesystem::copy_options::recursive);
+                            std::filesystem::copy(source, dest, std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
                         }
                     if (list.contains("files"))
                         for (const auto& f: list["files"]) {
                             std::string source = try_render(inja_env, f.get<std::string>( ), generated_json, yakkalog);
-                            std::filesystem::copy(source, destination);
+                            std::filesystem::copy(source, destination, std::filesystem::copy_options::update_existing);
                         }
                 } else {
                     yakkalog->error("'copy' command missing 'source' or 'list' while processing {}", target);    
