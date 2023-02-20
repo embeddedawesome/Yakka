@@ -333,8 +333,13 @@ namespace yakka
                     int matches = 0;
                     if (choice.contains("features"))
                         matches = std::count_if(choice["features"].begin(), choice["features"].end(), [&](const nlohmann::json& j){ return required_features.contains(j.get<std::string>()); });
-                    if (choice.contains("components"))
+                    else if (choice.contains("components"))
                         matches = std::count_if(choice["components"].begin(), choice["components"].end(), [&](const nlohmann::json& j){ return required_components.contains(j.get<std::string>()); });
+                    else
+                    {
+                        log->error("Invalid choice {}", c);
+                        return project::state::PROJECT_HAS_INVALID_COMPONENT;
+                    }
                     if (matches == 0 && choice.contains("default")) {
                         log->info("Selecting default choice for {}", c);
                         if (choice["default"].contains("feature"))
