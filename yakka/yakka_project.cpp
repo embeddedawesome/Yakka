@@ -438,6 +438,14 @@ namespace yakka
         for (const auto& i: this->required_features)
         	project_summary["features"].push_back(i);
 
+        project_summary["initial"] = {};
+        project_summary["initial"]["components"] = {};
+        project_summary["initial"]["features"] = {};
+        for (const auto& i: this->initial_components)
+        	project_summary["initial"]["components"].push_back(i);
+        for (const auto& i: this->initial_features)
+            project_summary["initial"]["features"].push_back(i);
+
         project_summary["data"] = nlohmann::json::object();
         project_summary["host"] = nlohmann::json::object();
         project_summary["host"]["name"] = host_os_string;
