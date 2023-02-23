@@ -419,7 +419,15 @@ struct convert<nlohmann::json> {
     }
     else
     {
-    	rhs = nlohmann::json(node.as<std::string>());
+      try {
+        rhs = nlohmann::json(node.as<bool>());
+      } catch(...) {
+        try {
+          rhs = nlohmann::json(node.as<int>());
+        } catch(...) {
+    	    rhs = nlohmann::json(node.as<std::string>());
+        }
+      }
     }
     return true;
   }
