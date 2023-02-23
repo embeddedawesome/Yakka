@@ -8,7 +8,7 @@
 
 namespace yakka
 {
-    component_database::component_database( ) : database_is_dirty(false)
+    component_database::component_database( ) : database_is_dirty(false), has_scanned(false)
     {
     }
 
@@ -63,6 +63,14 @@ namespace yakka
     {
         if (!database_filename.empty())
             fs::remove(database_filename);
+    }
+
+    void component_database::clear()
+    {
+        for (auto i= this->begin(); i != this->end(); ++i)
+            this->remove(i->first);
+        
+        database_is_dirty = true;
     }
 
     void component_database::add_component( fs::path path )
@@ -158,6 +166,7 @@ namespace yakka
             yakkalog->error( "Cannot scan for components. Path does not exist: '{}'", search_start_path.generic_string());
             return;
         }
+        this->has_scanned = true;
     }
 
 } /* namespace yakka */

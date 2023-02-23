@@ -344,8 +344,12 @@ namespace yakka
                         log->info("Selecting default choice for {}", c);
                         if (choice["default"].contains("feature"))
                             unprocessed_features.insert(choice["default"]["feature"].get<std::string>());
-                        if (choice["default"].contains("component"))
+                        else if (choice["default"].contains("component"))
                             unprocessed_components.insert(choice["default"]["component"].get<std::string>());
+                        else {
+                            log->error("Invalid default choice in {}", c);
+                            return project::state::PROJECT_HAS_INVALID_COMPONENT;
+                        }
                         break;
                     }
                 }

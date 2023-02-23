@@ -17,8 +17,11 @@ namespace yakka
         void load( fs::path workspace_path );
         void save();
         void erase();
+        void clear();
         void add_component( fs::path path );
         void scan_for_components(fs::path search_start_path = "");
+        
+        bool has_scanned;
 
     private:
         fs::path workspace_path;

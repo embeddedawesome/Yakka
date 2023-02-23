@@ -96,6 +96,7 @@ namespace yakka
 
     std::optional<fs::path> workspace::find_component(const std::string component_dotname)
     {
+        bool try_update_the_database = false;
         const std::string component_id = yakka::component_dotname_to_id(component_dotname);
 
         // Get component from database
@@ -108,10 +109,16 @@ namespace yakka
 
         if (local)
         {
-            if (local.IsScalar() && fs::exists(local.Scalar()))
-                return local.Scalar();
-            if (local.IsSequence() && local.size() == 1 && fs::exists(local[0].Scalar()))
-                return local[0].Scalar();
+            if (local.IsScalar())
+                if (fs::exists(local.Scalar()))
+                    return local.Scalar();
+                else
+                    try_update_the_database = true;
+            if (local.IsSequence() && local.size() == 1)
+                if (fs::exists(local[0].Scalar()))
+                    return local[0].Scalar();
+                else
+                    try_update_the_database = true;
         }
 
         if (shared)
@@ -122,7 +129,13 @@ namespace yakka
                 return shared[0].Scalar();
         }
 
-        return {};
+        if (local_database.has_scanned == false && try_update_the_database == true) {
+            local_database.clear();
+            local_database.scan_for_components();
+            return find_component(component_dotname);
+        }
+        else
+            return {};
     }
 
     void workspace::load_config_file(const fs::path config_file_path)
