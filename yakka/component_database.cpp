@@ -8,7 +8,7 @@
 
 namespace yakka
 {
-    component_database::component_database( ) : database_is_dirty(false), has_scanned(false)
+    component_database::component_database( ) : has_scanned(false), database_is_dirty(false)
     {
     }
 
