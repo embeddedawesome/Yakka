@@ -110,15 +110,17 @@ namespace yakka
         if (local)
         {
             if (local.IsScalar())
-                if (fs::exists(local.Scalar()))
+                if (fs::exists(local.Scalar())) {
                     return local.Scalar();
-                else
+                } else {
                     try_update_the_database = true;
+                }
             if (local.IsSequence() && local.size() == 1)
-                if (fs::exists(local[0].Scalar()))
+                if (fs::exists(local[0].Scalar())) {
                     return local[0].Scalar();
-                else
+                } else {
                     try_update_the_database = true;
+                }
         }
 
         if (shared)
@@ -133,9 +135,9 @@ namespace yakka
             local_database.clear();
             local_database.scan_for_components();
             return find_component(component_dotname);
-        }
-        else
+        } else {
             return {};
+        }
     }
 
     void workspace::load_config_file(const fs::path config_file_path)
