@@ -110,17 +110,21 @@ namespace yakka
         if (local)
         {
             if (local.IsScalar())
+            {
                 if (fs::exists(local.Scalar())) {
                     return local.Scalar();
                 } else {
                     try_update_the_database = true;
                 }
+            }
             if (local.IsSequence() && local.size() == 1)
+            {
                 if (fs::exists(local[0].Scalar())) {
                     return local[0].Scalar();
                 } else {
                     try_update_the_database = true;
                 }
+            }
         }
 
         if (shared)
