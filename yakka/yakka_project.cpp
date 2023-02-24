@@ -867,11 +867,13 @@ namespace yakka
 
         blueprint_commands["copy"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
             auto yakkalog = spdlog::get("yakkalog");
+            std::string destination;
+            std::string source;
             try 
             {
-                std::string destination = try_render(inja_env, command["destination"].get<std::string>( ), generated_json, yakkalog);
+                destination = try_render(inja_env, command["destination"].get<std::string>( ), generated_json, yakkalog);
                 if (command.contains("source")) {
-                    std::string source = try_render(inja_env, command["source"].get<std::string>( ), generated_json, yakkalog);
+                    source = try_render(inja_env, command["source"].get<std::string>( ), generated_json, yakkalog);
                     std::filesystem::copy(source, destination + "/" + source, std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
                 } else if (command.contains("list")) {
                     nlohmann::json list = command["list"];
@@ -882,14 +884,14 @@ namespace yakka
                     
                     if (list.contains("folders"))
                         for (const auto& f: list["folders"]) {
-                            std::string source = try_render(inja_env, f.get<std::string>( ), generated_json, yakkalog);
+                            source = try_render(inja_env, f.get<std::string>( ), generated_json, yakkalog);
                             auto dest = destination + "/" + source;
                             std::filesystem::create_directories(dest);
                             std::filesystem::copy(source, dest, std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
                         }
                     if (list.contains("files"))
                         for (const auto& f: list["files"]) {
-                            std::string source = try_render(inja_env, f.get<std::string>( ), generated_json, yakkalog);
+                            source = try_render(inja_env, f.get<std::string>( ), generated_json, yakkalog);
                             std::filesystem::copy(source, destination, std::filesystem::copy_options::update_existing);
                         }
                 } else {
@@ -899,7 +901,7 @@ namespace yakka
             }
             catch (std::exception& e)
             {
-                yakkalog->error("'copy' command failed while processing {}", target);
+                yakkalog->error("'copy' command failed while processing {}: '{}' -> '{}'", target, source, destination);
                 return {"",-1};
             }
             return {"",0};
