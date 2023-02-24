@@ -69,6 +69,7 @@ int main(int argc, char **argv)
         ("h,help", "Print usage")
         ("r,refresh", "Refresh component database", cxxopts::value<bool>()->default_value("false"))
         ("n,no-eval", "Skip the dependency and choice evaluation", cxxopts::value<bool>()->default_value("false"))
+        ("o,no-output", "Do not generate output folder", cxxopts::value<bool>()->default_value("false"))
         ("action", "Select from 'register', 'list', 'update', 'git', or a command", cxxopts::value<std::string>());
 
     options.parse_positional({"action"});
@@ -197,6 +198,10 @@ int main(int argc, char **argv)
     // Remove the extra "-" and add the feature suffix
     project_name.pop_back();
     project_name += feature_suffix;
+
+    // Limit the project name to 64 characters
+    if (project_name.length() > 64)
+        project_name = project_name.substr(0, 64);
 
     // Create a project
     yakka::project project(project_name, workspace, yakkalog);
