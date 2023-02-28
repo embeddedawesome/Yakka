@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <format>
 
 #include "config.hpp"
 #include "exceptions.hpp"
@@ -472,6 +473,9 @@ class Renderer : public NodeVisitor {
         sep = separator;
       }
       make_result(os.str());
+    } break;
+    case Op::Hex: {
+      make_result(std::format("{:x}", get_arguments<1>(node)[0]->get<int>()));
     } break;
     case Op::None:
       break;
