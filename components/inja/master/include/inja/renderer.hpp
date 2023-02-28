@@ -341,7 +341,11 @@ class Renderer : public NodeVisitor {
       make_result(std::stod(get_arguments<1>(node)[0]->get_ref<const json::string_t&>()));
     } break;
     case Op::Int: {
-      make_result(std::stoi(get_arguments<1>(node)[0]->get_ref<const json::string_t&>()));
+      const auto val = get_arguments<1>(node)[0];
+      if (val->is_number())
+        make_result(val->get<const json::number_integer_t>());
+      else
+        make_result(std::stoi(val->get_ref<const json::string_t&>()));
     } break;
     case Op::Last: {
       const auto result = &get_arguments<1>(node)[0]->back();
