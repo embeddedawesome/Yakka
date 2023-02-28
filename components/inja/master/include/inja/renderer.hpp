@@ -43,7 +43,9 @@ class Renderer : public NodeVisitor {
   bool break_rendering {false};
 
   static bool truthy(const json* data) {
-    if (data->is_boolean()) {
+    if (data == nullptr) {
+      return false;
+    } else if (data->is_boolean()) {
       return data->get<bool>();
     } else if (data->is_number()) {
       return (*data != 0);
