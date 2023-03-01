@@ -6,13 +6,13 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <format>
 
 #include "config.hpp"
 #include "exceptions.hpp"
 #include "node.hpp"
 #include "template.hpp"
 #include "utils.hpp"
+#include "fmt/fmt.h"
 
 namespace inja {
 
@@ -475,7 +475,7 @@ class Renderer : public NodeVisitor {
       make_result(os.str());
     } break;
     case Op::Hex: {
-      make_result(std::format("{:x}", get_arguments<1>(node)[0]->get<int>()));
+      make_result(fmt::format("{:x}", get_arguments<1>(node)[0]->get<int>()));
     } break;
     case Op::None:
       break;
