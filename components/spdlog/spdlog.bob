@@ -3,3 +3,4 @@ name: spdlog
 includes:
   global:
     - master/include
+    - master/include/spdlog
