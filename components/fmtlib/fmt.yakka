@@ -1,0 +1,10 @@
+name: Format
+
+includes:
+  global:
+    - master/include
+
+sources:
+  - master/src/fmt.cc
+  - master/src/format.cc
+  - master/src/os.cc
