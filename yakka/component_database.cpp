@@ -67,8 +67,8 @@ namespace yakka
 
     void component_database::clear()
     {
-        for (auto i= this->begin(); i != this->end(); ++i)
-            this->remove(i->first);
+        while (this->begin() != this->end())
+            this->remove(this->begin()->first);
         
         database_is_dirty = true;
     }
