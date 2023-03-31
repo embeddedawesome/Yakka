@@ -43,7 +43,7 @@ namespace yakka {
                     });
 
             local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments& args) { return match.blueprint->parent_path;});
-            local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return try_render(local_inja_env,  args[0]->get<std::string>(), project_summary, log);});
+            local_inja_env.add_callback("render", 1, [&](const inja::Arguments& args) { return try_render(local_inja_env,  args[0]->get<std::string>(), project_summary);});
             local_inja_env.add_callback("aggregate", 1, [&](const inja::Arguments& args) {
                 YAML::Node aggregate;
                 const std::string path = args[0]->get<std::string>();
@@ -59,9 +59,9 @@ namespace yakka {
                             aggregate[i.first] = i.second; //try_render(local_inja_env, i.second.as<std::string>(), this->project_summary, log);
                     else if (v.IsSequence())
                         for (auto i: v)
-                            aggregate.push_back(try_render(local_inja_env, i.as<std::string>(), project_summary, log));
+                            aggregate.push_back(try_render(local_inja_env, i.as<std::string>(), project_summary));
                     else
-                        aggregate.push_back(try_render(local_inja_env, v.as<std::string>(), project_summary, log));
+                        aggregate.push_back(try_render(local_inja_env, v.as<std::string>(), project_summary));
                 }
                 if (aggregate.IsNull())
                     return nlohmann::json();
@@ -76,14 +76,14 @@ namespace yakka {
                 {
                     case blueprint::dependency::DEPENDENCY_FILE_DEPENDENCY:
                     {
-                        const std::string generated_dependency_file = try_render(local_inja_env,  d.name, project_summary, log );
+                        const std::string generated_dependency_file = try_render(local_inja_env,  d.name, project_summary );
                         auto dependencies = parse_gcc_dependency_file(generated_dependency_file);
                         match.dependencies.insert( std::end( match.dependencies ), std::begin( dependencies ), std::end( dependencies ) );
                         continue;
                     }
                     case blueprint::dependency::DATA_DEPENDENCY:
                     {
-                        std::string data_name = try_render(local_inja_env, d.name, project_summary, log);
+                        std::string data_name = try_render(local_inja_env, d.name, project_summary);
                         if (data_name.front() != data_dependency_identifier)
                             data_name.insert(0,1, data_dependency_identifier);
                         match.dependencies.push_back(data_name);
@@ -97,7 +97,7 @@ namespace yakka {
                 std::string generated_depend;
                 try
                 {
-                    generated_depend = try_render(local_inja_env, d.name, project_summary, log);
+                    generated_depend = try_render(local_inja_env, d.name, project_summary);
                 }
                 catch ( std::exception& e )
                 {

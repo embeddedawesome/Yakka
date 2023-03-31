@@ -4,6 +4,8 @@
 #include "cxxopts.hpp"
 #include "subprocess.hpp"
 #include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/sinks/basic_file_sink.h"
 #include "semver.hpp"
 #include <indicators/dynamic_progress.hpp>
 #include <indicators/progress_bar.hpp>
@@ -35,20 +37,19 @@ int main(int argc, char **argv)
     std::error_code error_code;
     fs::remove("yakka.log", error_code);
 
-    auto console = spdlog::stderr_color_mt("yakkaconsole");
-    console->flush_on(spdlog::level::level_enum::off);
+    auto console = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
+    console->set_level(spdlog::level::warn);
     console->set_pattern("[%^%l%$]: %v");
-    //spdlog::set_async_mode(4096);
-    std::shared_ptr<spdlog::logger> yakkalog;
+    std::shared_ptr<spdlog::sinks::basic_file_sink_mt> file_log;
     try
     {
-        yakkalog = spdlog::basic_logger_mt("yakkalog", "yakka.log");
+        file_log = std::make_shared<spdlog::sinks::basic_file_sink_mt>("yakka.log", true);
     }
     catch (...)
     {
         try {
             auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-            yakkalog = spdlog::basic_logger_mt("yakkalog", "yakka-" + std::to_string(time) + ".log");
+            file_log = std::make_shared<spdlog::sinks::basic_file_sink_mt>("yakka-" + std::to_string(time) + ".log", true);
         }
         catch (...)
         {
@@ -56,7 +57,10 @@ int main(int argc, char **argv)
             exit(1);
         }
     }
-    yakkalog->flush_on(spdlog::level::level_enum::trace);
+    file_log->set_level(spdlog::level::trace);
+
+    auto yakkalog = std::make_shared<spdlog::logger>("yakkalog", spdlog::sinks_init_list{console, file_log});
+    spdlog::set_default_logger(yakkalog);
 
     // Create a workspace
     yakka::workspace workspace;
@@ -101,18 +105,18 @@ int main(int argc, char **argv)
     {
         if (result.unmatched().size() == 0)
         {
-            console->error("Must provide URL of component registry");
+            spdlog::error("Must provide URL of component registry");
             return -1;
         }
         // Ensure the BOB registries directory exists
         fs::create_directories(".yakka/registries");
-        console->info("Adding component registry...");
+        spdlog::info("Adding component registry...");
         if (workspace.add_component_registry(result.unmatched()[0]) != yakka::yakka_status::SUCCESS)
         {
-            console->error("Failed to add component registry. See yakka.log for details");
+            spdlog::error("Failed to add component registry. See yakka.log for details");
             return -1;
         }
-        console->info("Complete");
+        spdlog::info("Complete");
         return 0;
     }
     else if (action == "list")
@@ -191,7 +195,7 @@ int main(int argc, char **argv)
 
     if (components.size() == 0)
     {
-        console->error("No components identified");
+        spdlog::error("No components identified");
         return -1;
     }
 
@@ -221,7 +225,7 @@ int main(int argc, char **argv)
         evaluate_project_dependencies(workspace, project);
         evaluate_project_choices(workspace, project);
     } else {
-        console->info("Skipping project evalutaion");
+        spdlog::info("Skipping project evalutaion");
 
         for (const auto &i : components)
         {
@@ -246,9 +250,9 @@ int main(int argc, char **argv)
         }
     }
 
-    yakkalog->info("Required features:");
+    spdlog::info("Required features:");
     for (auto f: project.required_features)
-        yakkalog->info("- {}", f);
+        spdlog::info("- {}", f);
 
     project.generate_project_summary();
     project.save_summary();
@@ -259,7 +263,7 @@ int main(int argc, char **argv)
     auto t2 = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    yakkalog->info("{}ms to process blueprints", duration);
+    spdlog::info("{}ms to process blueprints", duration);
     project.load_common_commands();
 
     run_taskflow(project);
@@ -267,7 +271,7 @@ int main(int argc, char **argv)
     auto yakka_end_time = fs::file_time_type::clock::now();
     std::cout << "Complete in " << std::chrono::duration_cast<std::chrono::milliseconds>(yakka_end_time - yakka_start_time).count() << " milliseconds" << std::endl;
 
-    console->flush();
+    spdlog::shutdown();
     show_console_cursor(true);
     
     if (project.abort_build)
@@ -315,9 +319,6 @@ void run_taskflow(yakka::project& project)
 
 static void evaluate_project_dependencies(yakka::workspace& workspace, yakka::project& project)
 {
-    auto console = spdlog::get("yakkaconsole");
-    auto yakkalog = spdlog::get("yakkalog");
-
     auto t1 = std::chrono::high_resolution_clock::now();
 
     if (project.evaluate_dependencies() == yakka::project::state::PROJECT_HAS_INVALID_COMPONENT)
@@ -326,8 +327,7 @@ static void evaluate_project_dependencies(yakka::workspace& workspace, yakka::pr
     // If we're missing a component, update the component database and try again
     if (!project.unknown_components.empty())
     {
-        console->info("Scanning workspace for missing components");
-        yakkalog->info("Scanning workspace to find missing components");
+        spdlog::info("Scanning workspace to find missing components");
         workspace.local_database.scan_for_components();
         workspace.shared_database.scan_for_components();
         project.unprocessed_components.swap(project.unknown_components);
@@ -379,9 +379,8 @@ static void evaluate_project_dependencies(yakka::workspace& workspace, yakka::pr
             if (fetch_list.empty())
             {
                 for (const auto& i: project.unknown_components)
-                    console->error("Cannot fetch {}", i);
-                console->flush();
-                yakkalog->flush();
+                    spdlog::error("Cannot fetch {}", i);
+                spdlog::shutdown();
                 exit(0);
             }
 
@@ -395,8 +394,7 @@ static void evaluate_project_dependencies(yakka::workspace& workspace, yakka::pr
 
             // Check if the fetch worked
             if (new_component_path.empty()) {
-                yakkalog->error("Failed to fetch {}", completed_fetch->first);
-                console->error("Failed to fetch {}", completed_fetch->first);
+                spdlog::error("Failed to fetch {}", completed_fetch->first);
                 project.unknown_components.erase(completed_fetch->first);
                 fetch_list.erase(completed_fetch);
                 continue;
@@ -405,13 +403,13 @@ static void evaluate_project_dependencies(yakka::workspace& workspace, yakka::pr
             // Update the component database
             if (new_component_path.string().starts_with(workspace.shared_components_path.string()))
             {
-                yakkalog->info("Scanning for new component in shared database");
+                spdlog::info("Scanning for new component in shared database");
                 workspace.shared_database.scan_for_components(new_component_path);
                 workspace.shared_database.save();
             }
             else
             {
-                yakkalog->info("Scanning for new component in local database");
+                spdlog::info("Scanning for new component in local database");
                 workspace.local_database.scan_for_components(new_component_path);
                 workspace.shared_database.save();
             }
@@ -439,14 +437,11 @@ static void evaluate_project_dependencies(yakka::workspace& workspace, yakka::pr
 
     auto t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    yakkalog->info("{}ms to process components", duration);
+    spdlog::info("{}ms to process components", duration);
 }
 
 static void evaluate_project_choices(yakka::workspace& workspace, yakka::project& project)
 {
-    auto console = spdlog::get("yakkaconsole");
-    auto yakkalog = spdlog::get("yakkalog");
-
     project.evaluate_choices();
 
     // Evaluate default values for empty choices
@@ -459,25 +454,25 @@ static void evaluate_project_choices(yakka::workspace& workspace, yakka::project
         for (auto& i: project.incomplete_choices)
         {
             bool valid_options = false;
-            console->error("Component '{}' has a choice '{}' - Must choose from the following", i.first, i.second);
+            spdlog::error("Component '{}' has a choice '{}' - Must choose from the following", i.first, i.second);
             if (project.project_summary["choices"][i.second].contains("features"))
             {
                 valid_options = true;
-                console->error("Features: ");
+                spdlog::error("Features: ");
                 for (auto& b: project.project_summary["choices"][i.second]["features"])
-                    console->error("  - {}", b.get<std::string>());
+                    spdlog::error("  - {}", b.get<std::string>());
             }
 
             if (project.project_summary["choices"][i.second].contains("components"))
             {
                 valid_options = true;
-                console->error("Components: ");
+                spdlog::error("Components: ");
                 for (auto& b: project.project_summary["choices"][i.second]["components"])
-                    console->error("  - {}", b.get<std::string>());
+                    spdlog::error("  - {}", b.get<std::string>());
             }
 
             if (!valid_options) {
-                console->error("ERROR: Choice data is invalid");
+                spdlog::error("ERROR: Choice data is invalid");
             }
         }
         exit(0);
@@ -486,7 +481,7 @@ static void evaluate_project_choices(yakka::workspace& workspace, yakka::project
     {
         for (auto a: project.multiple_answer_choices)
         {
-            console->error("Choice {} - Has multiple selections", a);
+            spdlog::error("Choice {} - Has multiple selections", a);
         }
         exit(-1);
     }

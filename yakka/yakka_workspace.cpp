@@ -4,6 +4,7 @@
 #include "yakka.hpp"
 #include "yakka_workspace.hpp"
 #include "utilities.hpp"
+#include "spdlog/sinks/basic_file_sink.h"
 #include <filesystem>
 #include <fstream>
 #include <regex>
@@ -20,8 +21,6 @@ namespace yakka
 
     void workspace::init(fs::path workspace_path)
     {
-        log = spdlog::get("yakkalog");
-
         // Load the local configuration
         this->workspace_path = workspace_path;
         load_config_file(workspace_path / "config.yaml");
@@ -182,8 +181,8 @@ namespace yakka
 
     std::future<fs::path> workspace::fetch_component(const std::string& name, YAML::Node node, std::function<void(std::string, size_t)> progress_handler)
     {
-        std::string url    = try_render(inja_environment, node["packages"]["default"]["url"].as<std::string>(), configuration_json, log);
-        std::string branch = try_render(inja_environment, node["packages"]["default"]["branch"].as<std::string>(), configuration_json, log);
+        std::string url    = try_render(inja_environment, node["packages"]["default"]["url"].as<std::string>(), configuration_json);
+        std::string branch = try_render(inja_environment, node["packages"]["default"]["branch"].as<std::string>(), configuration_json);
         const bool shared_components_write_access = (fs::status(shared_components_path).permissions() & fs::perms::owner_write ) != fs::perms::none;
         fs::path git_location = (node["type"] && node["type"].as<std::string>() == "tool" && shared_components_write_access) ? shared_components_path / "repos" : workspace_path / ".yakka/repos";
         fs::path checkout_location = (node["type"] && node["type"].as<std::string>() == "tool" && shared_components_write_access) ? shared_components_path / "repos" / name : workspace_path / "components" / name;
@@ -195,11 +194,10 @@ namespace yakka
     #define GIT_STRING  "git"
     yakka_status workspace::fetch_registry(const std::string& url )
     {
-        auto yakkalog = spdlog::get("yakkalog");
         const std::string fetch_string = "-C .yakka/registries/ clone " + url + " --progress --single-branch";
         auto [output, result] = yakka::exec(GIT_STRING, fetch_string);
 
-        yakkalog->info("{}", output);
+        spdlog::info("{}", output);
 
         if (result != 0)
             return FAIL;
@@ -210,8 +208,6 @@ namespace yakka
     yakka_status workspace::update_component(const std::string& name )
     {
         // This function could be async like fetch_component
-        auto yakkalog = spdlog::get("yakkalog");
-        auto console = spdlog::get("yakkaconsole");
         std::string git_directory_string;
         if (local_database[name])
             git_directory_string = "--git-dir .yakka/repos/" + name + "/.git --work-tree components/" + name + " ";
@@ -223,16 +219,16 @@ namespace yakka
         auto [stash_output, stash_result] = yakka::exec(GIT_STRING, git_directory_string + "stash");
         if (stash_result != 0) 
         {
-            console->error(stash_output);
+            spdlog::error(stash_output);
             return FAIL;
         }
-        yakkalog->info(stash_output);
+        spdlog::debug(stash_output);
 
         auto [pull_output, pull_result] = yakka::exec(GIT_STRING, git_directory_string + "pull --progress");
-        yakkalog->info(pull_output);
+        spdlog::debug(pull_output);
 
         auto [pop_output, pop_result] = yakka::exec(GIT_STRING, git_directory_string + "stash pop");
-        yakkalog->info(pop_output);
+        spdlog::debug(pop_output);
         return SUCCESS;
     }
 
@@ -242,7 +238,6 @@ namespace yakka
         auto fetch_log = spdlog::basic_logger_mt("fetchlog-"+name, "yakka-fetch-" + name + ".log");
         fetch_log->flush_on(spdlog::level::info);
         
-        auto yakkalog = spdlog::get("yakkalog");
         enum {
             GIT_COUNTING    = 0,
             GIT_COMPRESSING = 1,
@@ -259,18 +254,18 @@ namespace yakka
             // If the clone location already exists then something probably went wrong so delete it and it will try again
             if (!fs::exists(git_location))
             {
-                yakkalog->info("Creating {}", git_location.string());
+                spdlog::info("Creating {}", git_location.string());
                 fs::create_directories(git_location);
             }
 
             if (!fs::exists(checkout_location)) {
-                yakkalog->info("Creating {}", checkout_location.string());
+                spdlog::info("Creating {}", checkout_location.string());
                 fs::create_directories(checkout_location);
             }
 
             if (fs::exists(git_location / name))
             {
-                yakkalog->info("Removing {}", (git_location / name).string());
+                spdlog::info("Removing {}", (git_location / name).string());
                 fs::remove_all(git_location / name);
             }
         }
@@ -295,12 +290,12 @@ namespace yakka
 
             if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
             {
-                // yakkalog->info(data);
+                // spdlog::info(data);
                 int phase_progress = std::stoi( s[1] );
                 int end_value = std::stoi( s[2] );
                 int progress = (100*phase_progress)/end_value;
                 // if (progress < old_progress)
-                //   yakkalog->info << name << ": " << "Progress regressed\n" << data << "\n";
+                //   spdlog::info << name << ": " << "Progress regressed\n" << data << "\n";
                 if (progress != old_progress)
                     progress_handler(phase_names[phase], progress);
                 old_progress = progress;
@@ -311,7 +306,7 @@ namespace yakka
         }
         auto t2 = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-        yakkalog->info("{}: cloned in {}ms", name, duration);
+        spdlog::info("{}: cloned in {}ms", name, duration);
 
         const std::string checkout_string     = "--git-dir \""s + git_location.string() + "/" + name + "/.git\" --work-tree \"" + checkout_location.string() + "\" checkout " + branch + " --progress --force";
 
@@ -325,7 +320,7 @@ namespace yakka
             if ( phase < GIT_LFS_CHECKOUT && data.find("Filt") != data.npos ) { phase = GIT_LFS_CHECKOUT; }
             if (std::regex_search(data, s, std::regex { R"(\((.*)/(.*)\))" }))
             {
-                // yakkalog->info(data);
+                // spdlog::info(data);
                 int phase_progress = std::stoi( s[1] );
                 int end_value = std::stoi( s[2] );
                 int progress = (100*phase_progress)/end_value;
@@ -337,7 +332,7 @@ namespace yakka
         }
         t2 = std::chrono::high_resolution_clock::now();
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-        yakkalog->info("{}: checkout in {}ms", name, duration);
+        spdlog::info("{}: checkout in {}ms", name, duration);
 
         progress_handler("Complete", 100);
 

@@ -28,7 +28,6 @@ namespace yakka
     {
         this->workspace_path = workspace_path;
         database_filename = this->workspace_path / "yakka-components.yaml";
-        auto yakkalog = spdlog::get("yakkalog");
         try
         {
             if ( !fs::exists( database_filename ) )
@@ -43,7 +42,7 @@ namespace yakka
         }
         catch(...)
         {
-            yakkalog->error("Could not load component database at {}", this->workspace_path.string());
+            spdlog::error("Could not load component database at {}", this->workspace_path.string());
         }
     }
 
@@ -89,7 +88,6 @@ namespace yakka
 
     void component_database::scan_for_components(fs::path search_start_path)
     {
-        auto yakkalog = spdlog::get("yakkalog");
         std::vector<std::future<slcc>> parsed_slcc_files;
 
         if (search_start_path.empty())
@@ -99,7 +97,7 @@ namespace yakka
         {
             if (!fs::exists(search_start_path))
             {
-                yakkalog->error( "Cannot scan for components. Path does not exist: '{}'", search_start_path.generic_string());
+                spdlog::error( "Cannot scan for components. Path does not exist: '{}'", search_start_path.generic_string());
                 return;
             }
 
@@ -114,7 +112,7 @@ namespace yakka
 
                 if (p->path().filename().extension() == yakka_component_extension || p->path().filename().extension() == yakka_component_old_extension)
                 {
-                    yakkalog->info("Found {}", p->path().string());
+                    spdlog::info("Found {}", p->path().string());
                     add_component(p->path());
                 }
     #ifdef SLCC_SUPPORT
@@ -163,7 +161,7 @@ namespace yakka
         }
         catch(...)
         {
-            yakkalog->error( "Cannot scan for components. Path does not exist: '{}'", search_start_path.generic_string());
+            spdlog::error( "Cannot scan for components. Path does not exist: '{}'", search_start_path.generic_string());
             return;
         }
         this->has_scanned = true;

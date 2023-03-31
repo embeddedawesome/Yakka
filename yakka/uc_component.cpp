@@ -13,10 +13,9 @@ namespace yakka
 
     void slcc::parse_file( fs::path file_path )
     {
-        auto yakkalog = spdlog::get("yakkalog");
         this->file_path = file_path;
         std::string path_string = file_path.generic_string( );
-        yakkalog->info( "Parsing '{}", path_string);
+        spdlog::info( "Parsing '{}", path_string);
 
         try
         {
@@ -39,7 +38,7 @@ namespace yakka
         }
         catch ( ... )
         {
-            yakkalog->error("Failed to load file: '{}'", path_string);
+            spdlog::error("Failed to load file: '{}'", path_string);
             return;
         }
 

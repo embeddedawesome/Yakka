@@ -6,10 +6,9 @@ namespace yakka
 {
     YAML::Node& component::parse_file( fs::path file_path, blueprint_database& database )
     {
-        auto yakkalog = spdlog::get("yakkalog");
         this->file_path = file_path;
         std::string path_string = file_path.generic_string();
-        yakkalog->info( "Parsing '{}'", path_string);
+        spdlog::info( "Parsing '{}'", path_string);
 
         try
         {
@@ -17,7 +16,7 @@ namespace yakka
         }
         catch ( std::exception& e )
         {
-            yakkalog->error( "Failed to load file: '{}'\n{}\n", path_string, e.what());
+            spdlog::error( "Failed to load file: '{}'\n{}\n", path_string, e.what());
             std::cerr << "Failed to parse: " << path_string << "\n" << e.what() << "\n";
             return yaml;
         }

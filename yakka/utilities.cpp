@@ -10,8 +10,7 @@ namespace yakka {
 
 std::pair<std::string, int> exec( const std::string& command_text, const std::string& arg_text)
 {
-    auto yakkalog = spdlog::get("yakkalog");
-    yakkalog->info("{} {}", command_text, arg_text);
+    spdlog::info("{} {}", command_text, arg_text);
     try {
         std::string command = command_text;
         if (!arg_text.empty())
@@ -40,15 +39,14 @@ std::pair<std::string, int> exec( const std::string& command_text, const std::st
         return {result,retcode};
     } catch (std::exception e)
     {
-        yakkalog->error("Exception while executing: {}\n{}", command_text, e.what());
+        spdlog::error("Exception while executing: {}\n{}", command_text, e.what());
         return {"", -1};
     }
 }
 
 int exec( const std::string& command_text, const std::string& arg_text, std::function<void(std::string&)> function)
 {
-    auto yakkalog = spdlog::get("yakkalog");
-    yakkalog->info("{} {}", command_text, arg_text);
+    spdlog::info("{} {}", command_text, arg_text);
     try {
         std::string command = command_text;
         if (!arg_text.empty())
@@ -77,7 +75,7 @@ int exec( const std::string& command_text, const std::string& arg_text, std::fun
                         function(temp);
                     } catch(std::exception e)
                     {
-                        yakkalog->debug("exec() data processing threw exception '{}'for the following data:\n{}", e.what(), temp);
+                        spdlog::debug("exec() data processing threw exception '{}'for the following data:\n{}", e.what(), temp);
                     }
                     buffer.fill('\0');
                     count = 0;
@@ -93,7 +91,7 @@ int exec( const std::string& command_text, const std::string& arg_text, std::fun
         return retcode;
     } catch (std::exception e)
     {
-        yakkalog->error("Exception while executing: {}\n{}", command_text, e.what());
+        spdlog::error("Exception while executing: {}\n{}", command_text, e.what());
     }
     return -1;
 }
@@ -257,10 +255,9 @@ std::vector<std::string> parse_gcc_dependency_file(const std::string filename)
 
 void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node)
 {
-    auto yakkalog = spdlog::get("yakkalog");
     if (!node.IsMap())
     {
-        yakkalog->error("Invalid feature node {}", node.as<std::string>());
+        spdlog::error("Invalid feature node {}", node.as<std::string>());
         return;
     }
 
@@ -290,7 +287,7 @@ void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node)
                 }
                 else
                 {
-                    yakkalog->error("Cannot merge scalar and map\nScalar: {}\nMap: {}", i.first.as<std::string>(), merge_target[item_name].as<std::string>());
+                    spdlog::error("Cannot merge scalar and map\nScalar: {}\nMap: {}", i.first.as<std::string>(), merge_target[item_name].as<std::string>());
                     return;
                 }
             }
@@ -298,7 +295,7 @@ void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node)
             {
                 if (merge_target[item_name].IsMap())
                 {
-                    yakkalog->error("Cannot merge sequence and map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
+                    spdlog::error("Cannot merge sequence and map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
                     return;
                 }
                 if (merge_target[item_name].IsScalar())
@@ -317,7 +314,7 @@ void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node)
             {
                 if (!merge_target[item_name].IsMap())
                 {
-                    yakkalog->error("Cannot merge map and non-map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
+                    spdlog::error("Cannot merge map and non-map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
                     return;
                 }
                 auto new_merge = merge_target[item_name];
@@ -329,7 +326,6 @@ void yaml_node_merge(YAML::Node& merge_target, const YAML::Node& node)
 
 void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node)
 {
-    auto yakkalog = spdlog::get("yakkalog");
     switch(node.type())
     {
         case nlohmann::detail::value_t::object:
@@ -338,14 +334,14 @@ void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node)
                 case nlohmann::detail::value_t::object:
                 case nlohmann::detail::value_t::array:
                 default:
-                    yakkalog->error("Currently not supported"); break;
+                    spdlog::error("Currently not supported"); break;
             }
             break;
         case nlohmann::detail::value_t::array:
             switch(merge_target.type())
             {
                 case nlohmann::detail::value_t::object:
-                    yakkalog->error("Cannot merge array into an object"); break;
+                    spdlog::error("Cannot merge array into an object"); break;
                 case nlohmann::detail::value_t::array:
                     for (auto& i: node)
                         merge_target.push_back(i);
@@ -358,7 +354,7 @@ void json_node_merge(nlohmann::json& merge_target, const nlohmann::json& node)
             switch(merge_target.type())
             {
                 case nlohmann::detail::value_t::object:
-                    yakkalog->error("Cannot merge scalar into an object"); break;
+                    spdlog::error("Cannot merge scalar into an object"); break;
                 case nlohmann::detail::value_t::array:
                 default:
                     merge_target.push_back(node); break;
@@ -372,7 +368,7 @@ std::string component_dotname_to_id(const std::string dotname)
     return dotname.find_last_of(".") != std::string::npos ? dotname.substr(dotname.find_last_of(".")+1) : dotname;
 }
 
-std::string try_render(inja::Environment& env, const std::string& input, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log = nullptr)
+std::string try_render(inja::Environment& env, const std::string& input, const nlohmann::json& data)
 {
     try
     {
@@ -380,16 +376,12 @@ std::string try_render(inja::Environment& env, const std::string& input, const n
     }
     catch(std::exception& e)
     {
-        if (log != nullptr)
-            log->error("Template error: {}\n{}", input, e.what());
-        
-        std::cerr << "Template error: " << input << "\n" << e.what() << "\n";
-        //exit(-1);
+        spdlog::error("Template error: {}\n{}", input, e.what());
         return "";
     }
 }
 
-std::string try_render_file(inja::Environment& env, const std::string& filename, const nlohmann::json& data, std::shared_ptr<spdlog::logger> log = nullptr)
+std::string try_render_file(inja::Environment& env, const std::string& filename, const nlohmann::json& data)
 {
     try
     {
@@ -397,11 +389,7 @@ std::string try_render_file(inja::Environment& env, const std::string& filename,
     }
     catch(std::exception& e)
     {
-        if (log != nullptr)
-            log->error("Template error: {}\n{}", filename, e.what());
-
-        std::cerr << "Template error: " << filename << "\n" << e.what() << "\n";
-        //exit(-1);
+        spdlog::error("Template error: {}\n{}", filename, e.what());
         return "";
     }
 }
@@ -409,8 +397,6 @@ std::string try_render_file(inja::Environment& env, const std::string& filename,
 
 std::pair<std::string, int> run_command( const std::string target, construction_task* task, project* project )
 {
-    auto yakkalog = spdlog::get("yakkalog");
-    auto console = spdlog::get("yakkaconsole");
     std::string captured_output = "";
     inja::Environment inja_env = inja::Environment();
     auto& blueprint = task->match;
@@ -489,7 +475,7 @@ std::pair<std::string, int> run_command( const std::string target, construction_
         assert(command_entry.is_object());
         
         if (command_entry.size() != 1) {
-            console->error("Command '{}' for target '{}' is malformed", command_entry.begin().key(), target);
+            spdlog::error("Command '{}' for target '{}' is malformed", command_entry.begin().key(), target);
             return {"", -1};
         }
 
@@ -510,21 +496,20 @@ std::pair<std::string, int> run_command( const std::string target, construction_
                 std::string arg_text = command.value().get<std::string>( );
 
                 // Apply template engine
-                arg_text = try_render(inja_env, arg_text, project->project_summary, yakkalog);
+                arg_text = try_render(inja_env, arg_text, project->project_summary);
 
                 auto [temp_output, temp_retcode] = exec(command_text, arg_text);
                 retcode = temp_retcode;
 
                 if (retcode != 0)
                 {
-                    console->error( "\n{}", temp_output ); // Ensure output starts on a new line
-                    yakkalog->error("Returned {}\n{}",retcode, temp_output);
+                    spdlog::error("Returned {}\n{}",retcode, temp_output);
                     return {temp_output, retcode};
                 }
                 captured_output = temp_output;
                 // Echo the output of the command
                 // TODO: Note this should be done by the main thread to ensure the outputs from multiple run_command instances don't overlap
-                yakkalog->info(captured_output);
+                spdlog::info(captured_output);
             }
             // Else check if it is a built-in command
             else if (project->blueprint_commands.contains(command_name))
@@ -535,7 +520,7 @@ std::pair<std::string, int> run_command( const std::string target, construction_
             }
             else
             {
-                yakkalog->error("{} tool doesn't exist", command_name);
+                spdlog::error("{} tool doesn't exist", command_name);
             }
 
             if (retcode != 0)
@@ -543,15 +528,15 @@ std::pair<std::string, int> run_command( const std::string target, construction_
         }
         catch ( std::exception& e )
         {
-            yakkalog->error("Failed to run command: '{}' as part of {}", command_name, target);
-            yakkalog->info( "Failed to run: {}", command_entry.dump());
+            spdlog::error("Failed to run command: '{}' as part of {}", command_name, target);
+            spdlog::info( "Failed to run: {}", command_entry.dump());
             throw e;
         }
     }
 
     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    yakkalog->info( "{}: {} milliseconds", target, duration);
+    spdlog::info( "{}: {} milliseconds", target, duration);
     return {captured_output, 0};
 }
 

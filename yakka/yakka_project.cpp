@@ -12,7 +12,7 @@ namespace yakka
     using namespace std::chrono_literals;
 
 
-    project::project(  const std::string project_name, yakka::workspace& workspace, std::shared_ptr<spdlog::logger> log ) : project_name(project_name), yakka_home_directory("/.yakka"), project_directory("."), workspace(workspace)
+    project::project( const std::string project_name, yakka::workspace& workspace, std::shared_ptr<spdlog::logger> log ) : project_name(project_name), yakka_home_directory("/.yakka"), project_directory("."), workspace(workspace)
     {
         this->log = log;
         this->abort_build = false;
@@ -434,7 +434,7 @@ namespace yakka
                 inja::Environment inja_env = inja::Environment();
                 inja_env.add_callback("curdir", 0, [&c](const inja::Arguments& args) { return c->yaml["directory"].Scalar();});
 
-                project_summary["tools"][tool.first.Scalar()] = try_render(inja_env, tool.second.Scalar(), project_summary, log);
+                project_summary["tools"][tool.first.Scalar()] = try_render(inja_env, tool.second.Scalar(), project_summary);
             }
         }
 
@@ -461,7 +461,7 @@ namespace yakka
             if (c_value.contains("blueprints"))
                 for ( const auto& [b_key, b_value]: c_value["blueprints"].items() )
                 {
-                    std::string blueprint_string = try_render(inja_environment,  b_value.contains("regex") ? b_value["regex"].get<std::string>() : b_key, project_summary, log);
+                    std::string blueprint_string = try_render(inja_environment,  b_value.contains("regex") ? b_value["regex"].get<std::string>() : b_key, project_summary);
                     log->info("Blueprint: {}", blueprint_string);
                     //blueprint_database.blueprints[blueprint_string].push_back(b_value);
                     //b_value["parent_path"] = c_value["directory"];
@@ -573,12 +573,10 @@ namespace yakka
     void project::load_common_commands()
     {
         blueprint_commands["echo"] = []( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> yakka::process_return {
-            auto console = spdlog::get("yakkaconsole");
-            auto yakkalog = spdlog::get("yakkalog");
             if (!command.is_null())
-                captured_output = try_render(inja_env, command.get<std::string>(), generated_json, yakkalog);
+                captured_output = try_render(inja_env, command.get<std::string>(), generated_json);
 
-            console->info("{}", captured_output);
+            spdlog::info("{}", captured_output);
             return {captured_output,0};
         };
 
@@ -586,26 +584,23 @@ namespace yakka
         blueprint_commands["execute"] = []( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> yakka::process_return {
             if (command.is_null())
                 return {"",-1};
-            auto yakkalog = spdlog::get("yakkalog");
-            auto console = spdlog::get("yakkaconsole");
             std::string temp = command.get<std::string>();
             try {
                 captured_output = inja_env.render( temp, generated_json );
                 //std::replace( captured_output.begin( ), captured_output.end( ), '/', '\\' );
-                yakkalog->info("Executing '{}'", captured_output);
+                spdlog::debug("Executing '{}'", captured_output);
                 auto [temp_output, retcode] = exec( captured_output, std::string( "" ) );
 
                 if (retcode != 0 && temp_output.length( ) != 0) {
-                    console->error( "\n{}", temp_output ); // Ensure output starts on a new line
-                    yakkalog->error( "\n{} returned {}\n{}", captured_output, retcode, temp_output);
+                    spdlog::error( "\n{} returned {}\n{}", captured_output, retcode, temp_output);
                 }
                 else if ( temp_output.length( ) != 0 )
-                    yakkalog->info("{}", temp_output);
+                    spdlog::info("{}", temp_output);
                 return {temp_output,retcode};
             }
             catch (std::exception& e)
             {
-                yakkalog->error( "Failed to execute: {}\n{}", temp, e.what());
+                spdlog::error( "Failed to execute: {}\n{}", temp, e.what());
                 captured_output = "";
                 return {"",-1};
             }
@@ -620,7 +615,6 @@ namespace yakka
         blueprint_commands["regex"] = []( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> yakka::process_return {
             assert(command.contains("search"));
             std::regex regex_search(command["search"].get<std::string>());
-            auto yakkalog = spdlog::get("yakkalog");
             if (command.contains("split"))
             {
                 std::istringstream ss(captured_output);
@@ -660,7 +654,7 @@ namespace yakka
             }
             else
             {
-                yakkalog->error("'regex' command does not have enough information");
+                spdlog::error("'regex' command does not have enough information");
                 return {"",-1};
             }
             return {captured_output,0};
@@ -668,7 +662,6 @@ namespace yakka
 
 
         blueprint_commands["inja"] = []( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> yakka::process_return {
-            auto yakkalog = spdlog::get("yakkalog");
             try
             {
                 std::string template_string;
@@ -676,21 +669,21 @@ namespace yakka
                 nlohmann::json data;
                 if (command.is_string())
                 {
-                    captured_output = try_render(inja_env, command.get<std::string>(), data.is_null() ? generated_json : data, yakkalog);
+                    captured_output = try_render(inja_env, command.get<std::string>(), data.is_null() ? generated_json : data);
                     return {captured_output,0};
                 }
                 else if (command.is_object())
                 {
                     if (command.contains("data_file"))
                     {
-                        std::string data_filename = try_render(inja_env, command["data_file"].get<std::string>(), generated_json, yakkalog);
+                        std::string data_filename = try_render(inja_env, command["data_file"].get<std::string>(), generated_json);
                         YAML::Node data_yaml = YAML::LoadFile(data_filename);
                         if (!data_yaml.IsNull())
                             data = data_yaml.as<nlohmann::json>();
                     }
                     else if (command.contains("data"))
                     {
-                        std::string data_string = try_render(inja_env, command["data"].get<std::string>(), generated_json, yakkalog);
+                        std::string data_string = try_render(inja_env, command["data"].get<std::string>(), generated_json);
                         YAML::Node data_yaml = YAML::Load(data_string);
                         if (!data_yaml.IsNull())
                             data = data_yaml.as<nlohmann::json>();
@@ -698,24 +691,24 @@ namespace yakka
 
                     if (command.contains("template_file"))
                     {
-                        template_filename = try_render(inja_env, command["template_file"].get<std::string>(), generated_json, yakkalog);
-                        captured_output = try_render_file(inja_env, template_filename, data.is_null() ? generated_json : data, yakkalog);
+                        template_filename = try_render(inja_env, command["template_file"].get<std::string>(), generated_json);
+                        captured_output = try_render_file(inja_env, template_filename, data.is_null() ? generated_json : data);
                         return {captured_output,0};
                     }
                     else if (command.contains("template"))
                     {
                         template_string = command["template"].get<std::string>();
-                        captured_output = try_render(inja_env, template_string, data.is_null() ? generated_json : data, yakkalog);
+                        captured_output = try_render(inja_env, template_string, data.is_null() ? generated_json : data);
                         return {captured_output,0};
                     }
                 }
                 
-                yakkalog->error("Inja template is invalid:\n'{}'", command.dump());
+                spdlog::error("Inja template is invalid:\n'{}'", command.dump());
                 return {"",-1};
             }
             catch (std::exception &e)
             {
-                yakkalog->error("Failed to apply template: {}\n{}", command.dump(), e.what());
+                spdlog::error("Failed to apply template: {}\n{}", command.dump(), e.what());
                 return {"",-1};
             }
             return {captured_output,0};
@@ -723,12 +716,11 @@ namespace yakka
 
         blueprint_commands["save"] = []( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env) -> yakka::process_return {
             std::string save_filename;
-            auto yakkalog = spdlog::get("yakkalog");
 
             if (command.is_null())
                 save_filename = target;
             else
-                save_filename = try_render(inja_env, command.get<std::string>(), generated_json, yakkalog);
+                save_filename = try_render(inja_env, command.get<std::string>(), generated_json);
 
             try
             {
@@ -742,21 +734,20 @@ namespace yakka
             }
             catch (std::exception& e)
             {
-                yakkalog->error("Failed to save file: '{}'", save_filename);
+                spdlog::error("Failed to save file: '{}'", save_filename);
                 return {"",-1};
             }
             return {captured_output,0};
         };
 
         blueprint_commands["create_directory"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
-            auto yakkalog = spdlog::get("yakkalog");
             if (!command.is_null())
             {
                 std::string filename = "";
                 try
                 {
                     filename = command.get<std::string>( );
-                    filename = try_render(inja_env, filename, generated_json, yakkalog);
+                    filename = try_render(inja_env, filename, generated_json);
                     if ( !filename.empty( ) )
                     {
                         fs::path p( filename );
@@ -765,7 +756,7 @@ namespace yakka
                 }
                 catch ( std::exception e )
                 {
-                    yakkalog->error( "Couldn't create directory for '{}'", filename);
+                    spdlog::error( "Couldn't create directory for '{}'", filename);
                     return {"",-1};
                 }
             }
@@ -773,64 +764,60 @@ namespace yakka
         };
 
         blueprint_commands["verify"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
-            auto yakkalog = spdlog::get("yakkalog");
             std::string filename = command.get<std::string>( );
-            filename = try_render(inja_env, filename, generated_json, yakkalog);
+            filename = try_render(inja_env, filename, generated_json);
             if (fs::exists(filename))
             {
-                yakkalog->info("{} exists", filename);
+                spdlog::info("{} exists", filename);
                 return {captured_output,0};
             }
             else
             {
-                yakkalog->info("BAD!! {} doesn't exist", filename);
+                spdlog::info("BAD!! {} doesn't exist", filename);
                 return {"",-1};
             }
         };
 
         blueprint_commands["rm"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
-            auto yakkalog = spdlog::get("yakkalog");
             std::string filename = command.get<std::string>( );
-            filename = try_render(inja_env, filename, generated_json, yakkalog);
+            filename = try_render(inja_env, filename, generated_json);
             fs::remove(filename);
             return {captured_output,0};
         };
 
         blueprint_commands["rmdir"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
-            auto yakkalog = spdlog::get("yakkalog");
             std::string path = command.get<std::string>( );
-            path = try_render(inja_env, path, generated_json, yakkalog);
+            path = try_render(inja_env, path, generated_json);
             // Put some checks here
             std::error_code ec;
             fs::remove_all(path, ec);
             if (!ec)
             {
-                yakkalog->error("'rmdir' command failed {}\n", ec.message());
+                spdlog::error("'rmdir' command failed {}\n", ec.message());
             }
             return {captured_output,0};
         };
 
         blueprint_commands["pack"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
-            auto yakkalog = spdlog::get("yakkalog");
             std::vector<std::byte> data_output;
 
             if (!command.contains("data"))
             {
-                yakkalog->error("'pack' command requires 'data'\n");
+                spdlog::error("'pack' command requires 'data'\n");
                 return {"",-1};
             } else if (!command.contains("format"))
             {
-                yakkalog->error("'pack' command requires 'format'\n");
+                spdlog::error("'pack' command requires 'format'\n");
                 return {"",-1};
             }
 
             std::string format = command["format"].get<std::string>();
-            format = try_render(inja_env, format, generated_json, yakkalog);
+            format = try_render(inja_env, format, generated_json);
             
             auto i = format.begin();
             for (auto d: command["data"])
             {
-                auto v = try_render(inja_env, d.get<std::string>(), generated_json, yakkalog);
+                auto v = try_render(inja_env, d.get<std::string>(), generated_json);
                 const char c = *i++;
                 union {
                     int8_t s8;
@@ -846,7 +833,7 @@ namespace yakka
                                     (v[0] == '-') ? std::from_chars(v.data(), v.data() + v.size(), temp.s32) : std::from_chars(v.data(), v.data() + v.size(), temp.u32);
                 if (result.ec != std::errc())
                 {
-                    yakkalog->error("Error converting number: {}\n", v);
+                    spdlog::error("Error converting number: {}\n", v);
                 }
                 
                 switch(c) {
@@ -857,7 +844,7 @@ namespace yakka
                     case 'C': data_output.insert(data_output.end(), &temp.bytes[0], &temp.bytes[1]); break;
                     case 'c': data_output.insert(data_output.end(), &temp.bytes[0], &temp.bytes[1]); break;
                     case 'x': data_output.push_back(std::byte{0}); break;
-                    default: yakkalog->error("Unknown pack type\n"); break;
+                    default: spdlog::error("Unknown pack type\n"); break;
                 }
             }
             auto chars = reinterpret_cast<char const*>(data_output.data());
@@ -866,50 +853,77 @@ namespace yakka
         };
 
         blueprint_commands["copy"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
-            auto yakkalog = spdlog::get("yakkalog");
             std::string destination;
             std::string source;
             try 
             {
-                destination = try_render(inja_env, command["destination"].get<std::string>( ), generated_json, yakkalog);
+                nlohmann::json source;
+                destination = try_render(inja_env, command["destination"].get<std::string>( ), generated_json);
+
                 if (command.contains("source")) {
-                    source = try_render(inja_env, command["source"].get<std::string>( ), generated_json, yakkalog);
-                    std::filesystem::copy(source, destination + "/" + source, std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
-                } else if (command.contains("list")) {
-                    nlohmann::json list = command["list"];
-                    if (command["list"].is_string()) {
-                        std::string list_yaml_string = try_render(inja_env, command["list"].get<std::string>( ), generated_json, yakkalog);
-                        list = YAML::Load(list_yaml_string).as<nlohmann::json>();
-                    } 
-                    
-                    if (list.contains("folders"))
-                        for (const auto& f: list["folders"]) {
-                            source = try_render(inja_env, f.get<std::string>( ), generated_json, yakkalog);
-                            auto dest = destination + "/" + source;
-                            std::filesystem::create_directories(dest);
-                            std::filesystem::copy(source, dest, std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
+                    source = command["source"];
+                }
+                else {
+                    if (command.contains("yaml_list")) {
+                        if (!command["yaml_list"].is_string()) {
+                            spdlog::error("'copy' command 'yaml_list' is not a string");
+                            return {"",-1};
                         }
-                    if (list.contains("files"))
-                        for (const auto& f: list["files"]) {
-                            source = try_render(inja_env, f.get<std::string>( ), generated_json, yakkalog);
-                            std::filesystem::copy(source, destination, std::filesystem::copy_options::update_existing);
+                        std::string list_yaml_string = try_render(inja_env, command["yaml_list"].get<std::string>( ), generated_json);
+                        source = YAML::Load(list_yaml_string).as<nlohmann::json>();
+                    } else {
+                        spdlog::error("'copy' command does not have 'source' or 'yaml_list'");
+                        return {"",-1};
+                    }
+                }
+                if (source.is_string()) {
+                    auto source_string = try_render(inja_env, source.get<std::string>( ), generated_json);
+                    std::filesystem::copy(source_string, destination, std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
+                } else if (source.is_array()) {
+                    for (const auto& f: source) {
+                        auto source_string = try_render(inja_env, f.get<std::string>( ), generated_json);
+                        std::filesystem::copy(source_string, destination, std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
+                    }
+                } else if (source.is_object()) {
+                    if (source.contains("folder_paths"))
+                        for (const auto& f: source["folder_paths"]) {
+                            auto source_string = try_render(inja_env, f.get<std::string>( ), generated_json);
+                            auto dest = destination + "/" + source_string;
+                            std::filesystem::create_directories(dest);
+                            std::filesystem::copy(source_string, dest, std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
+                        }
+                    if (source.contains("folders"))
+                        for (const auto& f: source["folders"]) {
+                            auto source_string = try_render(inja_env, f.get<std::string>( ), generated_json);
+                            std::filesystem::copy(source_string, destination, std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
+                        }
+                    if (source.contains("file_paths"))
+                        for (const auto& f: source["file_paths"]) {
+                            auto source_string = try_render(inja_env, f.get<std::string>( ), generated_json);
+                            auto dest = destination + "/" + source_string;
+                            std::filesystem::create_directories(dest);
+                            std::filesystem::copy(source_string, dest, std::filesystem::copy_options::update_existing);
+                        }
+                    if (source.contains("files"))
+                        for (const auto& f: source["files"]) {
+                            auto source_string = try_render(inja_env, f.get<std::string>( ), generated_json);
+                            std::filesystem::copy(source_string, destination, std::filesystem::copy_options::update_existing);
                         }
                 } else {
-                    yakkalog->error("'copy' command missing 'source' or 'list' while processing {}", target);    
+                    spdlog::error("'copy' command missing 'source' or 'list' while processing {}", target);    
                     return {"",-1};
                 }
             }
             catch (std::exception& e)
             {
-                yakkalog->error("'copy' command failed while processing {}: '{}' -> '{}'", target, source, destination);
+                spdlog::error("'copy' command failed while processing {}: '{}' -> '{}'", target, source, destination);
                 return {"",-1};
             }
             return {"",0};
         };
 
         blueprint_commands["cat"] = [ ]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
-            auto yakkalog = spdlog::get("yakkalog");
-            std::string filename = try_render(inja_env, command.get<std::string>( ), generated_json, yakkalog);
+            std::string filename = try_render(inja_env, command.get<std::string>( ), generated_json);
             std::ifstream datafile;
             datafile.open(filename, std::ios_base::in | std::ios_base::binary);
             std::string line;
@@ -920,9 +934,8 @@ namespace yakka
         };
 
         blueprint_commands["new_project"] = [this]( std::string target, const nlohmann::json& command, std::string captured_output, const nlohmann::json& generated_json, inja::Environment& inja_env ) -> yakka::process_return {
-            auto yakkalog = spdlog::get("yakkalog");
             const auto project_string = command.get<std::string>();
-            yakka::project new_project(project_string, workspace, yakkalog);
+            yakka::project new_project(project_string, workspace, this->log);
             new_project.init_project(project_string);
             return {"",0};
         };
