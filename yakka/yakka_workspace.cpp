@@ -328,16 +328,15 @@ fs::path workspace::do_fetch_component(const std::string &name, const std::strin
      */
 fs::path workspace::get_yakka_shared_home()
 {
-  // Try the Windows version HOMEDRIVE + HOMEPATH
-  char *sys_homepath  = std::getenv("HOMEPATH");
-  char *sys_homedrive = std::getenv("HOMEDRIVE");
-  if (sys_homepath != nullptr && sys_homedrive != nullptr)
-    return fs::path(std::string(sys_homedrive) + std::string(sys_homepath)) / ".yakka";
-
-  // Otherwise try read HOME environment variable
+  // Try read HOME environment variable
   char *sys_home = std::getenv("HOME");
   if (sys_home != nullptr)
     return fs::path(sys_home) / ".yakka";
+
+  // Otherwise try the Windows USERPROFILE
+  char *sys_user_profile = std::getenv("USERPROFILE");
+  if (sys_user_profile != nullptr)
+    return fs::path(std::string(sys_user_profile)) / ".yakka";
 
   // Otherwise we default to using the local .yakka folder
   return ".yakka";
