@@ -64,11 +64,12 @@ int main(int argc, char **argv)
   cxxopts::Options options("yakka", "Yakka the embedded builder. Ver " + yakka_version.to_string());
   options.allow_unrecognised_options();
   options.positional_help("<action> [optional args]");
-  options.add_options()("h,help",
-                        "Print usage")("r,refresh", "Refresh component database", cxxopts::value<bool>()->default_value("false"))("n,no-eval", "Skip the dependency and choice evaluation", cxxopts::value<bool>()->default_value("false"))(
-    "o,no-output",
-    "Do not generate output folder",
-    cxxopts::value<bool>()->default_value("false"))("action", "Select from 'register', 'list', 'update', 'git', or a command", cxxopts::value<std::string>());
+  // clang-format off
+  options.add_options()("h,help", "Print usage")("r,refresh", "Refresh component database", cxxopts::value<bool>()->default_value("false"))
+                       ("n,no-eval", "Skip the dependency and choice evaluation", cxxopts::value<bool>()->default_value("false"))
+                       ("o,no-output", "Do not generate output folder", cxxopts::value<bool>()->default_value("false"))
+                       ("action", "Select from 'register', 'list', 'update', 'git', or a command", cxxopts::value<std::string>());
+  // clang-format on
 
   options.parse_positional({ "action" });
   auto result = options.parse(argc, argv);
