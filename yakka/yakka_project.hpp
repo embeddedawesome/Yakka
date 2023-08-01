@@ -5,7 +5,7 @@
 #include "yakka_workspace.hpp"
 #include "component_database.hpp"
 #include "blueprint_database.hpp"
-#include "yaml-cpp/yaml.h"
+//#include "yaml-cpp/yaml.h"
 #include "nlohmann/json.hpp"
 #include "inja.hpp"
 #include "spdlog/spdlog.h"
@@ -51,7 +51,7 @@ public:
   void init_project(const std::string build_string);
   void process_build_string(const std::string build_string);
   void parse_project_string(const std::vector<std::string> &project_string);
-  void process_requirements(YAML::Node &component, YAML::Node child_node);
+  void process_requirements(nlohmann::json &component, nlohmann::json child_node);
   state evaluate_dependencies();
   //std::optional<fs::path> find_component(const std::string component_dotname);
   void evaluate_choices();

@@ -13,8 +13,8 @@ namespace yakka {
 
 struct base_component {
   void parse_file(fs::path file_path);
-  std::tuple<component_list_t &, feature_list_t &> apply_feature(std::string feature_name);
-  std::tuple<component_list_t &, feature_list_t &> process_requirements(const YAML::Node &node);
+  //std::tuple<component_list_t &, feature_list_t &> apply_feature(std::string feature_name);
+  //std::tuple<component_list_t &, feature_list_t &> process_requirements(const nlohmann::json &node);
   component_list_t get_required_components();
   feature_list_t get_required_features();
   // std::vector< blueprint_node > get_blueprints();
@@ -24,13 +24,14 @@ struct base_component {
 };
 
 struct component : public base_component {
-  YAML::Node &parse_file(fs::path file_path, blueprint_database &database);
+  yakka_status parse_file(fs::path file_path, blueprint_database &database);
   component_list_t get_required_components();
   feature_list_t get_required_features();
   // std::vector< blueprint_node > get_blueprints();
 
   std::string id;
-  YAML::Node yaml;
+  nlohmann::json json;
+  //YAML::Node yaml;
 };
 
 struct slcc : public base_component {

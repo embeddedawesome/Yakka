@@ -88,17 +88,17 @@ void project::init_project()
     fs::create_directories(output_path);
 }
 
-void project::process_requirements(YAML::Node &component, YAML::Node child_node)
+void project::process_requirements(nlohmann::json &component, nlohmann::json child_node)
 {
   // Merge the feature values into the parent component
-  yaml_node_merge(component, child_node);
+  json_node_merge(component, child_node);
 
   // If the feature has no requires we stop here
   if (child_node["requires"]) {
     // Process all the requires for this feature
     auto child_node_requirements = child_node["requires"];
-    if (child_node_requirements.IsScalar() || child_node_requirements.IsSequence()) {
-      log->error("Node 'requires' entry is malformed: '{}'", child_node_requirements.Scalar());
+    if (child_node_requirements.is_string() || child_node_requirements.is_array()) {
+      log->error("Node 'requires' entry is malformed: '{}'", child_node_requirements.get<std::string>());
       return;
     }
 
@@ -106,13 +106,13 @@ void project::process_requirements(YAML::Node &component, YAML::Node child_node)
       // Process required components
       if (child_node_requirements["components"]) {
         // Add the item/s to the new_component list
-        if (child_node_requirements["components"].IsScalar())
-          unprocessed_components.insert(child_node_requirements["components"].as<std::string>());
-        else if (child_node_requirements["components"].IsSequence())
+        if (child_node_requirements["components"].is_string())
+          unprocessed_components.insert(child_node_requirements["components"].get<std::string>());
+        else if (child_node_requirements["components"].is_array())
           for (const auto &i: child_node_requirements["components"])
-            unprocessed_components.insert(i.as<std::string>());
+            unprocessed_components.insert(i.get<std::string>());
         else
-          log->error("Node '{}' has invalid 'requires'", child_node_requirements.Scalar());
+          log->error("Node '{}' has invalid 'requires'", child_node_requirements.get<std::string>());
       }
 
       // Process required features
@@ -120,35 +120,34 @@ void project::process_requirements(YAML::Node &component, YAML::Node child_node)
         std::vector<std::string> new_features;
 
         // Add the item/s to the new_features list
-        if (child_node_requirements["features"].IsScalar())
-          unprocessed_features.insert(child_node_requirements["features"].as<std::string>());
-        else if (child_node_requirements["features"].IsSequence())
+        if (child_node_requirements["features"].is_string())
+          unprocessed_features.insert(child_node_requirements["features"].get<std::string>());
+        else if (child_node_requirements["features"].is_array())
           for (const auto &i: child_node_requirements["features"])
-            unprocessed_features.insert(i.as<std::string>());
+            unprocessed_features.insert(i.get<std::string>());
         else
-          log->error("Node '{}' has invalid 'requires'", child_node_requirements.Scalar());
+          log->error("Node '{}' has invalid 'requires'", child_node_requirements.get<std::string>());
       }
     } catch (YAML::Exception &e) {
-      log->error("Failed to process requirements for '{}'\n{}", child_node_requirements.Scalar(), e.msg);
+      log->error("Failed to process requirements for '{}'\n{}", child_node_requirements.get<std::string>(), e.msg);
     }
   }
 
   if (child_node["provides"]["features"]) {
     auto child_node_provides = child_node["provides"]["features"];
-    if (child_node_provides.IsScalar())
-      unprocessed_features.insert(child_node_provides.as<std::string>());
-    else if (child_node_provides.IsSequence())
+    if (child_node_provides.is_string())
+      unprocessed_features.insert(child_node_provides.get<std::string>());
+    else if (child_node_provides.is_array())
       for (const auto &i: child_node_provides)
-        unprocessed_features.insert(i.as<std::string>());
+        unprocessed_features.insert(i.get<std::string>());
   }
 
   // Process choices
-  for (const auto &choice: child_node["choices"]) {
-    const auto choice_name = choice.first.Scalar();
+  for (const auto &[choice_name, choice]: child_node["choices"].items()) {
     if (!project_summary["choices"].contains(choice_name)) {
       unprocessed_choices.insert(choice_name);
-      project_summary["choices"][choice_name]           = choice.second.as<nlohmann::json>();
-      project_summary["choices"][choice_name]["parent"] = component["name"].as<std::string>();
+      project_summary["choices"][choice_name]           = choice;
+      project_summary["choices"][choice_name]["parent"] = component["name"].get<std::string>();
     }
   }
 }
@@ -218,36 +217,35 @@ project::state project::evaluate_dependencies()
         continue;
 
       std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
-      if (!new_component->parse_file(component_path.value(), blueprint_database).IsNull())
+      if (!new_component->parse_file(component_path.value(), blueprint_database) == yakka::yakka_status::SUCCESS)
         components.push_back(new_component);
       else
         return project::state::PROJECT_HAS_INVALID_COMPONENT;
 
       // Add all the required components into the unprocessed list
-      for (const auto &r: new_component->yaml["requires"]["components"])
-        unprocessed_components.insert(r.Scalar());
+      for (const auto &r: new_component->json["requires"]["components"])
+        unprocessed_components.insert(r.get<std::string>());
 
       // Add all the required features into the unprocessed list
-      for (const auto &f: new_component->yaml["requires"]["features"])
-        unprocessed_features.insert(f.Scalar());
+      for (const auto &f: new_component->json["requires"]["features"])
+        unprocessed_features.insert(f.get<std::string>());
 
       // Add all the provided features into the unprocessed list
-      for (const auto &f: new_component->yaml["provides"]["features"])
-        unprocessed_features.insert(f.Scalar());
+      for (const auto &f: new_component->json["provides"]["features"])
+        unprocessed_features.insert(f.get<std::string>());
 
       // Add all the component choices to the global choice list
-      for (const auto &choice: new_component->yaml["choices"]) {
-        const auto choice_name = choice.first.Scalar();
+      for (auto &[choice_name, value]: new_component->json["choices"].items()) {
         if (!project_summary["choices"].contains(choice_name)) {
           unprocessed_choices.insert(choice_name);
-          project_summary["choices"][choice_name]           = choice.second.as<nlohmann::json>();
+          project_summary["choices"][choice_name]           = value;
           project_summary["choices"][choice_name]["parent"] = new_component->id;
         }
       }
 
-      // for (const auto& c: new_component->yaml["replaces"]["component"]) {
-      if (new_component->yaml["replaces"]["component"]) {
-        const auto &replaced = new_component->yaml["replaces"]["component"].Scalar();
+      // for (const auto& c: new_component->json["replaces"]["component"]) {
+      if (new_component->json["replaces"]["component"]) {
+        const auto &replaced = new_component->json["replaces"]["component"].get<std::string>();
 
         if (replacements.contains(replaced)) {
           if (replacements[replaced] != component_id) {
@@ -262,23 +260,23 @@ project::state project::evaluate_dependencies()
 
       // Process all the currently required features. Note new feature will be processed in the features pass
       for (auto &f: required_features)
-        if (new_component->yaml["supports"]["features"][f]) {
+        if (new_component->json["supports"]["features"][f]) {
           log->info("Processing required feature '{}' in {}", f, component_id);
-          process_requirements(new_component->yaml, new_component->yaml["supports"]["features"][f]);
+          process_requirements(new_component->json, new_component->json["supports"]["features"][f]);
         }
 
       // Process the new components support for all the currently required components
       for (auto &c: required_components)
-        if (new_component->yaml["supports"]["components"][c]) {
+        if (new_component->json["supports"]["components"][c]) {
           log->info("Processing required component '{}' in {}", c, component_id);
-          process_requirements(new_component->yaml, new_component->yaml["supports"]["components"][c]);
+          process_requirements(new_component->json, new_component->json["supports"]["components"][c]);
         }
 
       // Process all the existing components support for the new component
       for (auto &c: components)
-        if (c->yaml["supports"]["components"][component_id]) {
-          log->info("Processing component '{}' in {}", component_id, c->yaml["name"].Scalar());
-          process_requirements(c->yaml, c->yaml["supports"]["components"][component_id]);
+        if (c->json["supports"]["components"][component_id]) {
+          log->info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
+          process_requirements(c->json, c->json["supports"]["components"][component_id]);
         }
     }
 
@@ -292,9 +290,9 @@ project::state project::evaluate_dependencies()
 
       // Process the feature "supports" for each existing component
       for (auto &c: components)
-        if (c->yaml["supports"]["features"][f]) {
-          log->info("Processing feature '{}' in {}", f, c->yaml["name"].Scalar());
-          process_requirements(c->yaml, c->yaml["supports"]["features"][f]);
+        if (c->json["supports"]["features"][f]) {
+          log->info("Processing feature '{}' in {}", f, c->json["name"].get<std::string>());
+          process_requirements(c->json, c->json["supports"]["features"][f]);
         }
     }
 
@@ -369,17 +367,16 @@ void project::evaluate_choices()
 {
   // For each component, check each choice has exactly one match in required features
   for (auto c: components)
-    for (auto i: c->yaml["choices"]) {
-      const auto choice_name = i.first.Scalar();
+    for (auto &[choice_name, value]: c->json["choices"].items()) {
 
       int matches = 0;
-      if (i.second["features"])
-        matches = std::count_if(i.second["features"].begin(), i.second["features"].end(), [&](auto j) {
-          return required_features.contains(j.Scalar());
+      if (value["features"])
+        matches = std::count_if(value["features"].begin(), value["features"].end(), [&](auto j) {
+          return required_features.contains(j.get<std::string>());
         });
-      if (i.second["components"])
-        matches = std::count_if(i.second["components"].begin(), i.second["components"].end(), [&](auto j) {
-          return required_components.contains(j.Scalar());
+      if (value["components"])
+        matches = std::count_if(value["components"].begin(), value["components"].end(), [&](auto j) {
+          return required_components.contains(j.get<std::string>());
         });
       if (matches == 0)
         incomplete_choices.push_back({ c->id, choice_name });
@@ -403,14 +400,14 @@ void project::generate_project_summary()
 
   // Put all YAML nodes into the summary
   for (const auto &c: components) {
-    project_summary["components"][c->id] = c->yaml.as<nlohmann::json>();
-    for (auto tool: c->yaml["tools"]) {
+    project_summary["components"][c->id] = c->json;
+    for (auto &[key, value]: c->json["tools"].items()) {
       inja::Environment inja_env = inja::Environment();
       inja_env.add_callback("curdir", 0, [&c](const inja::Arguments &args) {
-        return c->yaml["directory"].Scalar();
+        return c->json["directory"].get<std::string>();
       });
 
-      project_summary["tools"][tool.first.Scalar()] = try_render(inja_env, tool.second.Scalar(), project_summary);
+      project_summary["tools"][key] = try_render(inja_env, value.get<std::string>(), project_summary);
     }
   }
 
