@@ -178,10 +178,6 @@ int main(int argc, char **argv)
   project_name.pop_back();
   project_name += feature_suffix;
 
-  // Limit the project name to 64 characters
-  if (project_name.length() > 64)
-    project_name = project_name.substr(0, 64);
-
   // Create a project
   yakka::project project(project_name, workspace, yakkalog);
 
