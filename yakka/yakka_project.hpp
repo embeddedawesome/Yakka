@@ -39,7 +39,7 @@ struct construction_task {
 
 class project {
 public:
-  enum class state { PROJECT_HAS_UNKNOWN_COMPONENTS, PROJECT_HAS_REMOTE_COMPONENTS, PROJECT_HAS_INVALID_COMPONENT, PROJECT_HAS_MULTIPLE_REPLACEMENTS, PROJECT_VALID };
+  enum class state { PROJECT_HAS_UNKNOWN_COMPONENTS, PROJECT_HAS_REMOTE_COMPONENTS, PROJECT_HAS_INVALID_COMPONENT, PROJECT_HAS_MULTIPLE_REPLACEMENTS, PROJECT_HAS_INCOMPLETE_CHOICES, PROJECT_HAS_MULTIPLE_ANSWERS_FOR_CHOICES, PROJECT_VALID };
 
 public:
   project(const std::string project_name, yakka::workspace &workspace, std::shared_ptr<spdlog::logger> log);
@@ -81,6 +81,7 @@ public:
   std::string yakka_home_directory;
   std::vector<std::string> initial_components;
   std::vector<std::string> initial_features;
+  yakka::project::state current_state;
 
   // Component processing
   std::unordered_set<std::string> unprocessed_components;

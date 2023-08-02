@@ -295,14 +295,24 @@ void json_node_merge(nlohmann::json &merge_target, const nlohmann::json &node)
 {
   switch (node.type()) {
     case nlohmann::detail::value_t::object:
-      switch (merge_target.type()) {
-        case nlohmann::detail::value_t::object:
-        case nlohmann::detail::value_t::array:
-        default:
-          spdlog::error("Currently not supported");
-          break;
+      if (merge_target.type() != nlohmann::detail::value_t::object) {
+        spdlog::error("Currently not supported");
+        return;
+      }
+      // Iterate through child nodes
+      for (auto it = node.begin(); it != node.end(); ++it) {
+        // Check if the key is already in merge_target
+        auto it2 = merge_target.find(it.key());
+        if (it2 != merge_target.end()) {
+          json_node_merge(it2.value(), it.value());
+          // it2->second.update(it.value(), true);
+          continue;
+        } else {
+          merge_target[it.key()] = it.value();
+        }
       }
       break;
+
     case nlohmann::detail::value_t::array:
       switch (merge_target.type()) {
         case nlohmann::detail::value_t::object:
@@ -494,7 +504,7 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
         return { captured_output, retcode };
     } catch (std::exception &e) {
       spdlog::error("Failed to run command: '{}' as part of {}", command_name, target);
-      spdlog::info("Failed to run: {}", command_entry.dump());
+      spdlog::error("{}", e.what());
       throw e;
     }
   }

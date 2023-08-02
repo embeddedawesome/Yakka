@@ -12,8 +12,9 @@ using namespace std::chrono_literals;
 
 project::project(const std::string project_name, yakka::workspace &workspace, std::shared_ptr<spdlog::logger> log) : project_name(project_name), yakka_home_directory("/.yakka"), project_directory("."), workspace(workspace)
 {
-  this->log         = log;
-  this->abort_build = false;
+  this->log           = log;
+  this->abort_build   = false;
+  this->current_state = yakka::project::state::PROJECT_VALID;
 }
 
 project::~project()
@@ -94,7 +95,7 @@ void project::process_requirements(nlohmann::json &component, nlohmann::json chi
   json_node_merge(component, child_node);
 
   // If the feature has no requires we stop here
-  if (child_node["requires"]) {
+  if (child_node.contains("requires")) {
     // Process all the requires for this feature
     auto child_node_requirements = child_node["requires"];
     if (child_node_requirements.is_string() || child_node_requirements.is_array()) {
@@ -104,7 +105,7 @@ void project::process_requirements(nlohmann::json &component, nlohmann::json chi
 
     try {
       // Process required components
-      if (child_node_requirements["components"]) {
+      if (child_node_requirements.contains("components")) {
         // Add the item/s to the new_component list
         if (child_node_requirements["components"].is_string())
           unprocessed_components.insert(child_node_requirements["components"].get<std::string>());
@@ -116,7 +117,7 @@ void project::process_requirements(nlohmann::json &component, nlohmann::json chi
       }
 
       // Process required features
-      if (child_node_requirements["features"]) {
+      if (child_node_requirements.contains("features")) {
         std::vector<std::string> new_features;
 
         // Add the item/s to the new_features list
@@ -133,7 +134,7 @@ void project::process_requirements(nlohmann::json &component, nlohmann::json chi
     }
   }
 
-  if (child_node["provides"]["features"]) {
+  if (child_node.contains("/provides/features")) {
     auto child_node_provides = child_node["provides"]["features"];
     if (child_node_provides.is_string())
       unprocessed_features.insert(child_node_provides.get<std::string>());
@@ -217,22 +218,25 @@ project::state project::evaluate_dependencies()
         continue;
 
       std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
-      if (!new_component->parse_file(component_path.value(), blueprint_database) == yakka::yakka_status::SUCCESS)
+      if (new_component->parse_file(component_path.value(), blueprint_database) == yakka::yakka_status::SUCCESS)
         components.push_back(new_component);
       else
         return project::state::PROJECT_HAS_INVALID_COMPONENT;
 
       // Add all the required components into the unprocessed list
-      for (const auto &r: new_component->json["requires"]["components"])
-        unprocessed_components.insert(r.get<std::string>());
+      if (new_component->json.contains("/requires/components"_json_pointer))
+        for (const auto &r: new_component->json["requires"]["components"])
+          unprocessed_components.insert(r.get<std::string>());
 
       // Add all the required features into the unprocessed list
-      for (const auto &f: new_component->json["requires"]["features"])
-        unprocessed_features.insert(f.get<std::string>());
+      if (new_component->json.contains("/requires/features"_json_pointer))
+        for (const auto &f: new_component->json["requires"]["features"])
+          unprocessed_features.insert(f.get<std::string>());
 
       // Add all the provided features into the unprocessed list
-      for (const auto &f: new_component->json["provides"]["features"])
-        unprocessed_features.insert(f.get<std::string>());
+      if (new_component->json.contains("/provides/features"_json_pointer))
+        for (const auto &f: new_component->json["provides"]["features"])
+          unprocessed_features.insert(f.get<std::string>());
 
       // Add all the component choices to the global choice list
       for (auto &[choice_name, value]: new_component->json["choices"].items()) {
@@ -244,7 +248,7 @@ project::state project::evaluate_dependencies()
       }
 
       // for (const auto& c: new_component->json["replaces"]["component"]) {
-      if (new_component->json["replaces"]["component"]) {
+      if (new_component->json.contains("/replaces/component"_json_pointer)) {
         const auto &replaced = new_component->json["replaces"]["component"].get<std::string>();
 
         if (replacements.contains(replaced)) {
@@ -260,21 +264,21 @@ project::state project::evaluate_dependencies()
 
       // Process all the currently required features. Note new feature will be processed in the features pass
       for (auto &f: required_features)
-        if (new_component->json["supports"]["features"][f]) {
+        if (new_component->json["supports"]["features"].contains(f)) {
           log->info("Processing required feature '{}' in {}", f, component_id);
           process_requirements(new_component->json, new_component->json["supports"]["features"][f]);
         }
 
       // Process the new components support for all the currently required components
       for (auto &c: required_components)
-        if (new_component->json["supports"]["components"][c]) {
+        if (new_component->json["supports"]["components"].contains(c)) {
           log->info("Processing required component '{}' in {}", c, component_id);
           process_requirements(new_component->json, new_component->json["supports"]["components"][c]);
         }
 
       // Process all the existing components support for the new component
       for (auto &c: components)
-        if (c->json["supports"]["components"][component_id]) {
+        if (c->json["supports"]["components"].contains(component_id)) {
           log->info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
           process_requirements(c->json, c->json["supports"]["components"][component_id]);
         }
@@ -290,7 +294,7 @@ project::state project::evaluate_dependencies()
 
       // Process the feature "supports" for each existing component
       for (auto &c: components)
-        if (c->json["supports"]["features"][f]) {
+        if (c->json["supports"]["features"].contains(f)) {
           log->info("Processing feature '{}' in {}", f, c->json["name"].get<std::string>());
           process_requirements(c->json, c->json["supports"]["features"][f]);
         }
@@ -370,11 +374,11 @@ void project::evaluate_choices()
     for (auto &[choice_name, value]: c->json["choices"].items()) {
 
       int matches = 0;
-      if (value["features"])
+      if (value.contains("features"))
         matches = std::count_if(value["features"].begin(), value["features"].end(), [&](auto j) {
           return required_features.contains(j.get<std::string>());
         });
-      if (value["components"])
+      if (value.contains("components"))
         matches = std::count_if(value["components"].begin(), value["components"].end(), [&](auto j) {
           return required_components.contains(j.get<std::string>());
         });
@@ -392,8 +396,6 @@ void project::generate_project_summary()
   project_summary["project_output"]                        = default_output_directory + project_name;
   project_summary["configuration"]["host_os"]              = host_os_string;
   project_summary["configuration"]["executable_extension"] = executable_extension;
-
-  // project_summary = project_summary_yaml.as<nlohmann::json>();
 
   if (!project_summary.contains("tools"))
     project_summary["tools"] = nlohmann::json::object();

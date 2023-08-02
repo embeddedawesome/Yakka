@@ -226,6 +226,9 @@ int main(int argc, char **argv)
   project.generate_project_summary();
   project.save_summary();
 
+  if (project.current_state != yakka::project::state::PROJECT_VALID)
+    exit(-1);
+
   auto t1 = std::chrono::high_resolution_clock::now();
   project.parse_blueprints();
   project.generate_target_database();
@@ -419,12 +422,12 @@ static void evaluate_project_choices(yakka::workspace &workspace, yakka::project
         spdlog::error("ERROR: Choice data is invalid");
       }
     }
-    exit(0);
+    project.current_state = yakka::project::state::PROJECT_HAS_INCOMPLETE_CHOICES;
   }
   if (!project.multiple_answer_choices.empty()) {
     for (auto a: project.multiple_answer_choices) {
       spdlog::error("Choice {} - Has multiple selections", a);
     }
-    exit(-1);
+    project.current_state = yakka::project::state::PROJECT_HAS_MULTIPLE_ANSWERS_FOR_CHOICES;
   }
 }
