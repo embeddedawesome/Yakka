@@ -786,9 +786,9 @@ void project::load_common_commands()
 
   blueprint_commands["copy"] = [](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
     std::string destination;
-    std::string source;
+    nlohmann::json source;
     try {
-      nlohmann::json source;
+
       destination = try_render(inja_env, command["destination"].get<std::string>(), generated_json);
 
       if (command.contains("source")) {

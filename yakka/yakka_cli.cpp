@@ -68,6 +68,7 @@ int main(int argc, char **argv)
   options.add_options()("h,help", "Print usage")("r,refresh", "Refresh component database", cxxopts::value<bool>()->default_value("false"))
                        ("n,no-eval", "Skip the dependency and choice evaluation", cxxopts::value<bool>()->default_value("false"))
                        ("o,no-output", "Do not generate output folder", cxxopts::value<bool>()->default_value("false"))
+                       ("p,project-name", "Set the project name", cxxopts::value<std::string>()->default_value(""))
                        ("action", "Select from 'register', 'list', 'update', 'git', or a command", cxxopts::value<std::string>());
   // clang-format on
 
@@ -177,6 +178,10 @@ int main(int argc, char **argv)
   // Remove the extra "-" and add the feature suffix
   project_name.pop_back();
   project_name += feature_suffix;
+
+  auto cli_set_project_name = result["project-name"].as<std::string>();
+  if (!cli_set_project_name.empty())
+    project_name = cli_set_project_name;
 
   // Create a project
   yakka::project project(project_name, workspace, yakkalog);
