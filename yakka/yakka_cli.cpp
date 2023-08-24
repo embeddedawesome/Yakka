@@ -68,6 +68,7 @@ int main(int argc, char **argv)
   options.add_options()("h,help", "Print usage")("r,refresh", "Refresh component database", cxxopts::value<bool>()->default_value("false"))
                        ("n,no-eval", "Skip the dependency and choice evaluation", cxxopts::value<bool>()->default_value("false"))
                        ("o,no-output", "Do not generate output folder", cxxopts::value<bool>()->default_value("false"))
+                       ("f,fetch", "Automatically fetch missing components", cxxopts::value<bool>()->default_value("false"))
                        ("p,project-name", "Set the project name", cxxopts::value<std::string>()->default_value(""))
                        ("action", "Select from 'register', 'list', 'update', 'git', or a command", cxxopts::value<std::string>());
   // clang-format on
