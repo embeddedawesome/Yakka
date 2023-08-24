@@ -482,7 +482,7 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
         auto [temp_output, temp_retcode] = exec(command_text, arg_text);
         retcode                          = temp_retcode;
 
-        if (retcode != 0) {
+        if (retcode < 0) {
           spdlog::error("Returned {}\n{}", retcode, temp_output);
           return { temp_output, retcode };
         }
@@ -500,7 +500,7 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
         spdlog::error("{} tool doesn't exist", command_name);
       }
 
-      if (retcode != 0)
+      if (retcode < 0)
         return { captured_output, retcode };
     } catch (std::exception &e) {
       spdlog::error("Failed to run command: '{}' as part of {}", command_name, target);

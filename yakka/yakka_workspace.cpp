@@ -280,7 +280,7 @@ fs::path workspace::do_fetch_component(const std::string &name, const std::strin
       old_progress = progress;
     }
   });
-  if (retcode != 0) {
+  if (retcode < 0) {
     return {};
   }
   auto t2       = std::chrono::high_resolution_clock::now();
@@ -309,7 +309,7 @@ fs::path workspace::do_fetch_component(const std::string &name, const std::strin
       progress_handler(phase_names[phase], progress);
     }
   });
-  if (retcode != 0) {
+  if (retcode < 0) {
     return {};
   }
   t2       = std::chrono::high_resolution_clock::now();

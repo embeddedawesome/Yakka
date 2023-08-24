@@ -550,7 +550,7 @@ void project::load_common_commands()
       spdlog::debug("Executing '{}'", captured_output);
       auto [temp_output, retcode] = exec(captured_output, std::string(""));
 
-      if (retcode != 0 && temp_output.length() != 0) {
+      if (retcode < 0 && temp_output.length() != 0) {
         spdlog::error("\n{} returned {}\n{}", captured_output, retcode, temp_output);
       } else if (temp_output.length() != 0)
         spdlog::info("{}", temp_output);
@@ -986,7 +986,7 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
             log->info("{}: Updating because of {}", target_name, max_element->first);
             auto [output, retcode] = yakka::run_command(i->first, d, this);
             d->last_modified       = fs::file_time_type::clock::now();
-            if (retcode != 0) {
+            if (retcode < 0) {
               log->info("Aborting: {} returned {}", target_name, retcode);
               abort_build = true;
               return;
