@@ -232,15 +232,21 @@ int main(int argc, char **argv)
   project.generate_project_summary();
   project.save_summary();
 
+  auto t1 = std::chrono::high_resolution_clock::now();
+  project.validate_schema();
+  auto t2       = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+  spdlog::info("{}ms to validate schemas", duration);
+
   if (project.current_state != yakka::project::state::PROJECT_VALID)
     exit(-1);
 
-  auto t1 = std::chrono::high_resolution_clock::now();
+  t1 = std::chrono::high_resolution_clock::now();
   project.parse_blueprints();
   project.generate_target_database();
-  auto t2 = std::chrono::high_resolution_clock::now();
+  t2 = std::chrono::high_resolution_clock::now();
 
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
   spdlog::info("{}ms to process blueprints", duration);
   project.load_common_commands();
 

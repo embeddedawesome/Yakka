@@ -43,16 +43,20 @@ yakka_status component::parse_file(fs::path file_path, blueprint_database &datab
     if (n.get<std::string>().front() == '.')
       n = n.get<std::string>().insert(0, path_string);
 
-  for (auto f: json["supports"]["features"])
-    for (auto n: f["requires"]["components"])
-      if (n.get<std::string>().front() == '.')
-        n = n.get<std::string>().insert(0, path_string);
-
-  for (auto c: json["supports"]["components"])
-    for (auto n: c["requires"]["components"])
-      if (n.get<std::string>().front() == '.')
-        n = n.get<std::string>().insert(0, path_string);
-
+  if (json.contains("supports")) {
+    if (json["supports"].contains("features")) {
+      for (auto f: json["supports"]["features"])
+        for (auto n: f["requires"]["components"])
+          if (n.get<std::string>().front() == '.')
+            n = n.get<std::string>().insert(0, path_string);
+    }
+    if (json["supports"].contains("components")) {
+      for (auto c: json["supports"]["components"])
+        for (auto n: c["requires"]["components"])
+          if (n.get<std::string>().front() == '.')
+            n = n.get<std::string>().insert(0, path_string);
+    }
+  }
   return yakka_status::SUCCESS;
 }
 

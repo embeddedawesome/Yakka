@@ -72,6 +72,8 @@ public:
   bool has_data_dependency_changed(std::string data_path, const nlohmann::json left, const nlohmann::json right);
   void create_tasks(const std::string target_name, tf::Task &parent);
 
+  void validate_schema();
+
   // Logging
   std::shared_ptr<spdlog::logger> log;
 

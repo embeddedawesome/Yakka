@@ -49,7 +49,7 @@ struct slcc : public base_component {
 
   void convert_to_yakka();
 
-  YAML::Node yaml;
+  nlohmann::json json;
 };
 
 } /* namespace yakka */

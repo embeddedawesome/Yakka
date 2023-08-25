@@ -319,6 +319,7 @@ void json_node_merge(nlohmann::json &merge_target, const nlohmann::json &node)
           spdlog::error("Cannot merge array into an object");
           break;
         case nlohmann::detail::value_t::array:
+        case nlohmann::detail::value_t::null:
           for (auto &i: node)
             merge_target.push_back(i);
           break;

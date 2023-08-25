@@ -21,3 +21,4 @@ requires:
     - spdlog
     - taskflow
     - glob
+    - json-schema-validator

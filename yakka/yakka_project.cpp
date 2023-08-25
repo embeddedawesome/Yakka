@@ -1,6 +1,8 @@
 #include "yakka_project.hpp"
+#include "yakka_schema.hpp"
 #include "utilities.hpp"
 #include "spdlog/spdlog.h"
+#include <nlohmann/json-schema.hpp>
 #include <fstream>
 #include <chrono>
 #include <thread>
@@ -263,25 +265,31 @@ project::state project::evaluate_dependencies()
       }
 
       // Process all the currently required features. Note new feature will be processed in the features pass
-      for (auto &f: required_features)
-        if (new_component->json["supports"]["features"].contains(f)) {
-          log->info("Processing required feature '{}' in {}", f, component_id);
-          process_requirements(new_component->json, new_component->json["supports"]["features"][f]);
+      if (new_component->json.contains("supports")) {
+        if (new_component->json["supports"].contains("features")) {
+          for (auto &f: required_features)
+            if (new_component->json["supports"]["features"].contains(f)) {
+              log->info("Processing required feature '{}' in {}", f, component_id);
+              process_requirements(new_component->json, new_component->json["supports"]["features"][f]);
+            }
         }
 
-      // Process the new components support for all the currently required components
-      for (auto &c: required_components)
-        if (new_component->json["supports"]["components"].contains(c)) {
-          log->info("Processing required component '{}' in {}", c, component_id);
-          process_requirements(new_component->json, new_component->json["supports"]["components"][c]);
-        }
+        if (new_component->json["supports"].contains("components")) {
+          // Process the new components support for all the currently required components
+          for (auto &c: required_components)
+            if (new_component->json["supports"]["components"].contains(c)) {
+              log->info("Processing required component '{}' in {}", c, component_id);
+              process_requirements(new_component->json, new_component->json["supports"]["components"][c]);
+            }
 
-      // Process all the existing components support for the new component
-      for (auto &c: components)
-        if (c->json["supports"]["components"].contains(component_id)) {
-          log->info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
-          process_requirements(c->json, c->json["supports"]["components"][component_id]);
+          // Process all the existing components support for the new component
+          for (auto &c: components)
+            if (c->json.contains("supports") && c->json["supports"].contains("components") && c->json["supports"]["components"].contains(component_id)) {
+              log->info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
+              process_requirements(c->json, c->json["supports"]["components"][component_id]);
+            }
         }
+      }
     }
 
     // Process all the new features
@@ -294,7 +302,7 @@ project::state project::evaluate_dependencies()
 
       // Process the feature "supports" for each existing component
       for (auto &c: components)
-        if (c->json["supports"]["features"].contains(f)) {
+        if (c->json.contains("supports") && c->json["supports"].contains("features") && c->json["supports"]["features"].contains(f)) {
           log->info("Processing feature '{}' in {}", f, c->json["name"].get<std::string>());
           process_requirements(c->json, c->json["supports"]["features"][f]);
         }
@@ -1025,12 +1033,42 @@ void project::save_summary()
   if (!fs::exists(project_summary["project_output"].get<std::string>()))
     fs::create_directories(project_summary["project_output"].get<std::string>());
 
-  // std::ofstream summary_file( project_summary["project_output"].get<std::string>() + "/yakka_summary.yaml" );
-  // summary_file << project_summary;
-  // summary_file.close();
   std::ofstream json_file(project_summary["project_output"].get<std::string>() + "/yakka_summary.json");
   json_file << project_summary.dump(3);
   json_file.close();
+}
+
+class custom_error_handler : public nlohmann::json_schema::basic_error_handler {
+public:
+  std::string component_name;
+  void error(const nlohmann::json::json_pointer &ptr, const nlohmann::json &instance, const std::string &message) override
+  {
+    nlohmann::json_schema::basic_error_handler::error(ptr, instance, message);
+    spdlog::error("Validation error in '{}': {} - {} : - {}", component_name, ptr.to_string(), instance.dump(3), message);
+  }
+};
+
+void project::validate_schema()
+{
+  // Collect all the schema data
+  nlohmann::json schema = YAML::Load(component_schema_yaml).as<nlohmann::json>();
+  // nlohmann::json schema = yakka::component_schema;
+
+  // Create validator
+  nlohmann::json_schema::json_validator validator(nullptr, nlohmann::json_schema::default_string_format_check);
+  try {
+    validator.set_root_schema(schema);
+  } catch (const std::exception &e) {
+    spdlog::error("Setting root schema failed\n{}", e.what());
+    return;
+  }
+
+  // Iterate through each component and validate
+  custom_error_handler err;
+  for (const auto &c: components) {
+    err.component_name = c->id;
+    validator.validate(c->json, err);
+  }
 }
 
 } /* namespace yakka */
