@@ -1054,6 +1054,12 @@ void project::validate_schema()
   nlohmann::json schema = YAML::Load(component_schema_yaml).as<nlohmann::json>();
   // nlohmann::json schema = yakka::component_schema;
 
+  for (const auto &c: components) {
+    if (c->json.contains("schema")) {
+      json_node_merge(schema["properties"], c->json["schema"]);
+    }
+  }
+
   // Create validator
   nlohmann::json_schema::json_validator validator(nullptr, nlohmann::json_schema::default_string_format_check);
   try {
