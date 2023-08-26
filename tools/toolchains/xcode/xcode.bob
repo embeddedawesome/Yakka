@@ -1,16 +1,27 @@
 name: xcode toolchain
 
 flags:
+  c:
+    global:
+      - -Os
+      - -MD
+      - -ffunction-sections
+      - -fdata-sections
+
   cpp:
     global:
       - -O3
-      - -std=c++2a
-      - -g
+      - -std=c++20
+      - -MD
+      - -ffunction-sections
+      - -fdata-sections
+      - -Werror -Wpedantic -Wall
 
   ld:
     global:
       - -O3
       - -lpthread
+      - -dead_strip
 
 tools:
   clang: clang++
@@ -33,13 +44,17 @@ blueprints:
       - '{{project_output}}/components/{{$(1)}}/{{$(1)}}.{{$(3)}}_options'
       - '{{at(components, $(1)).directory}}/{{$(2)}}.{{$(3)}}'
       - '{{project_output}}/{{project_name}}.global_{{$(3)}}_options'
+      - dependency_file: '{{at(components, $(1)).directory}}/{{$(2)}}.{{$(3)}}.d'
     process:
       - create_directory: '{{$(0)}}'
       - clang: "-c @{{project_output}}/{{project_name}}.global_{{$(3)}}_options @{{project_output}}/components/{{$(1)}}/{{$(1)}}.{{$(3)}}_options -o {{$(0)}} {{at(components, $(1)).directory}}/{{$(2)}}.{{$(3)}}"
   
   '{{project_output}}/{{project_name}}.global_ld_options':
+    depends:
+      - data:
+          - '/*/flags/ld'
     process:
-      - inja: "{% for name,component in components %}{%if existsIn(component, \"flags\") and existsIn(component.flags, \"ld\") and existsIn(component.flags.ld, \"global\") %}{% for flag in component.flags.ld.global %}{{flag}} {% endfor %}{%endif%}{%endfor%} {% for name, component in components %}{%if existsIn(component,\"sources\") %}{% for source in component.sources %}{{project_output}}/components/{{name}}/{{source}}.o {% endfor %}{% endif %}{% endfor %}"
+      - inja: "{% for name,component in components %}{% for flag in component.flags.ld.global %}{{flag}} {% endfor %}{%endfor%} {% for name, component in components %}{%if existsIn(component,\"sources\") %}{% for source in component.sources %}{{project_output}}/components/{{name}}/{{source}}.o {% endfor %}{% endif %}{% endfor %}"
       - save: 
     
   global_compiler_options:
@@ -52,10 +67,10 @@ blueprints:
     process:
       - inja: "{% for name,component in components %}
         {% if existsIn(component, \"flags\") and existsIn(component.flags, $(1)) %}{% for flag in at(component.flags, $(1)).global %}{{flag}} {% endfor %}{%endif%}
-        {%if existsIn(component, \"includes\") and existsIn(component.includes, \"global\")%}{%- for include in component.includes.global %}-I{{component.directory}}/{{include}} {% endfor %}{%endif%}
-        {%if existsIn(component, \"defines\") and existsIn(component.includes, \"global\")%}{%- for define in component.defines.global %}-D{{define}} {% endfor %}{%endif%}
+        {%- for include in component.includes.global %}-I{{component.directory}}/{{include}} {% endfor %}
+        {%- for define in component.defines.global %}-D{{define}} {% endfor %}
         {%endfor%}
-        {%if exists(\"features\")%}{%- for feature in features %}-D{{feature}}_FEATURE_REQUIRED {% endfor %}{%endif%}
+        {%- for feature in features %}-D{{feature}}_FEATURE_REQUIRED {% endfor %}
         -I{{project_output}}"
       - save: 
       
