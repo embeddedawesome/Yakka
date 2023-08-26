@@ -22,3 +22,9 @@ requires:
     - taskflow
     - glob
     - json-schema-validator
+
+flags:
+  cpp:
+    global:
+      - -Wno-deprecated-declarations
+
