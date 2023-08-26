@@ -1,4 +1,4 @@
-# How to use Yakka
+# Using Yakka
 
 
 ## Create a component
