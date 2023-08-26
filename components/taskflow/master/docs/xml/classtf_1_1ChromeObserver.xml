@@ -215,18 +215,6 @@
 <codeline><highlight class="normal">observer-&gt;dump(<ref refid="cpp/io/basic_ostream" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::cout</ref>);</highlight></codeline>
 </programlisting> </para>    </detaileddescription>
     <inheritancegraph>
-      <node id="8">
-        <label>tf::ObserverInterface</label>
-        <link refid="classtf_1_1ObserverInterface"/>
-      </node>
-      <node id="7">
-        <label>tf::ChromeObserver</label>
-        <link refid="classtf_1_1ChromeObserver"/>
-        <childnode refid="8" relation="public-inheritance">
-        </childnode>
-      </node>
-    </inheritancegraph>
-    <collaborationgraph>
       <node id="10">
         <label>tf::ObserverInterface</label>
         <link refid="classtf_1_1ObserverInterface"/>
@@ -235,6 +223,18 @@
         <label>tf::ChromeObserver</label>
         <link refid="classtf_1_1ChromeObserver"/>
         <childnode refid="10" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="12">
+        <label>tf::ObserverInterface</label>
+        <link refid="classtf_1_1ObserverInterface"/>
+      </node>
+      <node id="11">
+        <label>tf::ChromeObserver</label>
+        <link refid="classtf_1_1ChromeObserver"/>
+        <childnode refid="12" relation="public-inheritance">
         </childnode>
       </node>
     </collaborationgraph>

@@ -3,9 +3,9 @@
   <compounddef id="structtf_1_1Node_1_1Condition" kind="struct" language="C++" prot="private">
     <compoundname>tf::Node::Condition</compoundname>
       <sectiondef kind="public-attrib">
-      <memberdef kind="variable" id="structtf_1_1Node_1_1Condition_1adafcf574555556c3a5cf5c8fe2e4f16b" prot="public" static="no" mutable="no">
-        <type><ref refid="cpp/utility/functional/function" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::function</ref>&lt; int()&gt;</type>
-        <definition>std::function&lt;int()&gt; tf::Node::Condition::work</definition>
+      <memberdef kind="variable" id="structtf_1_1Node_1_1Condition_1ad9b69c26cf41ac682ec3a09f38921f8e" prot="public" static="no" mutable="no">
+        <type>std::variant&lt; <ref refid="cpp/utility/functional/function" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::function</ref>&lt; int()&gt;, <ref refid="cpp/utility/functional/function" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::function</ref>&lt; int(<ref refid="classtf_1_1Runtime" kindref="compound">Runtime</ref> &amp;)&gt; &gt;</type>
+        <definition>std::variant&lt; std::function&lt;int()&gt;, std::function&lt;int(Runtime&amp;)&gt; &gt; tf::Node::Condition::work</definition>
         <argsstring></argsstring>
         <name>work</name>
         <briefdescription>
@@ -14,7 +14,7 @@
         </detaileddescription>
         <inbodydescription>
         </inbodydescription>
-        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="321" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="321" bodyend="-1"/>
+        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="520" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="520" bodyend="-1"/>
       </memberdef>
       </sectiondef>
       <sectiondef kind="public-func">
@@ -38,28 +38,17 @@
         </detaileddescription>
         <inbodydescription>
         </inbodydescription>
-        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="319" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="495" bodyend="496"/>
+        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="516" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="669" bodyend="670"/>
       </memberdef>
       </sectiondef>
     <briefdescription>
     </briefdescription>
     <detaileddescription>
     </detaileddescription>
-    <collaborationgraph>
-      <node id="13">
-        <label>std::function&lt; int()&gt;</label>
-      </node>
-      <node id="12">
-        <label>tf::Node::Condition</label>
-        <childnode refid="13" relation="usage">
-          <edgelabel>work</edgelabel>
-        </childnode>
-      </node>
-    </collaborationgraph>
-    <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="316" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="316" bodyend="322"/>
+    <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="513" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="513" bodyend="521"/>
     <listofallmembers>
       <member refid="structtf_1_1Node_1_1Condition_1a781e9c6374654fd12a35b6c9b4346884" prot="public" virt="non-virtual"><scope>tf::Node::Condition</scope><name>Condition</name></member>
-      <member refid="structtf_1_1Node_1_1Condition_1adafcf574555556c3a5cf5c8fe2e4f16b" prot="public" virt="non-virtual"><scope>tf::Node::Condition</scope><name>work</name></member>
+      <member refid="structtf_1_1Node_1_1Condition_1ad9b69c26cf41ac682ec3a09f38921f8e" prot="public" virt="non-virtual"><scope>tf::Node::Condition</scope><name>work</name></member>
     </listofallmembers>
   </compounddef>
 </doxygen>

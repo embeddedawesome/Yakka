@@ -7,7 +7,7 @@ task programs with <i>high performance</i>
 and simultaneous <i>high productivity</i>.
 It is faster, more expressive, fewer lines of code, and easier for drop-in integration
 than many of existing task programming libraries.
-The source code is available in @ProjectGitHub.
+The source code is available in our @ProjectGitHub.
 
 @tableofcontents
 
@@ -236,17 +236,6 @@ tf::Task task2 = taskflow.reduce(   // reduce a range of items in parallel
 tf::Task task3 = taskflow.sort(     // sort a range of items in parallel
   first, last, [] (auto a, auto b) { return a < b; }
 );
-
-// standard parallel GPU algorithms
-tf::cudaTask cuda1 = cudaflow.for_each( // assign each element to 100 on GPU
-  dfirst, dlast, [] __device__ (auto i) { i = 100; }
-);
-tf::cudaTask cuda2 = cudaflow.reduce(   // reduce a range of items on GPU
-  dfirst, dlast, init, [] __device__ (auto a, auto b) { return a + b; }
-);
-tf::cudaTask cuda3 = cudaflow.sort(     // sort a range of items on GPU
-  dfirst, dlast, [] __device__ (auto a, auto b) { return a < b; }
-);
 @endcode
 
 Additionally, %Taskflow provides composable graph building blocks for you to 
@@ -302,7 +291,7 @@ To use %Taskflow, you only need a compiler that supports C++17:
 @li GNU C++ Compiler at least v8.4 with -std=c++17
 @li Clang C++ Compiler at least v6.0 with -std=c++17
 @li Microsoft Visual Studio at least v19.27 with /std:c++17
-@li AppleClang Xode Version at least v12.0 with -std=c++17
+@li AppleClang Xcode Version at least v12.0 with -std=c++17
 @li Nvidia CUDA Toolkit and Compiler (nvcc) at least v11.1 with -std=c++17
 @li Intel C++ Compiler at least v19.0.1 with -std=c++17
 @li Intel DPC++ Clang Compiler at least v13.0.0 with -std=c++17 and SYCL20

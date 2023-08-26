@@ -16,7 +16,7 @@
 <listitem><para>GNU C++ Compiler at least v8.4 with -std=c++17 </para></listitem>
 <listitem><para>Clang C++ Compiler at least v6.0 with -std=c++17 </para></listitem>
 <listitem><para>Microsoft Visual Studio at least v19.27 with /std:c++17 </para></listitem>
-<listitem><para>AppleClang Xode Version at least v12.0 with -std=c++17 </para></listitem>
+<listitem><para>AppleClang Xcode Version at least v12.0 with -std=c++17 </para></listitem>
 <listitem><para>Nvidia CUDA Toolkit and Compiler (nvcc) at least v11.1 with -std=c++17 </para></listitem>
 <listitem><para>Intel C++ Compiler at least v19.0.1 with -std=c++17 </para></listitem>
 <listitem><para>Intel DPC++ Clang Compiler at least v13.0.0 with -std=c++17 and SYCL20</para></listitem>
@@ -30,7 +30,7 @@ Taskflow works on Linux, Windows, and Mac OS X.</para></sect1>
 <sect2 id="release-3-4-0_1release-3-4-0_taskflow_core">
 <title>Taskflow Core</title>
 <para><itemizedlist>
-<listitem><para>Improved the pipeline performance using vertical stack optimization</para></listitem><listitem><para>Added <ref refid="classtf_1_1ScalablePipeline" kindref="compound">tf::ScalablePipeline</ref> to allow programming variable lengths of pipes</para></listitem><listitem><para>Added <ref refid="classtf_1_1Runtime_1a479dc5dbf2b988bd166a2b6da089bb17" kindref="member">tf::Runtime::run_and_wait</ref> to allow spawning a subflow</para></listitem><listitem><para>Added <ref refid="classtf_1_1Executor_1ab05ad34c59cf11a7c4de82cf58bba91e" kindref="member">tf::Executor::run_and_wait</ref> to allow running taskflows from a worker</para></listitem><listitem><para>Added an example of attaching data to a task (examples/attach_data.cpp)</para></listitem><listitem><para>Added an example of text processing pipeline (examples/parallel_text_pipeline.cpp)</para></listitem><listitem><para>Added an example of graph processing pipeline (examples/parallel_graph_pipeline.cpp)</para></listitem><listitem><para>Added an example of taskflow processing pipeline (examples/parallel_taskflow_pipeline.cpp)</para></listitem><listitem><para>Added an example of running a task graph from a worker (examples/run_and_wait.cpp)</para></listitem></itemizedlist>
+<listitem><para>Improved the pipeline performance using vertical stack optimization</para></listitem><listitem><para>Added <ref refid="classtf_1_1ScalablePipeline" kindref="compound">tf::ScalablePipeline</ref> to allow programming variable lengths of pipes</para></listitem><listitem><para>Added tf::Runtime::run_and_wait to allow spawning a subflow</para></listitem><listitem><para>Added tf::Executor::run_and_wait to allow running taskflows from a worker</para></listitem><listitem><para>Added an example of attaching data to a task (examples/attach_data.cpp)</para></listitem><listitem><para>Added an example of text processing pipeline (examples/parallel_text_pipeline.cpp)</para></listitem><listitem><para>Added an example of graph processing pipeline (examples/parallel_graph_pipeline.cpp)</para></listitem><listitem><para>Added an example of taskflow processing pipeline (examples/parallel_taskflow_pipeline.cpp)</para></listitem><listitem><para>Added an example of running a task graph from a worker (examples/run_and_wait.cpp)</para></listitem></itemizedlist>
 </para></sect2>
 <sect2 id="release-3-4-0_1release-3-4-0_cudaflow">
 <title>cudaFlow</title>
@@ -54,7 +54,7 @@ Taskflow works on Linux, Windows, and Mac OS X.</para></sect1>
 <sect1 id="release-3-4-0_1release-3-4-0_breaking_changes">
 <title>Breaking Changes</title>
 <para><itemizedlist>
-<listitem><para>Replaced tf::Runtime::run with <ref refid="classtf_1_1Runtime_1a479dc5dbf2b988bd166a2b6da089bb17" kindref="member">tf::Runtime::run_and_wait</ref> to comply with <ref refid="classtf_1_1Executor_1ab05ad34c59cf11a7c4de82cf58bba91e" kindref="member">tf::Executor::run_and_wait</ref></para></listitem></itemizedlist>
+<listitem><para>Replaced tf::Runtime::run with tf::Runtime::run_and_wait to comply with tf::Executor::run_and_wait</para></listitem></itemizedlist>
 </para></sect1>
 <sect1 id="release-3-4-0_1release-3-4-0_deprecated_items">
 <title>Deprecated and Removed Items</title>

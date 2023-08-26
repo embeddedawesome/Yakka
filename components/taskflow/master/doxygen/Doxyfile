@@ -287,6 +287,7 @@ ALIASES                = "std_invoke=<a href=\"https://en.cppreference.com/w/cpp
                          "std_variant_get=<a href=\"https://en.cppreference.com/w/cpp/utility/variant/get\">std::get</a>" \
                          "std_optional=<a href=\"https://en.cppreference.com/w/cpp/utility/optional\">std::optional</a>" \
                          "std_nullopt=<a href=\"https://en.cppreference.com/w/cpp/utility/optional/nullopt\">std::nullopt</a>" \
+                         "std_ref=<a href=\"https://en.cppreference.com/w/cpp/utility/functional/ref\">std::ref</a>" \
                          "Doxygen=<a href=\"https://www.doxygen.nl/index.html\">Doxygen</a>" \
                          "MCSS=<a href=\"https://mcss.mosra.cz/documentation/doxygen/\">m.css</a>" \
                          "GraphVizOnline=<a href=\"https://dreampuf.github.io/GraphvizOnline/\">GraphViz Online</a>" \
@@ -306,8 +307,8 @@ ALIASES                = "std_invoke=<a href=\"https://en.cppreference.com/w/cpp
                          "StarPU=<a href=\"http://starpu.gforge.inria.fr/\">StarPU</a>" \
                          "OpenTimerGitHub=<a href=\"https://github.com/OpenTimer/OpenTimer\">OpenTimer</a>" \
                          "ContactUs=<a href=\"https://taskflow.github.io/#tag_contact\">contact us</a>" \
-                         "ProjectWebsite=<a href=\"https://taskflow.github.io/\">project website</a>" \
-                         "ProjectGitHub=<a href=\"https://github.com/taskflow/\">project GitHub</a>" \
+                         "ProjectWebsite=<a href=\"https://taskflow.github.io/\">Project Website</a>" \
+                         "ProjectGitHub=<a href=\"https://github.com/taskflow/\">Project GitHub</a>" \
                          "ShowcasePresentation=<a href=\"https://taskflow.github.io/showcase/index.html\">showcase presentation</a>" \
                          "CppCon20Talk=<a href=\"https://www.youtube.com/watch?v=MX15huP5DsM\">2020 CppCon Taskflow Talk</a>" \
                          "MUCpp20Talk=<a href=\"https://www.youtube.com/watch?v=u8Mc_WgGwVY\">2020 MUC++ Taskflow Talk</a>" \
@@ -899,6 +900,7 @@ INPUT                  = ../taskflow/utility/small_vector.hpp \
                          ../taskflow/core/semaphore.hpp \
                          ../taskflow/core/taskflow.hpp \
                          ../taskflow/core/observer.hpp \
+                         ../taskflow/algorithm/partitioner.hpp \
                          ../taskflow/algorithm/critical.hpp \
                          ../taskflow/algorithm/pipeline.hpp \
                          ../taskflow/algorithm/data_pipeline.hpp \
@@ -917,12 +919,11 @@ INPUT                  = ../taskflow/utility/small_vector.hpp \
                          ../taskflow/cuda/algorithm/merge.hpp \
                          ../taskflow/cuda/algorithm/sort.hpp \
                          ../taskflow/cuda/algorithm/find.hpp \
-                         ../taskflow/sycl/sycl_task.hpp \
-                         ../taskflow/sycl/syclflow.hpp \
                          ../taskflow/taskflow.hpp \
                          QuickStart.dox \
                          releases/releases.dox \
                          releases/release-roadmap.dox \
+                         releases/release-3.6.0.dox \
                          releases/release-3.5.0.dox \
                          releases/release-3.4.0.dox \
                          releases/release-3.3.0.dox \
@@ -941,7 +942,6 @@ INPUT                  = ../taskflow/utility/small_vector.hpp \
                          releases/release-1.x.x.dox \
                          install/install.dox \
                          install/cuda_compile.dox \
-                         install/sycl_compile.dox \
                          install/benchmark_taskflow.dox \
                          cookbook/Cookbook.dox \
                          cookbook/motivation.dox \
@@ -956,39 +956,32 @@ INPUT                  = ../taskflow/utility/small_vector.hpp \
                          cookbook/async_tasking.dox \
                          cookbook/gpu_tasking_cudaflow.dox \
                          cookbook/gpu_tasking_cudaflow_capturer.dox \
-                         cookbook/gpu_tasking_syclflow.dox \
                          cookbook/cancellation.dox \
                          cookbook/profiler.dox \
+                         algorithms/partitioner.dox \
                          algorithms/algorithms.dox \
                          algorithms/for_each.dox \
                          algorithms/transform.dox \
                          algorithms/reduce.dox \
                          algorithms/sort.dox \
+                         algorithms/scan.dox \
+                         algorithms/find.dox \
                          algorithms/pipeline.dox \
                          algorithms/scalable_pipeline.dox \
                          algorithms/data_pipeline.dox \
+                         algorithms/pipeline_with_token_dependencies.dox \
                          cudaflow_algorithms/cudaflow_algorithms.dox \
                          cudaflow_algorithms/cudaflow_single_task.dox \
                          cudaflow_algorithms/cudaflow_for_each.dox \
                          cudaflow_algorithms/cudaflow_transform.dox \
-                         cudaflow_algorithms/cudaflow_reduce.dox \
-                         cudaflow_algorithms/cudaflow_scan.dox \
-                         cudaflow_algorithms/cudaflow_merge.dox \
-                         cudaflow_algorithms/cudaflow_sort.dox \
-                         cudaflow_algorithms/cudaflow_find.dox \
-                         sycl_algorithms/sycl_algorithms.dox \
-                         sycl_algorithms/sycl_single_task.dox \
-                         sycl_algorithms/sycl_for_each.dox \
-                         sycl_algorithms/sycl_transform.dox \
-                         sycl_algorithms/sycl_reduce.dox \
                          cuda_std_algorithms/cuda_std_algorithms.dox \
                          cuda_std_algorithms/cuda_std_execution_policy.dox \
+                         cuda_std_algorithms/cuda_std_single_task.dox \
                          cuda_std_algorithms/cuda_std_for_each.dox \
                          cuda_std_algorithms/cuda_std_transform.dox \
                          cuda_std_algorithms/cuda_std_reduce.dox \
                          cuda_std_algorithms/cuda_std_scan.dox \
                          cuda_std_algorithms/cuda_std_merge.dox \
-                         cuda_std_algorithms/cuda_std_sort.dox \
                          cuda_std_algorithms/cuda_std_find.dox \
                          examples/examples.dox \
                          examples/wavefront.dox \

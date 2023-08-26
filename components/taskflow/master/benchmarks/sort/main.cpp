@@ -11,7 +11,7 @@ void reduce_sum(
             << std::setw(12) << "runtime"
             << std::endl;
 
-  for(size_t N=10; N<=1000000000; N = N*10) {
+  for(size_t N=10; N<=100000000; N = N*10) {
 
     vec.resize(N);
 
@@ -20,7 +20,8 @@ void reduce_sum(
     for(unsigned j=0; j<num_rounds; ++j) {
 
       for(auto& d : vec) {
-        d = std::to_string(::rand());
+        //d = std::to_string(::rand());
+        d = ::rand();
       }
 
       if(model == "tf") {

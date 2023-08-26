@@ -161,11 +161,11 @@ You can change the name and work of a task at anytime before running the graph. 
 <codeline><highlight class="normal"></highlight></codeline>
 <codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>move-construct<sp/>taskflow2<sp/>from<sp/>taskflow1</highlight><highlight class="normal"></highlight></codeline>
 <codeline><highlight class="normal"><ref refid="classtf_1_1Taskflow" kindref="compound">tf::Taskflow</ref><sp/>taskflow2(std::move(taskflow1));</highlight></codeline>
-<codeline><highlight class="normal">assert(taskflow2.num_tasks()<sp/>==<sp/>1<sp/>&amp;&amp;<sp/>taskflow1.<ref refid="classtf_1_1Taskflow_1af4f03bca084deb5c2228ac8936d33649" kindref="member">num_tasks</ref>()<sp/>==<sp/>0);</highlight></codeline>
+<codeline><highlight class="normal">assert(taskflow2.<ref refid="classtf_1_1Taskflow_1af4f03bca084deb5c2228ac8936d33649" kindref="member">num_tasks</ref>()<sp/>==<sp/>1<sp/>&amp;&amp;<sp/>taskflow1.<ref refid="classtf_1_1Taskflow_1af4f03bca084deb5c2228ac8936d33649" kindref="member">num_tasks</ref>()<sp/>==<sp/>0);</highlight></codeline>
 <codeline><highlight class="normal"></highlight></codeline>
 <codeline><highlight class="normal"></highlight><highlight class="comment">//<sp/>move-assign<sp/>taskflow3<sp/>to<sp/>taskflow2</highlight><highlight class="normal"></highlight></codeline>
 <codeline><highlight class="normal">taskflow3<sp/>=<sp/><ref refid="cpp/utility/move" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::move</ref>(taskflow2);</highlight></codeline>
-<codeline><highlight class="normal">assert(taskflow3.num_tasks()<sp/>==<sp/>1<sp/>&amp;&amp;<sp/>taskflow2.num_tasks()<sp/>==<sp/>0);</highlight></codeline>
+<codeline><highlight class="normal">assert(taskflow3.num_tasks()<sp/>==<sp/>1<sp/>&amp;&amp;<sp/>taskflow2.<ref refid="classtf_1_1Taskflow_1af4f03bca084deb5c2228ac8936d33649" kindref="member">num_tasks</ref>()<sp/>==<sp/>0);</highlight></codeline>
 </programlisting></para><para>You can only move a taskflow to another while that taskflow is not being run by an executor. Moving a running taskflow can result in undefined behavior. Please see <ref refid="ExecuteTaskflow_1ExecuteATaskflowWithTransferredOwnership" kindref="member">Execute a Taskflow with Transferred Ownership</ref> for more details. </para></sect1>
     </detaileddescription>
   </compounddef>

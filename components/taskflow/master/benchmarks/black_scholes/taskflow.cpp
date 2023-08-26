@@ -7,7 +7,10 @@ void bs_taskflow(unsigned num_threads) {
   tf::Executor executor(num_threads);
   tf::Taskflow taskflow;
 
-  taskflow.for_each_index(0, numOptions, 1, [&](int i) {
+  auto init = taskflow.placeholder();
+
+  auto loop = taskflow.for_each_index(
+    0, numOptions, 1, [&](int i) {
     auto price = BlkSchlsEqEuroNoDiv(
       sptprice[i], strike[i],
       rate[i], volatility[i], otime[i],
@@ -18,9 +21,17 @@ void bs_taskflow(unsigned num_threads) {
 #ifdef ERR_CHK
     check_error(i, price);
 #endif
+  }, tf::StaticPartitioner());
+
+  auto cond = taskflow.emplace([i=0] () mutable{
+    return ++i == NUM_RUNS ? -1 : 0;
   });
 
-  executor.run_n(taskflow, NUM_RUNS).wait();
+  init.precede(loop);
+  loop.precede(cond);
+  cond.precede(loop);
+
+  executor.run(taskflow).wait();
 }
 
 

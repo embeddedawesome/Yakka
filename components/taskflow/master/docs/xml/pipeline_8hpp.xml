@@ -2,6 +2,7 @@
 <doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.14">
   <compounddef id="pipeline_8hpp" kind="file" language="C++">
     <compoundname>pipeline.hpp</compoundname>
+    <innerclass refid="classtf_1_1DeferredPipeflow" prot="private">tf::DeferredPipeflow</innerclass>
     <innerclass refid="classtf_1_1Pipeflow" prot="public">tf::Pipeflow</innerclass>
     <innerclass refid="classtf_1_1Pipe" prot="public">tf::Pipe</innerclass>
     <innerclass refid="classtf_1_1Pipeline" prot="public">tf::Pipeline</innerclass>

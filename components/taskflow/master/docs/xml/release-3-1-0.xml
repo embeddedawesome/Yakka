@@ -16,7 +16,7 @@
 <listitem><para>GNU C++ Compiler at least v8.4 with -std=c++17 </para></listitem>
 <listitem><para>Clang C++ Compiler at least v6.0 with -std=c++17 </para></listitem>
 <listitem><para>Microsoft Visual Studio at least v19.27 with /std:c++17 </para></listitem>
-<listitem><para>AppleClang Xode Version at least v12.0 with -std=c++17 </para></listitem>
+<listitem><para>AppleClang Xcode Version at least v12.0 with -std=c++17 </para></listitem>
 <listitem><para>Nvidia CUDA Toolkit and Compiler (nvcc) at least v11.1 with -std=c++17 </para></listitem>
 <listitem><para>Intel C++ Compiler at least v19.0.1 with -std=c++17 </para></listitem>
 <listitem><para>Intel DPC++ Clang Compiler at least v13.0.0 with -std=c++17 and SYCL20</para></listitem>
@@ -28,14 +28,13 @@ Taskflow works on Linux, Windows, and Mac OS X.</para></sect1>
 <title>Taskflow Core</title>
 <para><itemizedlist>
 <listitem><para>optimized task node storage by using <ref refid="cpp/memory/unique_ptr" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::unique_ptr</ref> for semaphores </para></listitem>
-<listitem><para>introduced <ref refid="classtf_1_1syclFlow" kindref="compound">tf::syclFlow</ref> based on Intel DPC++ and SYCL 2020 spec </para></listitem>
 <listitem><para>merged the execution flow of cudaFlow and cudaFlow capturer</para></listitem>
 </itemizedlist>
 </para></sect2>
 <sect2 id="release-3-1-0_1release-3-1-0_cudaflow">
 <title>cudaFlow</title>
 <para><itemizedlist>
-<listitem><para>optimized <ref refid="classtf_1_1cudaRoundRobinCapturing" kindref="compound">tf::cudaRoundRobinCapturing</ref> through an event-pruning heuristic </para></listitem>
+<listitem><para>optimized tf::cudaRoundRobinCapturing through an event-pruning heuristic </para></listitem>
 <listitem><para>optimized the default block size used in cudaFlow algorithms </para></listitem>
 <listitem><para>added <ref refid="classtf_1_1cudaFlow_1aad726dfe21e9719d96c65530a56d9951" kindref="member">tf::cudaFlow::clear()</ref> to clean up a cudaFlow </para></listitem>
 <listitem><para>added <ref refid="classtf_1_1cudaFlow_1ae6560c27d249af7e4b8b921388f5e1e2" kindref="member">tf::cudaFlow::num_tasks()</ref> to query the task count in a cudaFlow </para></listitem>
@@ -53,18 +52,6 @@ Taskflow works on Linux, Windows, and Mac OS X.</para></sect1>
 </para></listitem>
 </itemizedlist>
 </para></sect2>
-<sect2 id="release-3-1-0_1release-3-1-0_syclflow">
-<title>syclFlow</title>
-<para><itemizedlist>
-<listitem><para>added a task graph-based programming model (see <ref refid="GPUTaskingsyclFlow" kindref="compound">GPU Tasking (syclFlow)</ref>) </para></listitem>
-<listitem><para>added syclFlow examples:<itemizedlist>
-<listitem><para>device query (examples/sycl/sycl_device.cpp)</para></listitem><listitem><para>range query (examples/sycl/sycl_ndrange.cpp)</para></listitem><listitem><para>saxpy kernel (examples/sycl/sycl_saxpy.cpp)</para></listitem><listitem><para>atomic operation using oneAPI atomic_ref (examples/sycl/sycl_atomic.cpp)</para></listitem><listitem><para>vector addition (examples/sycl/sycl_vector_add.cpp)</para></listitem><listitem><para>parallel reduction (examples/sycl/sycl_reduce.cpp)</para></listitem><listitem><para>matrix multiplication (examples/sycl/sycl_matmul.cpp)</para></listitem><listitem><para>parallel transform (examples/sycl/transform.cpp)</para></listitem><listitem><para>rebind (examples/sycl/sycl_rebind.cpp) </para></listitem></itemizedlist>
-</para></listitem>
-<listitem><para>added syclFlow algorithms<itemizedlist>
-<listitem><para><ref refid="classtf_1_1syclFlow_1a05ff6f331b6cf48e21ae7f0d6aea9094" kindref="member">tf::syclFlow::single_task</ref> for single-threaded kernel</para></listitem><listitem><para><ref refid="classtf_1_1syclFlow_1a30c3f7a279d1f88b6052f7ded1ee381a" kindref="member">tf::syclFlow::for_each</ref> for parallel iterations</para></listitem><listitem><para><ref refid="classtf_1_1syclFlow_1a25e8aa7d7efbd05ef11353317174574a" kindref="member">tf::syclFlow::for_each_index</ref> for index-based parallel iterations</para></listitem><listitem><para><ref refid="classtf_1_1syclFlow_1acddd05832e53597ae9d30dc913d422ca" kindref="member">tf::syclFlow::reduce</ref> for parallel reduction</para></listitem><listitem><para><ref refid="classtf_1_1syclFlow_1a7a3af92f105114b1095a2cec2ccdffbf" kindref="member">tf::syclFlow::uninitialized_reduce</ref> for uninitialized parallel reduction</para></listitem></itemizedlist>
-</para></listitem>
-</itemizedlist>
-Please visit these pages, <ref refid="GPUTaskingsyclFlow" kindref="compound">GPU Tasking (syclFlow)</ref> and <ref refid="CompileTaskflowWithSYCL" kindref="compound">Compile Taskflow with SYCL</ref>, to know more details about compiling and running syclFlow programs.</para></sect2>
 <sect2 id="release-3-1-0_1release-3-1-0_utilities">
 <title>Utilities</title>
 <para><itemizedlist>
@@ -74,9 +61,7 @@ Please visit these pages, <ref refid="GPUTaskingsyclFlow" kindref="compound">GPU
 </para></sect2>
 <sect2 id="release-3-1-0_1release-3-1-0_profiler">
 <title>Taskflow Profiler (TFProf)</title>
-<para><itemizedlist>
-<listitem><para>added support for syclflow task</para></listitem></itemizedlist>
-</para></sect2>
+<para>No update for TFProf in this release.</para></sect2>
 </sect1>
 <sect1 id="release-3-1-0_1release-3-1-0_bug_fixes">
 <title>Bug Fixes</title>
@@ -92,9 +77,7 @@ Please visit these pages, <ref refid="GPUTaskingsyclFlow" kindref="compound">GPU
 <sect1 id="release-3-1-0_1release-3-1-0_documentation">
 <title>Documentation</title>
 <para><itemizedlist>
-<listitem><para>added <ref refid="CompileTaskflowWithSYCL" kindref="compound">Compile Taskflow with SYCL</ref></para></listitem><listitem><para>added SYCL example and tests to the page <ref refid="install" kindref="compound">Building and Installing</ref></para></listitem><listitem><para>added <ref refid="ExecuteTaskflow_1QueryTheWorkerID" kindref="member">Query the Worker Identieir</ref> to the cookbook page <ref refid="ExecuteTaskflow" kindref="compound">Executor</ref></para></listitem><listitem><para>added <ref refid="syclFlowAlgorithms" kindref="compound">syclFlow Algorithms</ref><itemizedlist>
-<listitem><para><ref refid="SingleTaskSYCL" kindref="compound">Single Task</ref></para></listitem><listitem><para><ref refid="ForEachSYCL" kindref="compound">Parallel Iterations</ref></para></listitem><listitem><para><ref refid="SYCLReduce" kindref="compound">Parallel Reduction</ref></para></listitem><listitem><para><ref refid="ParallelTransformsSYCL" kindref="compound">Parallel Transforms</ref></para></listitem></itemizedlist>
-</para></listitem><listitem><para>revised update methods in <ref refid="GPUTaskingcudaFlow" kindref="compound">GPU Tasking (cudaFlow)</ref></para></listitem><listitem><para>revised rebind methods in <ref refid="GPUTaskingcudaFlowCapturer" kindref="compound">GPU Tasking (cudaFlowCapturer)</ref></para></listitem></itemizedlist>
+<listitem><para>added <ref refid="ExecuteTaskflow_1QueryTheWorkerID" kindref="member">Query the Worker ID</ref> to the cookbook page <ref refid="ExecuteTaskflow" kindref="compound">Executor</ref></para></listitem><listitem><para>revised update methods in <ref refid="GPUTaskingcudaFlow" kindref="compound">GPU Tasking (cudaFlow)</ref></para></listitem><listitem><para>revised rebind methods in <ref refid="GPUTaskingcudaFlowCapturer" kindref="compound">GPU Tasking (cudaFlowCapturer)</ref></para></listitem></itemizedlist>
 </para></sect1>
 <sect1 id="release-3-1-0_1release-3-1-0_miscellaneous_items">
 <title>Miscellaneous Items</title>

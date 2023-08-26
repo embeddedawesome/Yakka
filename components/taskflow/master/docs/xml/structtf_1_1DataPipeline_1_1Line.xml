@@ -22,13 +22,13 @@
     <detaileddescription>
     </detaileddescription>
     <collaborationgraph>
-      <node id="160">
+      <node id="158">
         <label>tf::DataPipeline&lt; Ps &gt;::Line</label>
-        <childnode refid="161" relation="usage">
+        <childnode refid="159" relation="usage">
           <edgelabel>join_counter</edgelabel>
         </childnode>
       </node>
-      <node id="161">
+      <node id="159">
         <label>std::atomic&lt; size_t &gt;</label>
       </node>
     </collaborationgraph>

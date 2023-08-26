@@ -14,7 +14,7 @@
         </detaileddescription>
         <inbodydescription>
         </inbodydescription>
-        <location file="/home/twhuang/Code/taskflow/taskflow/algorithm/pipeline.hpp" line="790" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/algorithm/pipeline.hpp" bodystart="790" bodyend="-1"/>
+        <location file="/home/twhuang/Code/taskflow/taskflow/algorithm/pipeline.hpp" line="1078" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/algorithm/pipeline.hpp" bodystart="1078" bodyend="-1"/>
       </memberdef>
       </sectiondef>
     <briefdescription>
@@ -22,17 +22,17 @@
     <detaileddescription>
     </detaileddescription>
     <collaborationgraph>
-      <node id="157">
+      <node id="155">
         <label>tf::ScalablePipeline&lt; P &gt;::Line</label>
-        <childnode refid="158" relation="usage">
+        <childnode refid="156" relation="usage">
           <edgelabel>join_counter</edgelabel>
         </childnode>
       </node>
-      <node id="158">
+      <node id="156">
         <label>std::atomic&lt; size_t &gt;</label>
       </node>
     </collaborationgraph>
-    <location file="/home/twhuang/Code/taskflow/taskflow/algorithm/pipeline.hpp" line="789" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/algorithm/pipeline.hpp" bodystart="789" bodyend="791"/>
+    <location file="/home/twhuang/Code/taskflow/taskflow/algorithm/pipeline.hpp" line="1077" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/algorithm/pipeline.hpp" bodystart="1077" bodyend="1079"/>
     <listofallmembers>
       <member refid="structtf_1_1ScalablePipeline_1_1Line_1a777bd19b4440c77f9abc5e63debe1874" prot="public" virt="non-virtual"><scope>tf::ScalablePipeline::Line</scope><name>join_counter</name></member>
     </listofallmembers>

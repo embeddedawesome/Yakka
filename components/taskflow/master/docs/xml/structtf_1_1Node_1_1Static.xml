@@ -3,9 +3,9 @@
   <compounddef id="structtf_1_1Node_1_1Static" kind="struct" language="C++" prot="private">
     <compoundname>tf::Node::Static</compoundname>
       <sectiondef kind="public-attrib">
-      <memberdef kind="variable" id="structtf_1_1Node_1_1Static_1a30c34caf3aa9406c70dbab295c082468" prot="public" static="no" mutable="no">
-        <type><ref refid="cpp/utility/functional/function" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::function</ref>&lt; void()&gt;</type>
-        <definition>std::function&lt;void()&gt; tf::Node::Static::work</definition>
+      <memberdef kind="variable" id="structtf_1_1Node_1_1Static_1ac29bd03ca625bafe5e4322a6eb2d88aa" prot="public" static="no" mutable="no">
+        <type>std::variant&lt; <ref refid="cpp/utility/functional/function" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::function</ref>&lt; void()&gt;, <ref refid="cpp/utility/functional/function" kindref="compound" external="/home/twhuang/Code/taskflow/doxygen/cppreference-doxygen-web.tag.xml">std::function</ref>&lt; void(<ref refid="classtf_1_1Runtime" kindref="compound">Runtime</ref> &amp;)&gt; &gt;</type>
+        <definition>std::variant&lt; std::function&lt;void()&gt;, std::function&lt;void(Runtime&amp;)&gt; &gt; tf::Node::Static::work</definition>
         <argsstring></argsstring>
         <name>work</name>
         <briefdescription>
@@ -14,7 +14,7 @@
         </detaileddescription>
         <inbodydescription>
         </inbodydescription>
-        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="293" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="293" bodyend="-1"/>
+        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="499" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="499" bodyend="-1"/>
       </memberdef>
       </sectiondef>
       <sectiondef kind="public-func">
@@ -38,28 +38,17 @@
         </detaileddescription>
         <inbodydescription>
         </inbodydescription>
-        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="291" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="477" bodyend="478"/>
+        <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="495" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="651" bodyend="652"/>
       </memberdef>
       </sectiondef>
     <briefdescription>
     </briefdescription>
     <detaileddescription>
     </detaileddescription>
-    <collaborationgraph>
-      <node id="276">
-        <label>tf::Node::Static</label>
-        <childnode refid="277" relation="usage">
-          <edgelabel>work</edgelabel>
-        </childnode>
-      </node>
-      <node id="277">
-        <label>std::function&lt; void()&gt;</label>
-      </node>
-    </collaborationgraph>
-    <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="288" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="288" bodyend="294"/>
+    <location file="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" line="492" column="1" bodyfile="/home/twhuang/Code/taskflow/taskflow/core/graph.hpp" bodystart="492" bodyend="500"/>
     <listofallmembers>
       <member refid="structtf_1_1Node_1_1Static_1a91ebe904215e44a81df97586f15b4e07" prot="public" virt="non-virtual"><scope>tf::Node::Static</scope><name>Static</name></member>
-      <member refid="structtf_1_1Node_1_1Static_1a30c34caf3aa9406c70dbab295c082468" prot="public" virt="non-virtual"><scope>tf::Node::Static</scope><name>work</name></member>
+      <member refid="structtf_1_1Node_1_1Static_1ac29bd03ca625bafe5e4322a6eb2d88aa" prot="public" virt="non-virtual"><scope>tf::Node::Static</scope><name>work</name></member>
     </listofallmembers>
   </compounddef>
 </doxygen>

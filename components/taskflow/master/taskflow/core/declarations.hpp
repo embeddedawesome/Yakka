@@ -34,16 +34,15 @@ class Pipeline;
 // ----------------------------------------------------------------------------
 // cudaFlow
 // ----------------------------------------------------------------------------
-class cudaNode;
-class cudaGraph;
+class cudaFlowNode;
+class cudaFlowGraph;
 class cudaTask;
 class cudaFlow;
 class cudaFlowCapturer;
-class cudaFlowCapturerBase;
-class cudaCapturingBase;
-class cudaLinearCapturing;
-class cudaSequentialCapturing;
-class cudaRoundRobinCapturing;
+class cudaFlowOptimizerBase;
+class cudaFlowLinearOptimizer;
+class cudaFlowSequentialOptimizer;
+class cudaFlowRoundRobinOptimizer;
 
 // ----------------------------------------------------------------------------
 // syclFlow
