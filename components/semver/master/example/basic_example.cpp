@@ -1,6 +1,7 @@
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2018 - 2020 Daniil Goncharov <neargye@gmail.com>.
+// Copyright (c) 2018 - 2021 Daniil Goncharov <neargye@gmail.com>.
+// Copyright (c) 2020 - 2021 Alexander Gorbunov <naratzul@gmail.com>.
 //
 // Permission is hereby  granted, free of charge, to any  person obtaining a copy
 // of this software and associated  documentation files (the "Software"), to deal
@@ -28,7 +29,7 @@ using namespace semver;
 
 int main() {
   constexpr version v_default;
-  static_assert(v_default == version(0, 1, 0, prerelease::none, 0));
+  static_assert(v_default == version(0, 1, 0, prerelease::none, std::nullopt));
   std::cout << v_default << std::endl; // 0.1.0
 
   constexpr version v1{1, 4, 3};
@@ -46,7 +47,7 @@ int main() {
   v_s.from_string("1.2.3-rc.1");
   std::string s1 = v_s.to_string();
   std::cout << s1 << std::endl; // 1.2.3-rc.1
-  v_s.prerelease_number = 0;
+  v_s.prerelease_number = std::nullopt;
   std::string s2 = v_s.to_string();
   std::cout << s2 << std::endl; // 1.2.3-rc
 
