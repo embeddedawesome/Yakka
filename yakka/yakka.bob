@@ -23,8 +23,11 @@ requires:
     - glob
     - json-schema-validator
 
-flags:
-  cpp:
-    global:
-      - -Wno-deprecated-declarations
+supports:
+  components:
+    xcode:
+      flags:
+        cpp:
+          global:
+            - -Wno-deprecated-declarations
 
