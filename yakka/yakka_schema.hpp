@@ -130,7 +130,7 @@ properties:
     type: object
     description: Blueprints
     propertyNames:
-      pattern: "^[A-Za-z_.{][A-Za-z0-9.{}/\\_]*$"
+      pattern: "^[A-Za-z_.{][A-Za-z0-9.{}/\\\\_]*$"
     patternProperties:
       '.*':
         type: object
