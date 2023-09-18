@@ -37,9 +37,11 @@ int main(int argc, char **argv)
   std::error_code error_code;
   fs::remove("yakka.log", error_code);
 
-  auto console = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
-  console->set_level(spdlog::level::warn);
-  console->set_pattern("[%^%l%$]: %v");
+  auto console = spdlog::stdout_color_mt("console");
+
+  auto console_error = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
+  console_error->set_level(spdlog::level::warn);
+  console_error->set_pattern("[%^%l%$]: %v");
   std::shared_ptr<spdlog::sinks::basic_file_sink_mt> file_log;
   try {
     file_log = std::make_shared<spdlog::sinks::basic_file_sink_mt>("yakka.log", true);
@@ -54,7 +56,7 @@ int main(int argc, char **argv)
   }
   file_log->set_level(spdlog::level::trace);
 
-  auto yakkalog = std::make_shared<spdlog::logger>("yakkalog", spdlog::sinks_init_list{ console, file_log });
+  auto yakkalog = std::make_shared<spdlog::logger>("yakkalog", spdlog::sinks_init_list{ console_error, file_log });
   spdlog::set_default_logger(yakkalog);
 
   // Create a workspace
@@ -70,7 +72,7 @@ int main(int argc, char **argv)
                        ("o,no-output", "Do not generate output folder", cxxopts::value<bool>()->default_value("false"))
                        ("f,fetch", "Automatically fetch missing components", cxxopts::value<bool>()->default_value("false"))
                        ("p,project-name", "Set the project name", cxxopts::value<std::string>()->default_value(""))
-                       ("action", "Select from 'register', 'list', 'update', 'git', or a command", cxxopts::value<std::string>());
+                       ("action", "Select from 'register', 'list', 'update', 'git', 'remove' or a command", cxxopts::value<std::string>());
   // clang-format on
 
   options.parse_positional({ "action" });
@@ -124,6 +126,18 @@ int main(int argc, char **argv)
       // const auto name = d.path().filename().generic_string();
       std::cout << "Updating: " << i << "\n";
       workspace.update_component(i);
+    }
+
+    std::cout << "Complete\n";
+    return 0;
+  } else if (action == "remove") {
+    // Find all the component repos in .yakka
+    for (auto &i: result.unmatched()) {
+      auto optional_path = workspace.find_component(i);
+      if (optional_path) {
+        spdlog::info("Removing {}", optional_path.value().string());
+        fs::remove_all(optional_path.value());
+      }
     }
 
     std::cout << "Complete\n";

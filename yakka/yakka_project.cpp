@@ -544,7 +544,7 @@ void project::load_common_commands()
     if (!command.is_null())
       captured_output = try_render(inja_env, command.get<std::string>(), generated_json);
 
-    spdlog::info("{}", captured_output);
+    spdlog::get("console")->info("{}", captured_output);
     return { captured_output, 0 };
   };
 
