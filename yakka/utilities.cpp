@@ -19,22 +19,13 @@ std::pair<std::string, int> exec(const std::string &command_text, const std::str
 #else
     auto p = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #endif
-    auto output = p.output();
-    std::string result;
-    if (output != nullptr) {
-      while (1) {
-        int c = fgetc(output);
-        if (c == EOF)
-          break;
-        result += (char)c;
-      };
-    }
-
+    auto output  = p.communicate().first;
     auto retcode = p.wait();
 #if defined(__USING_WINDOWS__)
     retcode = p.poll();
 #endif
-    return { result, retcode };
+    std::string output_text = output.buf.data();
+    return { output_text, retcode };
   } catch (std::exception e) {
     spdlog::error("Exception while executing: {}\n{}", command_text, e.what());
     return { "", -1 };
