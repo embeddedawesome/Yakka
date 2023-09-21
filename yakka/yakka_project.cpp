@@ -1051,8 +1051,7 @@ public:
 void project::validate_schema()
 {
   // Collect all the schema data
-  nlohmann::json schema = YAML::Load(component_schema_yaml).as<nlohmann::json>();
-  // nlohmann::json schema = yakka::component_schema;
+  nlohmann::json schema;
 
   for (const auto &c: components) {
     if (c->json.contains("schema")) {
@@ -1060,20 +1059,23 @@ void project::validate_schema()
     }
   }
 
-  // Create validator
-  nlohmann::json_schema::json_validator validator(nullptr, nlohmann::json_schema::default_string_format_check);
-  try {
-    validator.set_root_schema(schema);
-  } catch (const std::exception &e) {
-    spdlog::error("Setting root schema failed\n{}", e.what());
-    return;
-  }
+  if (!schema.empty()) {
+    spdlog::error("Schema: {}", schema.get<std::string>());
+    // Create validator
+    nlohmann::json_schema::json_validator validator(nullptr, nlohmann::json_schema::default_string_format_check);
+    try {
+      validator.set_root_schema(schema);
+    } catch (const std::exception &e) {
+      spdlog::error("Setting root schema failed\n{}", e.what());
+      return;
+    }
 
-  // Iterate through each component and validate
-  custom_error_handler err;
-  for (const auto &c: components) {
-    err.component_name = c->id;
-    validator.validate(c->json, err);
+    // Iterate through each component and validate
+    custom_error_handler err;
+    for (const auto &c: components) {
+      err.component_name = c->id;
+      validator.validate(c->json, err);
+    }
   }
 }
 

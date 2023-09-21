@@ -1,4 +1,5 @@
 #include "yakka_component.hpp"
+#include "yakka_schema.hpp"
 #include "blueprint_database.hpp"
 #include "spdlog/spdlog.h"
 
@@ -14,6 +15,12 @@ yakka_status component::parse_file(fs::path file_path, blueprint_database &datab
   } catch (std::exception &e) {
     spdlog::error("Failed to load file: '{}'\n{}\n", path_string, e.what());
     std::cerr << "Failed to parse: " << path_string << "\n" << e.what() << "\n";
+    return yakka_status::FAIL;
+  }
+
+  // Validate basic Yakka data
+  bool result = yakka::schema_validator::get().validate(this);
+  if (!result) {
     return yakka_status::FAIL;
   }
 

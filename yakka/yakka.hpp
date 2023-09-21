@@ -47,5 +47,4 @@ enum yakka_status {
   FAIL,
 };
 
-void fetch_component(const std::string &name, YAML::Node node, std::function<void(size_t)> progress_handler);
 } // namespace yakka

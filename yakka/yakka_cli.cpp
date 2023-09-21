@@ -234,8 +234,12 @@ int main(int argc, char **argv)
         continue;
 
       std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
-      if (new_component->parse_file(component_path.value(), project.blueprint_database) == yakka::yakka_status::SUCCESS)
+      if (new_component->parse_file(component_path.value(), project.blueprint_database) == yakka::yakka_status::SUCCESS) {
         project.components.push_back(new_component);
+      } else {
+        spdlog::error("Failed to parse {}", component_path.value().generic_string());
+        exit(-1);
+      }
     }
   }
 
