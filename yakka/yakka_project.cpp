@@ -558,7 +558,7 @@ void project::load_common_commands()
       spdlog::debug("Executing '{}'", captured_output);
       auto [temp_output, retcode] = exec(captured_output, std::string(""));
 
-      if (retcode < 0 && temp_output.length() != 0) {
+      if (retcode != 0 && temp_output.length() != 0) {
         spdlog::error("\n{} returned {}\n{}", captured_output, retcode, temp_output);
       } else if (temp_output.length() != 0)
         spdlog::info("{}", temp_output);
