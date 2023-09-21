@@ -474,10 +474,11 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
         auto [temp_output, temp_retcode] = exec(command_text, arg_text);
         retcode                          = temp_retcode;
 
-        if (retcode < 0) {
+        if (retcode != 0)
           spdlog::error("Returned {}\n{}", retcode, temp_output);
+        if (retcode < 0)
           return { temp_output, retcode };
-        }
+
         captured_output = temp_output;
         // Echo the output of the command
         // TODO: Note this should be done by the main thread to ensure the outputs from multiple run_command instances don't overlap
