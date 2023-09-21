@@ -852,7 +852,7 @@ void project::load_common_commands()
         return { "", -1 };
       }
     } catch (std::exception &e) {
-      spdlog::error("'copy' command failed while processing {}: '{}' -> '{}'", target, source, destination);
+      spdlog::error("'copy' command failed while processing {}: '{}' -> '{}'\r\n{}", target, source.dump(), destination, e.what());
       return { "", -1 };
     }
     return { "", 0 };
