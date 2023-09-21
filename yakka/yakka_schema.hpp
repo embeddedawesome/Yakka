@@ -4,8 +4,7 @@
 
 namespace yakka {
 
-class schema_validator
-{
+class schema_validator {
   nlohmann::json schema;
   nlohmann::json_schema::json_validator validator;
 
@@ -18,58 +17,14 @@ class schema_validator
       description: Name
       type: string
 
-static const std::string component_schema_yaml = R"(
-title: Yakka file
-type: object
-properties:
-  name:
-    description: Name
-    type: string
-
-  requires:
-    type: object
-    description: Requires relationships
-    properties:
-      features:
-        type: [array, null]
-        description: Collection of features
-        items:
-          type: string
-      components:
-        type: [array, null]
-        description: Collection of components
-        items:
-          type: string
-
-  supports:
-    type: object
-    description: Supporting relationships
-    properties:
-      features:
-        type: object
-        description: Collection of features
-        patternProperties:
-          '.*':
-            type: object
-      components:
-        type: object
-        description: Collection of components
-        patternProperties:
-          '.*':
-            type: object
-
-  blueprints:
-    type: object
-    description: Blueprints
-    propertyNames:
-      pattern: "^[A-Za-z_.{][A-Za-z0-9.{}/\\\\_]*$"
-    patternProperties:
-      '.*':
-        type: object
-        additionalProperties: false
-        minProperties: 1
-        properties:
-          regex:
+    requires:
+      type: object
+      description: Requires relationships
+      properties:
+        features:
+          type: [array, null]
+          description: Collection of features
+          items:
             type: string
         components:
           type: [array, null]
@@ -109,7 +64,6 @@ properties:
               type: string
             depends:
               type: array
-
             process:
               type: array
               items:
@@ -121,17 +75,17 @@ properties:
   // clang-format on
 
   class custom_error_handler : public nlohmann::json_schema::basic_error_handler {
-public:
-  yakka::component* component;
-  void error(const nlohmann::json::json_pointer &ptr, const nlohmann::json &instance, const std::string &message) override
-  {
-    nlohmann::json_schema::basic_error_handler::error(ptr, instance, message);
-    spdlog::error("Validation error in '{}': {} - {} : - {}", component->file_path.generic_string(), ptr.to_string(), instance.dump(3), message);
-  }
-};
+  public:
+    yakka::component *component;
+    void error(const nlohmann::json::json_pointer &ptr, const nlohmann::json &instance, const std::string &message) override
+    {
+      nlohmann::json_schema::basic_error_handler::error(ptr, instance, message);
+      spdlog::error("Validation error in '{}': {} - {} : - {}", component->file_path.generic_string(), ptr.to_string(), instance.dump(3), message);
+    }
+  };
 
 public:
-  static schema_validator& get()
+  static schema_validator &get()
   {
     static schema_validator the_validator;
     return the_validator;
@@ -146,14 +100,14 @@ private:
   }
 
 public:
-  schema_validator(schema_validator const&)  = delete;
-  void operator=(schema_validator const&)    = delete;
+  schema_validator(schema_validator const &) = delete;
+  void operator=(schema_validator const &)   = delete;
 
-  bool validate(yakka::component* component)
+  bool validate(yakka::component *component)
   {
     custom_error_handler err;
     err.component = component;
-    auto patch = validator.validate(component->json, err);
+    auto patch    = validator.validate(component->json, err);
     if (err) {
       return false;
     } else {
