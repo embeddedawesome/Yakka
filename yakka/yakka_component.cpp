@@ -2,6 +2,7 @@
 #include "yakka_schema.hpp"
 #include "blueprint_database.hpp"
 #include "spdlog/spdlog.h"
+#include "semver.hpp"
 
 namespace yakka {
 yakka_status component::parse_file(fs::path file_path, blueprint_database &database)
@@ -33,6 +34,13 @@ yakka_status component::parse_file(fs::path file_path, blueprint_database &datab
   else
     path_string = ".";
   json["directory"] = path_string;
+
+  // Set version
+  if (json.contains("version")) {
+    this->version = semver::from_string_noexcept(json["version"].get<std::string>()).value();
+  } else {
+    this->version = {0,0,0};
+  }
 
   // Ensure certain nodes are sequences
   if (json["requires"]["components"].is_string()) {

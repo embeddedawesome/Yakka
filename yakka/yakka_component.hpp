@@ -4,6 +4,7 @@
 #include "blueprint_database.hpp"
 #include "yaml-cpp/yaml.h"
 #include "yakka.hpp"
+#include "semver.hpp"
 #include <vector>
 #include <string>
 #include <iostream>
@@ -21,6 +22,7 @@ struct base_component {
 
   // Variables
   fs::path file_path;
+  semver::version version;
 };
 
 struct component : public base_component {
