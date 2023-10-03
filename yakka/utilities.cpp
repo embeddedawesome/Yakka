@@ -19,11 +19,14 @@ std::pair<std::string, int> exec(const std::string &command_text, const std::str
 #else
     auto p = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #endif
-    auto retcode = p.wait();
 #if defined(__USING_WINDOWS__)
-    retcode = p.poll();
+    auto output  = p.communicate().first;
+    auto retcode = p.wait();
+    retcode      = p.poll();
+#else
+    auto retcode = p.wait();
+    auto output  = p.communicate().first;
 #endif
-    auto output             = p.communicate().first;
     std::string output_text = output.buf.data();
     return { output_text, retcode };
   } catch (std::exception e) {
