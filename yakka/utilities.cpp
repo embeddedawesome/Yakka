@@ -511,4 +511,14 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
   return { captured_output, 0 };
 }
 
+std::pair<std::string, int> download_resource(const std::string url, fs::path destination)
+{
+  fs::path filename = destination / url.substr(url.find_last_not_of('/'));
+#if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+  return exec("powershell", "Invoke-WebRequest " + url + " -OutFile " + filename.generic_string() );
+#else
+  return exec("curl", url + " -o " + filename.generic_string());
+#endif
+}
+
 } // namespace yakka
