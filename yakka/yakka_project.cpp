@@ -601,6 +601,20 @@ void project::load_common_commands()
           captured_output.append("\n");
         }
       }
+    } else if (command.contains("to_yaml")) {
+      YAML::Node yaml;
+      for (std::smatch sm; std::regex_search(captured_output, sm, regex_search);)
+      {
+          YAML::Node new_node;
+          int i=1;
+          for (auto &v: command["to_yaml"])
+            new_node[v.get<std::string>()] = sm[i++].str();
+          yaml.push_back(new_node);
+          captured_output = sm.suffix();
+      }
+
+      captured_output = YAML::Dump(yaml);
+      captured_output.append("\n");
     } else if (command.contains("replace")) {
       captured_output = std::regex_replace(captured_output, regex_search, command["replace"].get<std::string>());
     } else if (command.contains("match")) {
@@ -862,9 +876,9 @@ void project::load_common_commands()
     std::string filename = try_render(inja_env, command.get<std::string>(), generated_json);
     std::ifstream datafile;
     datafile.open(filename, std::ios_base::in | std::ios_base::binary);
-    std::string line;
-    while (std::getline(datafile, line))
-      captured_output.append(line);
+    std::stringstream string_stream;
+    string_stream << datafile.rdbuf();
+    captured_output = string_stream.str();
     datafile.close();
     return { captured_output, 0 };
   };
