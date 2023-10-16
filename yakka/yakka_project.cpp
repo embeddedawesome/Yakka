@@ -1074,7 +1074,7 @@ void project::validate_schema()
   }
 
   if (!schema.empty()) {
-    spdlog::error("Schema: {}", schema.dump(2));
+    //spdlog::error("Schema: {}", schema.dump(2));
     // Create validator
     nlohmann::json_schema::json_validator validator(nullptr, nlohmann::json_schema::default_string_format_check);
     try {
