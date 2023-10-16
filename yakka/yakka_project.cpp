@@ -1065,7 +1065,7 @@ public:
 void project::validate_schema()
 {
   // Collect all the schema data
-  nlohmann::json schema;
+  nlohmann::json schema = "{ \"properties\": {} }"_json;
 
   for (const auto &c: components) {
     if (c->json.contains("schema")) {
@@ -1074,7 +1074,7 @@ void project::validate_schema()
   }
 
   if (!schema.empty()) {
-    spdlog::error("Schema: {}", schema.get<std::string>());
+    spdlog::error("Schema: {}", schema.dump(2));
     // Create validator
     nlohmann::json_schema::json_validator validator(nullptr, nlohmann::json_schema::default_string_format_check);
     try {
