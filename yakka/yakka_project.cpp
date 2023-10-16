@@ -326,11 +326,13 @@ project::state project::evaluate_dependencies()
         }
         if (matches == 0 && choice.contains("default")) {
           log->info("Selecting default choice for {}", c);
-          if (choice["default"].contains("feature"))
+          if (choice["default"].contains("feature")) {
             unprocessed_features.insert(choice["default"]["feature"].get<std::string>());
-          else if (choice["default"].contains("component"))
+            unprocessed_choices.erase(c);
+          } else if (choice["default"].contains("component")) {
             unprocessed_components.insert(choice["default"]["component"].get<std::string>());
-          else {
+            unprocessed_choices.erase(c);
+          } else {
             log->error("Invalid default choice in {}", c);
             return project::state::PROJECT_HAS_INVALID_COMPONENT;
           }
