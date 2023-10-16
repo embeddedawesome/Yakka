@@ -79,10 +79,12 @@
 namespace semver {
 
 enum struct prerelease : std::uint8_t {
-  alpha = 0,
-  beta = 1,
-  rc = 2,
-  none = 3
+  dev = 0,
+  ifc = 10,
+  alpha = 20,
+  beta = 30,
+  rc = 40,
+  none = 50
 };
 
 #if __has_include(<charconv>)
@@ -117,6 +119,8 @@ namespace detail {
 inline constexpr auto alpha = std::string_view{"alpha", 5};
 inline constexpr auto beta  = std::string_view{"beta", 4};
 inline constexpr auto rc    = std::string_view{"rc", 2};
+inline constexpr auto dev   = std::string_view{"dev", 2};
+inline constexpr auto ifc   = std::string_view{"ifc", 2};
 
 // Min version string length = 1(<major>) + 1(.) + 1(<minor>) + 1(.) + 1(<patch>) = 5.
 inline constexpr auto min_version_string_length = 5;
@@ -180,6 +184,10 @@ constexpr std::uint8_t length(prerelease t) noexcept {
     return static_cast<std::uint8_t>(beta.length());
   } else if (t == prerelease::rc) {
     return static_cast<std::uint8_t>(rc.length());
+  } else if (t == prerelease::dev) {
+    return static_cast<std::uint8_t>(dev.length());
+  } else if (t == prerelease::ifc) {
+    return static_cast<std::uint8_t>(ifc.length());
   }
 
   return 0;
@@ -215,7 +223,11 @@ constexpr char* to_chars(char* str, prerelease t) noexcept {
                            ? beta
                            : t == prerelease::rc
                                  ? rc
-                                 : std::string_view{};
+                                 : t == prerelease::dev
+                                    ? dev
+                                    : t == prerelease::ifc
+                                      ? ifc
+                                      : std::string_view{};
 
   if (p.size() > 0) {
     for (auto it = p.rbegin(); it != p.rend(); ++it) {
@@ -271,6 +283,12 @@ constexpr const char* from_chars(const char* first, const char* last, prerelease
   } else if (equals(first, last, rc)) {
     p = prerelease::rc;
     return first + rc.length();
+  } else if (equals(first, last, dev)) {
+    p = prerelease::dev;
+    return first + dev.length();
+  } else if (equals(first, last, ifc)) {
+    p = prerelease::ifc;
+    return first + ifc.length();
   }
 
   return nullptr;
