@@ -602,14 +602,13 @@ void project::load_common_commands()
       }
     } else if (command.contains("to_yaml")) {
       YAML::Node yaml;
-      for (std::smatch sm; std::regex_search(captured_output, sm, regex_search);)
-      {
-          YAML::Node new_node;
-          int i=1;
-          for (auto &v: command["to_yaml"])
-            new_node[v.get<std::string>()] = sm[i++].str();
-          yaml.push_back(new_node);
-          captured_output = sm.suffix();
+      for (std::smatch sm; std::regex_search(captured_output, sm, regex_search);) {
+        YAML::Node new_node;
+        int i = 1;
+        for (auto &v: command["to_yaml"])
+          new_node[v.get<std::string>()] = sm[i++].str();
+        yaml.push_back(new_node);
+        captured_output = sm.suffix();
       }
 
       captured_output = YAML::Dump(yaml);
