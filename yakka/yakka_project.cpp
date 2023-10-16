@@ -59,12 +59,11 @@ void project::init_project(const std::string build_string)
 
 void project::init_project(std::vector<std::string> components, std::vector<std::string> features)
 {
-  initial_components = components;
-  initial_features   = features;
+  initial_features = features;
 
-  for (const auto &c: initial_components)
+  for (const auto &c: components)
     unprocessed_components.insert(c);
-  for (const auto &f: initial_features)
+  for (const auto &f: features)
     unprocessed_features.insert(f);
   init_project();
 }
