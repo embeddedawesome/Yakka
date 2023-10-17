@@ -280,15 +280,15 @@ project::state project::evaluate_dependencies()
               log->info("Processing required component '{}' in {}", c, component_id);
               process_requirements(new_component->json, new_component->json["supports"]["components"][c]);
             }
-
-          // Process all the existing components support for the new component
-          for (auto &c: components)
-            if (c->json.contains("supports") && c->json["supports"].contains("components") && c->json["supports"]["components"].contains(component_id)) {
-              log->info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
-              process_requirements(c->json, c->json["supports"]["components"][component_id]);
-            }
         }
       }
+
+      // Process all the existing components support for the new component
+      for (auto &c: components)
+        if (c->json.contains("supports") && c->json["supports"].contains("components") && c->json["supports"]["components"].contains(component_id)) {
+          log->info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
+          process_requirements(c->json, c->json["supports"]["components"][component_id]);
+        }
     }
 
     // Process all the new features
