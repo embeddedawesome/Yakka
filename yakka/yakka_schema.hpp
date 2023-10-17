@@ -68,6 +68,42 @@ class schema_validator {
               type: array
               items:
                 type: object
+    choices:
+      type: object
+      description: Choices
+      propertyNames:
+        pattern: "^[A-Za-z_.]*$"
+      patternProperties:
+        '.*':
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          required:
+            - description
+          properties:
+            description:
+              type: string
+            features:
+              type: array
+              items:
+                type: string
+            components:
+              type: array
+              items:
+                type: string
+            default:
+              type: object
+              oneOf:
+                - properties:
+                    feature:
+                      type: string
+                  required:
+                    - feature
+                - properties:
+                    component:
+                      type: string
+                  required:
+                    - component
 
   required: 
     - name
