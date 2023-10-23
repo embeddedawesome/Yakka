@@ -17,15 +17,16 @@ std::pair<std::string, int> exec(const std::string &command_text, const std::str
 #if defined(__USING_WINDOWS__)
     auto p = subprocess::Popen(command, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #else
-    auto p = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
+    auto p      = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #endif
 #if defined(__USING_WINDOWS__)
     auto output  = p.communicate().first;
     auto retcode = p.wait();
     retcode      = p.poll();
 #else
-    auto retcode = p.wait();
-    auto output  = p.communicate().first;
+    auto output = p.communicate().first;
+    p.wait();
+    auto retcode = p.retcode();
 #endif
     std::string output_text = output.buf.data();
     return { output_text, retcode };
@@ -45,7 +46,7 @@ int exec(const std::string &command_text, const std::string &arg_text, std::func
 #if defined(__USING_WINDOWS__)
     auto p = subprocess::Popen(command, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #else
-    auto p = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
+    auto p       = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #endif
     auto output = p.output();
     std::array<char, 512> buffer;
@@ -515,7 +516,7 @@ std::pair<std::string, int> download_resource(const std::string url, fs::path de
 {
   fs::path filename = destination / url.substr(url.find_last_not_of('/'));
 #if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
-  return exec("powershell", "Invoke-WebRequest " + url + " -OutFile " + filename.generic_string() );
+  return exec("powershell", "Invoke-WebRequest " + url + " -OutFile " + filename.generic_string());
 #else
   return exec("curl", url + " -o " + filename.generic_string());
 #endif
