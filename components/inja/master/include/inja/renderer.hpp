@@ -579,7 +579,11 @@ class Renderer : public NodeVisitor {
   void visit(const IfStatementNode& node) {
     const auto result = eval_expression_list(node.condition);
     if (result->is_null()) {
-      return;
+      if (node.has_false_statement) {
+        node.false_statement.accept(*this);
+      } else {
+        return;
+      }
     }
     if (truthy(result.get())) {
       node.true_statement.accept(*this);
