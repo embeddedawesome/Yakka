@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - run: clang --version
     - run: ./yakka-linux link! yakka_cli clang
     - run: mv ${{github.workspace}}/output/yakka_cli-clang/yakka_cli-clang ${{github.workspace}}/output/yakka_cli-clang/yakka-linux
     - uses: actions/upload-artifact@v3
