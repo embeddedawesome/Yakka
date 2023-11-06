@@ -12,7 +12,6 @@ flags:
     global:
       - -Os
       - -std=c++20
-      - -stdlib=libc++
       - -MD
       - -ffunction-sections
       - -fdata-sections
