@@ -303,7 +303,10 @@ class Renderer : public NodeVisitor {
       const auto id_node = not_found_stack.top();
       not_found_stack.pop();
       data_eval_stack.pop();
-      data_eval_stack.push(&container->at(id_node->name));
+      if (container->contains(id_node->name))
+        data_eval_stack.push(&container->at(id_node->name));
+      else
+        data_eval_stack.push(nullptr);
     } break;
     case Op::At: {
       const auto args = get_arguments<2>(node);
