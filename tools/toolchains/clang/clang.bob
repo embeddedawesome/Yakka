@@ -24,7 +24,7 @@ flags:
       - -Wl,--gc-sections
 
 tools:
-  clang: clang++
+  clang: clang++-15
 
 blueprints:
   link:
