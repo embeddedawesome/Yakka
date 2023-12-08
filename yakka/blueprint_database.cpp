@@ -7,9 +7,10 @@
 #include <regex>
 
 namespace yakka {
-std::shared_ptr<blueprint_match> blueprint_database::find_match(const std::string target, const nlohmann::json &project_summary)
+std::vector<std::shared_ptr<blueprint_match>> blueprint_database::find_match(const std::string target, const nlohmann::json &project_summary)
 {
   bool blueprint_match_found = false;
+  std::vector<std::shared_ptr<blueprint_match>> result;
 
   for (const auto &blueprint: blueprints) {
     auto match = std::make_shared<blueprint_match>();
@@ -137,7 +138,7 @@ std::shared_ptr<blueprint_match> blueprint_database::find_match(const std::strin
         generated_depend = local_inja_env.render(d.name, project_summary);
       } catch (std::exception &e) {
         spdlog::error("Couldn't apply template: '{}'\n{}", d.name, e.what());
-        return nullptr;
+        return result;
       }
 
       // Check if the input was a YAML array construct
@@ -157,14 +158,15 @@ std::shared_ptr<blueprint_match> blueprint_database::find_match(const std::strin
       }
     }
 
-    return match;
+    result.push_back(match);
+    // return match;
   }
 
   if (!blueprint_match_found) {
     if (!fs::exists(target))
       spdlog::info("No blueprint for '{}'", target);
   }
-  return nullptr;
+  return result;
 }
 
 #if 0

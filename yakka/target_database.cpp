@@ -144,7 +144,8 @@ void target_database::generate_target_database(std::vector<std::string> commands
       // Check if target is not in the database. Note task_database is a multimap
       if (targets.find(t) == targets.end()) {
         const auto match = blueprint_database.find_match(t, this->project_summary);
-        targets.insert({ t, match });
+        for (const auto &m: match)
+          targets.insert({ t, m });
       }
       auto tasks = targets.equal_range(t);
 

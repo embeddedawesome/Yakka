@@ -17,7 +17,7 @@ class blueprint_database {
 public:
   void load(const std::string path);
   void save(const std::string path);
-  std::shared_ptr<blueprint_match> find_match(const std::string target, const nlohmann::json &project_summary);
+  std::vector<std::shared_ptr<blueprint_match>> find_match(const std::string target, const nlohmann::json &project_summary);
 
   // void generate_task_database(std::vector<std::string> command_list);
   // void process_blueprint_target( const std::string target );
