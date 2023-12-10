@@ -572,6 +572,31 @@ void project::load_common_commands()
     }
   };
 
+  blueprint_commands["shell"] = [](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
+    if (command.is_null())
+      return { "", -1 };
+    std::string temp = command.get<std::string>();
+    try {
+#if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
+      captured_output = "cmd /k \"" + inja_env.render(temp, generated_json) + "\"";
+#else
+      captured_output = inja_env.render(temp, generated_json);
+#endif
+      spdlog::debug("Executing '{}' in a shell", captured_output);
+      auto [temp_output, retcode] = exec(captured_output, std::string(""));
+
+      if (retcode != 0 && temp_output.length() != 0) {
+        spdlog::error("\n{} returned {}\n{}", captured_output, retcode, temp_output);
+      } else if (temp_output.length() != 0)
+        spdlog::info("{}", temp_output);
+      return { temp_output, retcode };
+    } catch (std::exception &e) {
+      spdlog::error("Failed to execute: {}\n{}", temp, e.what());
+      captured_output = "";
+      return { "", -1 };
+    }
+  };
+
   blueprint_commands["fix_slashes"] = [](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
     std::replace(captured_output.begin(), captured_output.end(), '\\', '/');
     return { captured_output, 0 };
