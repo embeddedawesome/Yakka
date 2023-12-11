@@ -13,7 +13,7 @@ jobs:
     - uses: actions/checkout@v3
     - run: clang-15 --version
     - run: ./yakka-linux link! yakka_cli gcc
-    - run: mv ${{github.workspace}}/output/yakka_cli-gcc/yakka_cli-gcc ${{github.workspace}}/output/yakka_cli-clang/yakka-linux
+    - run: mv ${{github.workspace}}/output/yakka_cli-gcc/yakka_cli-gcc ${{github.workspace}}/output/yakka_cli-gcc/yakka-linux
     - uses: actions/upload-artifact@v3
       with:
         name: Linux executable
