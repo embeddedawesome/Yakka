@@ -17,7 +17,7 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: Linux executable
-        path: ${{github.workspace}}/output/yakka_cli-clang/yakka-linux
+        path: ${{github.workspace}}/output/yakka_cli-gcc/yakka-linux
         if-no-files-found: error
     - uses: actions/upload-artifact@v3
       if: failure()
