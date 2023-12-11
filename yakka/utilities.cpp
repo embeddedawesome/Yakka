@@ -30,7 +30,7 @@ std::pair<std::string, int> exec(const std::string &command_text, const std::str
 #endif
     std::string output_text = output.buf.data();
     return { output_text, retcode };
-  } catch (std::exception e) {
+  } catch (std::exception &e) {
     spdlog::error("Exception while executing: {}\n{}", command_text, e.what());
     return { "", -1 };
   }
@@ -62,7 +62,7 @@ int exec(const std::string &command_text, const std::string &arg_text, std::func
           std::string temp(buffer.data());
           try {
             function(temp);
-          } catch (std::exception e) {
+          } catch (std::exception &e) {
             spdlog::debug("exec() data processing threw exception '{}'for the following data:\n{}", e.what(), temp);
           }
           buffer.fill('\0');
@@ -76,7 +76,7 @@ int exec(const std::string &command_text, const std::string &arg_text, std::func
     retcode = p.poll();
 #endif
     return retcode;
-  } catch (std::exception e) {
+  } catch (std::exception &e) {
     spdlog::error("Exception while executing: {}\n{}", command_text, e.what());
   }
   return -1;
