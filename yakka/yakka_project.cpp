@@ -726,7 +726,7 @@ void project::load_common_commands()
           fs::path p(filename);
           fs::create_directories(p.parent_path());
         }
-      } catch (std::exception e) {
+      } catch (std::exception &e) {
         spdlog::error("Couldn't create directory for '{}'", filename);
         return { "", -1 };
       }
