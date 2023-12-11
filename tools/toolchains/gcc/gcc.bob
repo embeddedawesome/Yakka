@@ -3,24 +3,23 @@ name: GCC compiler
 flags:
   c:
     global:
-      - -O3
+      - -Os
       - -MD
-      - -g
       - -ffunction-sections
       - -fdata-sections
 
   cpp:
     global:
-      - -O3
-      - -MD
+      - -Os
       - -std=c++20
-      - -g
+      - -MD
       - -ffunction-sections
       - -fdata-sections
+      - -Werror -Wpedantic -Wall
 
   ld:
     global:
-      - -O3
+      - -Os
       - -pthread
       - -Wl,--gc-sections
 
@@ -34,7 +33,6 @@ blueprints:
 
   '{{project_output}}/{{project_name}}{{configuration.executable_extension}}':
     depends:
-      - prelink
       - '[{% for name, component in components %}{%if existsIn(component,"sources") %}{% for source in component.sources %}{{project_output}}/components/{{name}}/{{source}}.o, {% endfor %}{% endif %}{% endfor %}]'
       - '{{project_output}}/{{project_name}}.global_ld_options'
     process:
@@ -46,6 +44,7 @@ blueprints:
       - '{{project_output}}/components/{{$(1)}}/{{$(1)}}.{{$(3)}}_options'
       - '{{at(components, $(1)).directory}}/{{$(2)}}.{{$(3)}}'
       - '{{project_output}}/{{project_name}}.global_{{$(3)}}_options'
+      - dependency_file: '{{at(components, $(1)).directory}}/{{$(2)}}.{{$(3)}}.d'
     process:
       - create_directory: '{{$(0)}}'
       - g++: "-c @{{project_output}}/{{project_name}}.global_{{$(3)}}_options @{{project_output}}/components/{{$(1)}}/{{$(1)}}.{{$(3)}}_options -o {{$(0)}} {{at(components, $(1)).directory}}/{{$(2)}}.{{$(3)}}"
