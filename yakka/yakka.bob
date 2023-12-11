@@ -25,6 +25,11 @@ requires:
 
 supports:
   components:
+    gcc:
+      flags:
+        cpp:
+          global:
+          - -Wno-error=sign-compare
     xcode:
       flags:
         cpp:

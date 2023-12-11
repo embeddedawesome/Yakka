@@ -86,7 +86,7 @@ bool yaml_diff(const YAML::Node &node1, const YAML::Node &node2)
 {
   std::vector<std::pair<const YAML::Node &, const YAML::Node &>> compare_list;
   compare_list.push_back({ node1, node2 });
-  for (int i = 0; i < compare_list.size(); ++i) {
+  for (size_t i = 0; i < compare_list.size(); ++i) {
     const YAML::Node &left  = compare_list[i].first;
     const YAML::Node &right = compare_list[i].second;
 
@@ -103,7 +103,7 @@ bool yaml_diff(const YAML::Node &node1, const YAML::Node &node2)
         // Verify the sequences have the same length
         if (left.size() != right.size())
           return true;
-        for (int a = 0; a < left.size(); ++a)
+        for (size_t a = 0; a < left.size(); ++a)
           compare_list.push_back({ left[a], right[a] });
         break;
 
