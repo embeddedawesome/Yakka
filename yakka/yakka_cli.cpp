@@ -16,6 +16,7 @@
 #include <fstream>
 #include <chrono>
 #include <future>
+#include <algorithm>
 
 using namespace indicators;
 using namespace std::chrono_literals;
@@ -25,9 +26,7 @@ static void evaluate_project_choices(yakka::workspace &workspace, yakka::project
 static void run_taskflow(yakka::project &project);
 
 tf::Task &create_tasks(yakka::project &project, const std::string &name, std::map<std::string, tf::Task> &tasks, tf::Taskflow &taskflow);
-static const semver::version yakka_version{
-#include "yakka_version.h"
-};
+static const semver::version yakka_version{};
 
 int main(int argc, char **argv)
 {
@@ -286,7 +285,8 @@ void run_taskflow(yakka::project &project)
 {
   project.work_task_count             = 0;
   std::atomic<int> execution_progress = 0;
-  tf::Executor executor;
+  int last_progress_update            = 0;
+  tf::Executor executor(std::min(32U, std::thread::hardware_concurrency()));
   auto finish = project.taskflow.emplace([&]() {
     execution_progress = 100;
   });
@@ -302,8 +302,11 @@ void run_taskflow(yakka::project &project)
   auto execution_future = executor.run(project.taskflow);
 
   do {
-    building_bar.set_option(option::PostfixText{ std::to_string(execution_progress) + "/" + std::to_string(project.work_task_count) });
-    building_bar.set_progress(execution_progress);
+    if (execution_progress != last_progress_update) {
+      building_bar.set_option(option::PostfixText{ std::to_string(execution_progress) + "/" + std::to_string(project.work_task_count) });
+      building_bar.set_progress(execution_progress);
+      last_progress_update = execution_progress;
+    }
   } while (execution_future.wait_for(500ms) != std::future_status::ready);
 
   building_bar.set_option(option::PostfixText{ std::to_string(project.work_task_count) + "/" + std::to_string(project.work_task_count) });

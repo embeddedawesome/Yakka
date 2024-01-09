@@ -660,7 +660,8 @@ void project::load_common_commands()
       if (command.is_string()) {
         captured_output = try_render(inja_env, command.get<std::string>(), data.is_null() ? generated_json : data);
         return { captured_output, 0 };
-      } else if (command.is_object()) {
+      }
+      if (command.is_object()) {
         if (command.contains("data_file")) {
           std::string data_filename = try_render(inja_env, command["data_file"].get<std::string>(), generated_json);
           YAML::Node data_yaml      = YAML::LoadFile(data_filename);
@@ -677,7 +678,9 @@ void project::load_common_commands()
           template_filename = try_render(inja_env, command["template_file"].get<std::string>(), generated_json);
           captured_output   = try_render_file(inja_env, template_filename, data.is_null() ? generated_json : data);
           return { captured_output, 0 };
-        } else if (command.contains("template")) {
+        }
+
+        if (command.contains("template")) {
           template_string = command["template"].get<std::string>();
           captured_output = try_render(inja_env, template_string, data.is_null() ? generated_json : data);
           return { captured_output, 0 };
@@ -740,10 +743,10 @@ void project::load_common_commands()
     if (fs::exists(filename)) {
       spdlog::info("{} exists", filename);
       return { captured_output, 0 };
-    } else {
-      spdlog::info("BAD!! {} doesn't exist", filename);
-      return { "", -1 };
     }
+
+    spdlog::info("BAD!! {} doesn't exist", filename);
+    return { "", -1 };
   };
 
   blueprint_commands["rm"] = [](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
@@ -771,7 +774,9 @@ void project::load_common_commands()
     if (!command.contains("data")) {
       spdlog::error("'pack' command requires 'data'\n");
       return { "", -1 };
-    } else if (!command.contains("format")) {
+    }
+
+    if (!command.contains("format")) {
       spdlog::error("'pack' command requires 'format'\n");
       return { "", -1 };
     }
@@ -827,7 +832,7 @@ void project::load_common_commands()
           break;
       }
     }
-    auto chars = reinterpret_cast<char const *>(data_output.data());
+    auto *chars = reinterpret_cast<char const *>(data_output.data());
     captured_output.insert(captured_output.end(), chars, chars + data_output.size());
     return { captured_output, 0 };
   };
@@ -960,7 +965,7 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
     if (target_name.front() == data_dependency_identifier) {
       task.data(&new_todo->second).work([=, this]() {
         // log->info("{}: data", target_name);
-        auto d           = static_cast<construction_task *>(task.data());
+        auto *d          = static_cast<construction_task *>(task.data());
         d->last_modified = has_data_dependency_changed(target_name, previous_summary, project_summary) ? fs::file_time_type::max() : fs::file_time_type::min();
         if (d->last_modified > start_time)
           log->info("{} has been updated", target_name);
@@ -971,7 +976,7 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
     else if (fs::exists(target_name)) {
       // Create a new task to retrieve the file timestamp
       task.data(&new_todo->second).work([=]() {
-        auto d           = static_cast<construction_task *>(task.data());
+        auto *d          = static_cast<construction_task *>(task.data());
         d->last_modified = fs::last_write_time(target_name);
         //log->info("{}: timestamp {}", target_name, (uint)d->last_modified.time_since_epoch().count());
         return;
@@ -994,7 +999,7 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
       if (abort_build)
         return;
       // log->info("{}: process --- {}", target_name, task.hash_value());
-      auto d = static_cast<construction_task *>(task.data());
+      auto *d = static_cast<construction_task *>(task.data());
       if (d->last_modified != fs::file_time_type::min()) {
         // I don't think this event happens. This check can probably be removed
         log->info("{} already done", target_name);

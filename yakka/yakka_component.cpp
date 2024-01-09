@@ -39,7 +39,7 @@ yakka_status component::parse_file(fs::path file_path, blueprint_database &datab
   if (json.contains("version")) {
     this->version = semver::from_string_noexcept(json["version"].get<std::string>()).value();
   } else {
-    this->version = {0,0,0};
+    this->version = { 0, 0, 0 };
   }
 
   // Ensure certain nodes are sequences
