@@ -2,6 +2,7 @@
 
 #include "task.hpp"
 #include "../algorithm/partitioner.hpp"
+#include "task_wrapper.hpp"
 
 /**
 @file flow_builder.hpp
@@ -221,7 +222,7 @@ class FlowBuilder {
   The taskflow object @c t2 is composed of another taskflow object @c t1,
   preceded by another static task @c init.
   When taskflow @c t2 is submitted to an executor,
-  @c init will run first and then @c comp which spwans its definition
+  @c init will run first and then @c comp which spawns its definition
   in taskflow @c t1.
 
   The target @c object being composed must define the method
@@ -313,6 +314,7 @@ class FlowBuilder {
   */
   void linearize(std::initializer_list<Task> tasks);
 
+
   // ------------------------------------------------------------------------
   // parallel iterations
   // ------------------------------------------------------------------------
@@ -324,11 +326,13 @@ class FlowBuilder {
   @tparam E ending iterator type
   @tparam C callable type
   @tparam P partitioner type (default tf::GuidedPartitioner)
+  @tparam W task wrapper type (default tf::TaskWrapperIdent)
 
   @param first iterator to the beginning (inclusive)
   @param last iterator to the end (exclusive)
   @param callable callable object to apply to the dereferenced iterator
   @param part partitioning algorithm to schedule parallel iterations
+  @param task_wrapper task wrapper to wrap the generated tasks. Can be used to apply custom task attributes.
 
   @return a tf::Task handle
 
@@ -348,8 +352,8 @@ class FlowBuilder {
 
   Please refer to @ref ParallelIterations for details.
   */
-  template <typename B, typename E, typename C, typename P = GuidedPartitioner>
-  Task for_each(B first, E last, C callable, P&& part = P());
+  template <typename B, typename E, typename C, typename P = GuidedPartitioner, typename W = TaskWrapperIdent>
+  Task for_each(B first, E last, C callable, P&& part = P(), W &&task_wrapper=W());
   
   /**
   @brief constructs an STL-styled index-based parallel-for task 
@@ -365,6 +369,7 @@ class FlowBuilder {
   @param step step size
   @param callable callable object to apply to each valid index
   @param part partitioning algorithm to schedule parallel iterations
+  @param task_wrapper task wrapper to wrap the generated tasks. Can be used to apply custom task attributes.
 
   @return a tf::Task handle
 
@@ -389,9 +394,9 @@ class FlowBuilder {
 
   Please refer to @ref ParallelIterations for details.
   */
-  template <typename B, typename E, typename S, typename C, typename P = GuidedPartitioner>
+  template <typename B, typename E, typename S, typename C, typename P = GuidedPartitioner, typename W = TaskWrapperIdent>
   Task for_each_index(
-    B first, E last, S step, C callable, P&& part = P()
+    B first, E last, S step, C callable, P&& part = P(), W&&task_wrapper=W()
   );
 
   // ------------------------------------------------------------------------
@@ -406,12 +411,14 @@ class FlowBuilder {
   @tparam O output iterator type
   @tparam C callable type
   @tparam P partitioner type (default tf::GuidedPartitioner)
+  @tparam W task wrapper type (default tf::TaskWrapperIdent)
 
   @param first1 iterator to the beginning of the first range
   @param last1 iterator to the end of the first range
   @param d_first iterator to the beginning of the output range
   @param c an unary callable to apply to dereferenced input elements
   @param part partitioning algorithm to schedule parallel iterations
+  @param task_wrapper task wrapper to wrap the generated tasks. Can be used to apply custom task attributes.
 
   @return a tf::Task handle
 
@@ -432,9 +439,10 @@ class FlowBuilder {
   Please refer to @ref ParallelTransforms for details.
   */
   template <
-    typename B, typename E, typename O, typename C, typename P = GuidedPartitioner
+    typename B, typename E, typename O, typename C, typename P = GuidedPartitioner, typename W = TaskWrapperIdent,
+    std::enable_if_t<is_partitioner_v<std::decay_t<P>>, void>* = nullptr
   >
-  Task transform(B first1, E last1, O d_first, C c, P&& part = P());
+  Task transform(B first1, E last1, O d_first, C c, P&& part = P(), W&&task_wrapper=W());
   
   /**
   @brief constructs a parallel-transform task
@@ -472,10 +480,10 @@ class FlowBuilder {
   Please refer to @ref ParallelTransforms for details.
   */
   template <
-    typename B1, typename E1, typename B2, typename O, typename C, typename P=GuidedPartitioner,
+    typename B1, typename E1, typename B2, typename O, typename C, typename P=GuidedPartitioner, typename W = TaskWrapperIdent,
     std::enable_if_t<!is_partitioner_v<std::decay_t<C>>, void>* = nullptr
   >
-  Task transform(B1 first1, E1 last1, B2 first2, O d_first, C c, P&& part = P());
+  Task transform(B1 first1, E1 last1, B2 first2, O d_first, C c, P&& part = P(), W&&task_wrapper=W());
   
   // ------------------------------------------------------------------------
   // reduction
@@ -517,7 +525,7 @@ class FlowBuilder {
   Task reduce(B first, E last, T& init, O bop, P&& part = P());
   
   // ------------------------------------------------------------------------
-  // transfrom and reduction
+  // transform and reduction
   // ------------------------------------------------------------------------
 
   /**
@@ -527,7 +535,7 @@ class FlowBuilder {
   @tparam E ending iterator type
   @tparam T result type
   @tparam BOP binary reducer type
-  @tparam UOP unary transformion type
+  @tparam UOP unary transformation type
   @tparam P partitioner type (default tf::GuidedPartitioner)
 
   @param first iterator to the beginning (inclusive)
@@ -555,10 +563,56 @@ class FlowBuilder {
   Please refer to @ref ParallelReduction for details.
   */
   template <
-   typename B, typename E, typename T, typename BOP, typename UOP, typename P = GuidedPartitioner
+    typename B, typename E, typename T, typename BOP, typename UOP, typename P = GuidedPartitioner,
+    std::enable_if_t<is_partitioner_v<std::decay_t<P>>, void>* = nullptr
   >
   Task transform_reduce(B first, E last, T& init, BOP bop, UOP uop, P&& part = P());
+
+  /**
+  @brief constructs an STL-styled parallel transform-reduce task
+  @tparam B1 first beginning iterator type
+  @tparam E1 first ending iterator type
+  @tparam B2 second beginning iterator type
+  @tparam T result type
+  @tparam BOP_R binary reducer type
+  @tparam BOP_T binary transformation type
+  @tparam P partitioner type (default tf::GuidedPartitioner)
+ 
+  @param first1 iterator to the beginning of the first range (inclusive)
+  @param last1 iterator to the end of the first range (exclusive)
+  @param first2 iterator to the beginning of the second range
+  @param init initial value of the reduction and the storage for the reduced result
+  @param bop_r binary operator that will be applied in unspecified order to the results of @c bop_t
+  @param bop_t binary operator that will be applied to transform each element in the range to the result type
+  @param part partitioning algorithm to schedule parallel iterations
+ 
+  @return a tf::Task handle
+ 
+  The task spawns asynchronous tasks to perform parallel reduction over @c init and
+  the transformed elements in the range <tt>[first, last)</tt>.
+  The reduced result is store in @c init.
+  This method is equivalent to the parallel execution of the following loop:
+ 
+  @code{.cpp}
+  for(auto itr1=first1, itr2=first2; itr1!=last1; itr1++, itr2++) {
+    init = bop_r(init, bop_t(*itr1, *itr2));
+  }
+  @endcode
+ 
+  Iterators are templated to enable stateful range using std::reference_wrapper.
+
+  Please refer to @ref ParallelReduction for details.
+  */
   
+  template <
+    typename B1, typename E1, typename B2, typename T, typename BOP_R, typename BOP_T, 
+    typename P = GuidedPartitioner,
+    std::enable_if_t<!is_partitioner_v<std::decay_t<BOP_T>>, void>* = nullptr
+  >
+  Task transform_reduce(
+    B1 first1, E1 last1, B2 first2, T& init, BOP_R bop_r, BOP_T bop_t, P&& part = P()
+  );
+
   // ------------------------------------------------------------------------
   // scan
   // ------------------------------------------------------------------------
@@ -838,12 +892,14 @@ class FlowBuilder {
   @tparam T resulting iterator type
   @tparam UOP unary predicate type
   @tparam P partitioner type
+  @tparam W task wrapper type (default tf::TaskWrapperIdent)
   
   @param first start of the input range
   @param last end of the input range
   @param result resulting iterator to the found element in the input range
   @param predicate unary predicate which returns @c true for the required element
   @param part partitioning algorithm (default tf::GuidedPartitioner)
+  @param task_wrapper task wrapper to wrap the generated tasks. Can be used to apply custom task attributes.
 
   Returns an iterator to the first element in the range <tt>[first, last)</tt> 
   that satisfies the given criteria (or last if there is no such iterator).
@@ -875,9 +931,9 @@ class FlowBuilder {
   
   Iterators are templated to enable stateful range using std::reference_wrapper.
   */
-  template <typename B, typename E, typename T, typename UOP, typename P = GuidedPartitioner>
-  Task find_if(B first, E last, T& result, UOP predicate, P&& part = P());
-  
+  template <typename B, typename E, typename T, typename UOP, typename P = GuidedPartitioner, typename W = TaskWrapperIdent>
+  Task find_if(B first, E last, T &result, UOP predicate, P &&part = P(), W &&task_wrapper = W());
+
   /**
   @brief constructs a task to perform STL-styled find-if-not algorithm
 
@@ -886,12 +942,14 @@ class FlowBuilder {
   @tparam T resulting iterator type
   @tparam UOP unary predicate type
   @tparam P partitioner type
+  @tparam W task wrapper type (default tf::TaskWrapperIdent)
   
   @param first start of the input range
   @param last end of the input range
   @param result resulting iterator to the found element in the input range
   @param predicate unary predicate which returns @c false for the required element
   @param part partitioning algorithm (default tf::GuidedPartitioner)
+  @param task_wrapper task wrapper to wrap the generated tasks. Can be used to apply custom task attributes.
 
   Returns an iterator to the first element in the range <tt>[first, last)</tt> 
   that satisfies the given criteria (or last if there is no such iterator).
@@ -923,8 +981,8 @@ class FlowBuilder {
   
   Iterators are templated to enable stateful range using std::reference_wrapper.
   */
-  template <typename B, typename E, typename T, typename UOP,typename P = GuidedPartitioner>
-  Task find_if_not(B first, E last, T& result, UOP predicate, P&& part = P());
+  template <typename B, typename E, typename T, typename UOP, typename P = GuidedPartitioner, typename W = TaskWrapperIdent>
+  Task find_if_not(B first, E last, T &result, UOP predicate, P &&part = P(), W &&task_wrapper = W());
 
   /**
   @brief constructs a task to perform STL-styled min-element algorithm
@@ -1065,7 +1123,7 @@ class FlowBuilder {
   @param first iterator to the beginning (inclusive)
   @param last iterator to the end (exclusive)
 
-  The task spawns asynchronous tasks to parallelly sort elements in the range
+  The task spawns asynchronous tasks to parallel sort elements in the range
   <tt>[first, last)</tt> using the @c std::less<T> comparator,
   where @c T is the dereferenced iterator type.
 
@@ -1097,7 +1155,7 @@ inline FlowBuilder::FlowBuilder(Graph& graph) :
 // Function: emplace
 template <typename C, std::enable_if_t<is_static_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph._emplace_back("", 0, nullptr, nullptr,
+  return Task(_graph._emplace_back("", 0, nullptr, nullptr, 0,
     std::in_place_type_t<Node::Static>{}, std::forward<C>(c)
   ));
 }
@@ -1105,7 +1163,7 @@ Task FlowBuilder::emplace(C&& c) {
 // Function: emplace
 template <typename C, std::enable_if_t<is_dynamic_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph._emplace_back("", 0, nullptr, nullptr,
+  return Task(_graph._emplace_back("", 0, nullptr, nullptr, 0,
     std::in_place_type_t<Node::Dynamic>{}, std::forward<C>(c)
   ));
 }
@@ -1113,7 +1171,7 @@ Task FlowBuilder::emplace(C&& c) {
 // Function: emplace
 template <typename C, std::enable_if_t<is_condition_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph._emplace_back("", 0, nullptr, nullptr,
+  return Task(_graph._emplace_back("", 0, nullptr, nullptr, 0,
     std::in_place_type_t<Node::Condition>{}, std::forward<C>(c)
   ));
 }
@@ -1121,7 +1179,7 @@ Task FlowBuilder::emplace(C&& c) {
 // Function: emplace
 template <typename C, std::enable_if_t<is_multi_condition_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph._emplace_back("", 0, nullptr, nullptr,
+  return Task(_graph._emplace_back("", 0, nullptr, nullptr, 0,
     std::in_place_type_t<Node::MultiCondition>{}, std::forward<C>(c)
   ));
 }
@@ -1159,7 +1217,7 @@ inline void FlowBuilder::erase(Task task) {
 // Function: composed_of
 template <typename T>
 Task FlowBuilder::composed_of(T& object) {
-  auto node = _graph._emplace_back("", 0, nullptr, nullptr,
+  auto node = _graph._emplace_back("", 0, nullptr, nullptr, 0,
     std::in_place_type_t<Node::Module>{}, object
   );
   return Task(node);
@@ -1167,7 +1225,7 @@ Task FlowBuilder::composed_of(T& object) {
 
 // Function: placeholder
 inline Task FlowBuilder::placeholder() {
-  auto node = _graph._emplace_back("", 0, nullptr, nullptr,
+  auto node = _graph._emplace_back("", 0, nullptr, nullptr, 0,
     std::in_place_type_t<Node::Placeholder>{}
   );
   return Task(node);

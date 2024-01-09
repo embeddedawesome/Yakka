@@ -133,151 +133,151 @@
 
 <span class="w">  </span><span class="c1">// dump the entire execution graph including unfolded cudaFlow</span>
 <span class="w">  </span><span class="n">taskflow</span><span class="p">.</span><span class="n">dump</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="p">);</span><span class="w"></span>
-<span class="p">}</span><span class="w"></span></pre><p>Within the cudaFlow, we create two host-to-device (H2D) tasks that copy data from <code>A</code> and <code>B</code> to <code>da</code> and <code>db</code>, one device-to-host (D2H) task that copies the result from <code>dc</code> to <code>C</code>, and one kernel task that launches <code>matmul</code> on the GPU (by default, GPU 0). H2D tasks precede the kernel and the kernel precedes the D2H task. These GPU operations form a GPU task graph managed by a cudaFlow. The first dump of the taskflow gives the following graph:</p><div class="m-graph"><svg style="width: 28.688rem; height: 11.875rem;" viewBox="0.00 0.00 458.89 189.54">
-<g transform="scale(1 1) rotate(0) translate(4 185.5391)">
+<span class="p">}</span><span class="w"></span></pre><p>Within the cudaFlow, we create two host-to-device (H2D) tasks that copy data from <code>A</code> and <code>B</code> to <code>da</code> and <code>db</code>, one device-to-host (D2H) task that copies the result from <code>dc</code> to <code>C</code>, and one kernel task that launches <code>matmul</code> on the GPU (by default, GPU 0). H2D tasks precede the kernel and the kernel precedes the D2H task. These GPU operations form a GPU task graph managed by a cudaFlow. The first dump of the taskflow gives the following graph:</p><div class="m-graph"><svg style="width: 27.900rem; height: 18.800rem;" viewBox="0.00 0.00 279.29 188.00">
+<g transform="scale(1 1) rotate(0) translate(4 184)">
 <title>Taskflow</title>
 <g class="m-node m-flat">
 <title>p0x55d923794f10</title>
-<ellipse cx="69.2965" cy="-163.1543" rx="69.0935" ry="18.2703"/>
-<text text-anchor="middle" x="69.2965" y="-159.3543">allocate_a</text>
+<ellipse cx="39.44" cy="-162" rx="39.38" ry="18"/>
+<text text-anchor="middle" x="39.44" y="-159.5" font-family="Helvetica,sans-Serif" font-size="10.00">allocate_a</text>
 </g>
 <g class="m-node">
 <title>p0x55d923795240</title>
-<polygon points="271.7965,-108.7696 268.7965,-112.7696 247.7965,-112.7696 244.7965,-108.7696 180.7965,-108.7696 180.7965,-72.7696 271.7965,-72.7696 271.7965,-108.7696"/>
-<text text-anchor="middle" x="226.2965" y="-86.9696">cudaFlow</text>
+<polygon points="167.94,-108 164.94,-112 143.94,-112 140.94,-108 104.94,-108 104.94,-72 167.94,-72 167.94,-108"/>
+<text text-anchor="middle" x="136.44" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">cudaFlow</text>
 </g>
 <g class="m-edge">
 <title>p0x55d923794f10&#45;&gt;p0x55d923795240</title>
-<path d="M104.1399,-147.0898C125.8325,-137.0884 154.0467,-124.0803 177.8939,-113.0855"/>
-<polygon points="179.5184,-116.1907 187.1343,-108.8253 176.5875,-109.8338 179.5184,-116.1907"/>
+<path d="M59.54,-146.5C72.43,-137.19 89.47,-124.9 104.22,-114.25"/>
+<polygon points="106.54,-116.89 112.6,-108.2 102.44,-111.22 106.54,-116.89"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x55d923795350</title>
-<ellipse cx="226.2965" cy="-18.3848" rx="33.8824" ry="18.2703"/>
-<text text-anchor="middle" x="226.2965" y="-14.5848">free</text>
+<ellipse cx="136.44" cy="-18" rx="27" ry="18"/>
+<text text-anchor="middle" x="136.44" y="-15.5" font-family="Helvetica,sans-Serif" font-size="10.00">free</text>
 </g>
 <g class="m-edge">
 <title>p0x55d923795240&#45;&gt;p0x55d923795350</title>
-<path d="M226.2965,-72.5038C226.2965,-64.7623 226.2965,-55.5567 226.2965,-46.9533"/>
-<polygon points="229.7966,-46.8964 226.2965,-36.8964 222.7966,-46.8965 229.7966,-46.8964"/>
+<path d="M136.44,-71.7C136.44,-63.98 136.44,-54.71 136.44,-46.11"/>
+<polygon points="139.94,-46.1 136.44,-36.1 132.94,-46.1 139.94,-46.1"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x55d923795020</title>
-<ellipse cx="226.2965" cy="-163.1543" rx="69.0935" ry="18.2703"/>
-<text text-anchor="middle" x="226.2965" y="-159.3543">allocate_b</text>
+<ellipse cx="136.44" cy="-162" rx="39.38" ry="18"/>
+<text text-anchor="middle" x="136.44" y="-159.5" font-family="Helvetica,sans-Serif" font-size="10.00">allocate_b</text>
 </g>
 <g class="m-edge">
 <title>p0x55d923795020&#45;&gt;p0x55d923795240</title>
-<path d="M226.2965,-144.5135C226.2965,-136.8556 226.2965,-127.8146 226.2965,-119.3544"/>
-<polygon points="229.7966,-119.0966 226.2965,-109.0967 222.7966,-119.0967 229.7966,-119.0966"/>
+<path d="M136.44,-143.7C136.44,-135.98 136.44,-126.71 136.44,-118.11"/>
+<polygon points="139.94,-118.1 136.44,-108.1 132.94,-118.1 139.94,-118.1"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x55d923795130</title>
-<ellipse cx="382.2965" cy="-163.1543" rx="68.6788" ry="18.2703"/>
-<text text-anchor="middle" x="382.2965" y="-159.3543">allocate_c</text>
+<ellipse cx="232.44" cy="-162" rx="38.7" ry="18"/>
+<text text-anchor="middle" x="232.44" y="-159.5" font-family="Helvetica,sans-Serif" font-size="10.00">allocate_c</text>
 </g>
 <g class="m-edge">
 <title>p0x55d923795130&#45;&gt;p0x55d923795240</title>
-<path d="M347.675,-147.0898C326.1206,-137.0884 298.0861,-124.0803 274.3907,-113.0855"/>
-<polygon points="275.7535,-109.8595 265.2092,-108.8253 272.8071,-116.2092 275.7535,-109.8595"/>
+<path d="M212.55,-146.5C199.79,-137.19 182.93,-124.9 168.33,-114.25"/>
+<polygon points="170.18,-111.27 160.03,-108.2 166.05,-116.92 170.18,-111.27"/>
 </g>
 </g>
 </svg>
-</div><p>A cudaFlow encapsulates a GPU task dependency graph similar to a <a href="classtf_1_1Subflow.html" class="m-doc">tf::<wbr />Subflow</a> (see <a href="DynamicTasking.html" class="m-doc">Dynamic Tasking</a>). In order to visualize it, we need to execute the graph first and then dump the taskflow.</p><div class="m-graph"><svg style="width: 42.625rem; height: 23.500rem;" viewBox="0.00 0.00 681.89 376.31">
-<g transform="scale(1 1) rotate(0) translate(4 372.3087)">
+</div><p>A cudaFlow encapsulates a GPU task dependency graph similar to a <a href="classtf_1_1Subflow.html" class="m-doc">tf::<wbr />Subflow</a> (see <a href="DynamicTasking.html" class="m-doc">Dynamic Tasking</a>). In order to visualize it, we need to execute the graph first and then dump the taskflow.</p><div class="m-graph"><svg style="width: 42.600rem; height: 36.700rem;" viewBox="0.00 0.00 426.29 367.00">
+<g transform="scale(1 1) rotate(0) translate(4 363)">
 <title>Taskflow</title>
 <g class="m-cluster">
 <title>cluster_p0x5558af971240</title>
-<polygon points="146.2965,-64.7696 146.2965,-360.3087 372.2965,-360.3087 372.2965,-64.7696 146.2965,-64.7696"/>
-<text text-anchor="middle" x="259.2965" y="-343.5087">cudaFlow: cudaFlow</text>
+<polygon points="86.44,-64 86.44,-351 236.44,-351 236.44,-64 86.44,-64"/>
+<text text-anchor="middle" x="161.44" y="-339" font-family="Helvetica,sans-Serif" font-size="10.00">cudaFlow: cudaFlow</text>
 </g>
 <g class="m-node m-flat">
 <title>p0x5558af970f10</title>
-<ellipse cx="69.2965" cy="-163.1543" rx="69.0935" ry="18.2703"/>
-<text text-anchor="middle" x="69.2965" y="-159.3543">allocate_a</text>
+<ellipse cx="39.44" cy="-162" rx="39.38" ry="18"/>
+<text text-anchor="middle" x="39.44" y="-159.5" font-family="Helvetica,sans-Serif" font-size="10.00">allocate_a</text>
 </g>
 <g class="m-node">
 <title>p0x5558af971240</title>
-<polygon points="361.7965,-108.7696 358.7965,-112.7696 337.7965,-112.7696 334.7965,-108.7696 270.7965,-108.7696 270.7965,-72.7696 361.7965,-72.7696 361.7965,-108.7696"/>
-<text text-anchor="middle" x="316.2965" y="-86.9696">cudaFlow</text>
+<polygon points="227.94,-108 224.94,-112 203.94,-112 200.94,-108 164.94,-108 164.94,-72 227.94,-72 227.94,-108"/>
+<text text-anchor="middle" x="196.44" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">cudaFlow</text>
 </g>
 <g class="m-edge">
 <title>p0x5558af970f10&#45;&gt;p0x5558af971240</title>
-<path d="M116.0457,-149.4542C157.1771,-137.4004 217.1263,-119.832 260.7048,-107.061"/>
-<polygon points="261.9617,-110.3399 270.5738,-104.1688 259.9931,-103.6225 261.9617,-110.3399"/>
+<path d="M66.79,-148.81C91.34,-137.86 127.7,-121.65 155.68,-109.17"/>
+<polygon points="157.11,-112.37 164.82,-105.1 154.26,-105.98 157.11,-112.37"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x5558af971350</title>
-<ellipse cx="316.2965" cy="-18.3848" rx="33.8824" ry="18.2703"/>
-<text text-anchor="middle" x="316.2965" y="-14.5848">free</text>
+<ellipse cx="196.44" cy="-18" rx="27" ry="18"/>
+<text text-anchor="middle" x="196.44" y="-15.5" font-family="Helvetica,sans-Serif" font-size="10.00">free</text>
 </g>
 <g class="m-edge">
 <title>p0x5558af971240&#45;&gt;p0x5558af971350</title>
-<path d="M316.2965,-72.5038C316.2965,-64.7623 316.2965,-55.5567 316.2965,-46.9533"/>
-<polygon points="319.7966,-46.8964 316.2965,-36.8964 312.7966,-46.8965 319.7966,-46.8964"/>
+<path d="M196.44,-71.7C196.44,-63.98 196.44,-54.71 196.44,-46.11"/>
+<polygon points="199.94,-46.1 196.44,-36.1 192.94,-46.1 199.94,-46.1"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x5558af971020</title>
-<ellipse cx="449.2965" cy="-163.1543" rx="69.0935" ry="18.2703"/>
-<text text-anchor="middle" x="449.2965" y="-159.3543">allocate_b</text>
+<ellipse cx="283.44" cy="-162" rx="39.38" ry="18"/>
+<text text-anchor="middle" x="283.44" y="-159.5" font-family="Helvetica,sans-Serif" font-size="10.00">allocate_b</text>
 </g>
 <g class="m-edge">
 <title>p0x5558af971020&#45;&gt;p0x5558af971240</title>
-<path d="M418.7836,-146.5478C400.9078,-136.819 378.0675,-124.3882 358.4875,-113.7318"/>
-<polygon points="359.9193,-110.5264 349.4627,-108.8202 356.573,-116.6748 359.9193,-110.5264"/>
+<path d="M264.56,-145.81C253.25,-136.71 238.62,-124.94 225.82,-114.64"/>
+<polygon points="227.71,-111.67 217.73,-108.13 223.32,-117.12 227.71,-111.67"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x5558af971130</title>
-<ellipse cx="605.2965" cy="-163.1543" rx="68.6788" ry="18.2703"/>
-<text text-anchor="middle" x="605.2965" y="-159.3543">allocate_c</text>
+<ellipse cx="379.44" cy="-162" rx="38.7" ry="18"/>
+<text text-anchor="middle" x="379.44" y="-159.5" font-family="Helvetica,sans-Serif" font-size="10.00">allocate_c</text>
 </g>
 <g class="m-edge">
 <title>p0x5558af971130&#45;&gt;p0x5558af971240</title>
-<path d="M554.9565,-150.5459C503.9087,-137.7601 425.0917,-118.0191 372.1487,-104.7586"/>
-<polygon points="372.7998,-101.3137 362.2491,-102.2791 371.099,-108.1039 372.7998,-101.3137"/>
+<path d="M350.44,-149.91C320.08,-138.29 272.13,-119.95 237.8,-106.82"/>
+<polygon points="238.65,-103.4 228.06,-103.1 236.15,-109.94 238.65,-103.4"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f6fd8000b20</title>
-<ellipse cx="316.2965" cy="-307.9239" rx="48.1667" ry="18.2703"/>
-<text text-anchor="middle" x="316.2965" y="-304.1239">H2D_a</text>
+<ellipse cx="199.44" cy="-306" rx="28.69" ry="18"/>
+<text text-anchor="middle" x="199.44" y="-303.5" font-family="Helvetica,sans-Serif" font-size="10.00">H2D_a</text>
 </g>
 <g class="m-node">
 <title>p0x7f6fd8000db0</title>
-<polygon points="352.7965,-253.5391 279.7965,-253.5391 275.7965,-249.5391 275.7965,-217.5391 348.7965,-217.5391 352.7965,-221.5391 352.7965,-253.5391"/>
-<polyline points="348.7965,-249.5391 275.7965,-249.5391 "/>
-<polyline points="348.7965,-249.5391 348.7965,-217.5391 "/>
-<polyline points="348.7965,-249.5391 352.7965,-253.5391 "/>
-<text text-anchor="middle" x="314.2965" y="-231.7391">matmul</text>
+<polygon points="223.94,-252 172.94,-252 168.94,-248 168.94,-216 219.94,-216 223.94,-220 223.94,-252"/>
+<polyline points="219.94,-248 168.94,-248 "/>
+<polyline points="219.94,-248 219.94,-216 "/>
+<polyline points="219.94,-248 223.94,-252 "/>
+<text text-anchor="middle" x="196.44" y="-231.5" font-family="Helvetica,sans-Serif" font-size="10.00" fill="white">matmul</text>
 </g>
 <g class="m-edge">
 <title>p0x7f6fd8000b20&#45;&gt;p0x7f6fd8000db0</title>
-<path d="M315.7814,-289.283C315.5698,-281.6252 315.32,-272.5842 315.0863,-264.124"/>
-<polygon points="318.5778,-263.7657 314.8028,-253.8662 311.5805,-263.9591 318.5778,-263.7657"/>
+<path d="M198.7,-287.7C198.37,-279.98 197.97,-270.71 197.6,-262.11"/>
+<polygon points="201.1,-261.95 197.17,-252.1 194.1,-262.25 201.1,-261.95"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f6fd8000ce0</title>
-<ellipse cx="314.2965" cy="-163.1543" rx="48.1667" ry="18.2703"/>
-<text text-anchor="middle" x="314.2965" y="-159.3543">D2H_c</text>
+<ellipse cx="196.44" cy="-162" rx="28.01" ry="18"/>
+<text text-anchor="middle" x="196.44" y="-159.5" font-family="Helvetica,sans-Serif" font-size="10.00">D2H_c</text>
 </g>
 <g class="m-edge">
 <title>p0x7f6fd8000db0&#45;&gt;p0x7f6fd8000ce0</title>
-<path d="M314.2965,-217.2734C314.2965,-209.5318 314.2965,-200.3263 314.2965,-191.7228"/>
-<polygon points="317.7966,-191.666 314.2965,-181.666 310.7966,-191.666 317.7966,-191.666"/>
+<path d="M196.44,-215.7C196.44,-207.98 196.44,-198.71 196.44,-190.11"/>
+<polygon points="199.94,-190.1 196.44,-180.1 192.94,-190.1 199.94,-190.1"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f6fd8000c00</title>
-<ellipse cx="202.2965" cy="-307.9239" rx="48.1667" ry="18.2703"/>
-<text text-anchor="middle" x="202.2965" y="-304.1239">H2D_b</text>
+<ellipse cx="123.44" cy="-306" rx="28.69" ry="18"/>
+<text text-anchor="middle" x="123.44" y="-303.5" font-family="Helvetica,sans-Serif" font-size="10.00">H2D_b</text>
 </g>
 <g class="m-edge">
 <title>p0x7f6fd8000c00&#45;&gt;p0x7f6fd8000db0</title>
-<path d="M226.8753,-292.0387C241.7903,-282.3993 261.1019,-269.9183 277.7797,-259.1396"/>
-<polygon points="279.725,-262.0498 286.2238,-253.6822 275.9254,-256.1707 279.725,-262.0498"/>
+<path d="M138.57,-290.5C148,-281.45 160.37,-269.59 171.26,-259.15"/>
+<polygon points="173.7,-261.65 178.5,-252.2 168.86,-256.6 173.7,-261.65"/>
 </g>
 <g class="m-edge">
 <title>p0x7f6fd8000ce0&#45;&gt;p0x5558af971240</title>
-<path d="M314.8115,-144.5135C315.0231,-136.8556 315.2729,-127.8146 315.5067,-119.3544"/>
-<polygon points="319.0125,-119.1896 315.7901,-109.0967 312.0151,-118.9962 319.0125,-119.1896"/>
+<path d="M196.44,-143.7C196.44,-135.98 196.44,-126.71 196.44,-118.11"/>
+<polygon points="199.94,-118.1 196.44,-108.1 192.94,-118.1 199.94,-118.1"/>
 </g>
 </g>
 </svg>
@@ -326,7 +326,7 @@
   <div class="m-container">
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
-        <p>Taskflow handbook is part of the <a href="https://taskflow.github.io">Taskflow project</a>, copyright © <a href="https://tsung-wei-huang.github.io/">Dr. Tsung-Wei Huang</a>, 2018&ndash;2023.<br />Generated by <a href="https://doxygen.org/">Doxygen</a> 1.8.14 and <a href="https://mcss.mosra.cz/">m.css</a>.</p>
+        <p>Taskflow handbook is part of the <a href="https://taskflow.github.io">Taskflow project</a>, copyright © <a href="https://tsung-wei-huang.github.io/">Dr. Tsung-Wei Huang</a>, 2018&ndash;2023.<br />Generated by <a href="https://doxygen.org/">Doxygen</a> 1.9.1 and <a href="https://mcss.mosra.cz/">m.css</a>.</p>
       </div>
     </div>
   </div>

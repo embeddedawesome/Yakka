@@ -69,133 +69,133 @@
 <span class="k">for</span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">i</span><span class="o">=</span><span class="n">first</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">&gt;</span><span class="n">last</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">+=</span><span class="n">step</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
 <span class="w">  </span><span class="n">callable</span><span class="p">(</span><span class="n">i</span><span class="p">);</span><span class="w"></span>
 <span class="p">}</span><span class="w"></span></pre><p>We support only integer-based range. The range can go positive or negative direction.</p><pre class="m-code"><span class="n">taskflow</span><span class="p">.</span><span class="n">for_each_index</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span><span class="w">  </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="p">[](</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">});</span><span class="w">  </span><span class="c1">// 50 loops with a + step</span>
-<span class="n">taskflow</span><span class="p">.</span><span class="n">for_each_index</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">-2</span><span class="p">,</span><span class="w"> </span><span class="p">[](</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">});</span><span class="w">  </span><span class="c1">// 50 loops with a - step</span></pre><p>Notice that either positive or negative direction is defined in terms of the range, <code>[first, last)</code>, where <code>end</code> is excluded. In the positive case, the 50 items are 0, 2, 4, 6, 8, ..., 96, 98. In the negative case, the 50 items are 100, 98, 96, 04, ... 4, 2. An example of the Taskflow graph for the positive case under 12 workers is depicted below:</p><div class="m-graph"><svg style="width: 77.062rem; height: 7.375rem;" viewBox="0.00 0.00 1232.51 117.54">
-<g transform="scale(1 1) rotate(0) translate(4 113.5391)">
+<span class="n">taskflow</span><span class="p">.</span><span class="n">for_each_index</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">-2</span><span class="p">,</span><span class="w"> </span><span class="p">[](</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">});</span><span class="w">  </span><span class="c1">// 50 loops with a - step</span></pre><p>Notice that either positive or negative direction is defined in terms of the range, <code>[first, last)</code>, where <code>end</code> is excluded. In the positive case, the 50 items are 0, 2, 4, 6, 8, ..., 96, 98. In the negative case, the 50 items are 100, 98, 96, 04, ... 4, 2. An example of the Taskflow graph for the positive case under 12 workers is depicted below:</p><div class="m-graph"><svg style="width: 86.300rem; height: 11.600rem;" viewBox="0.00 0.00 863.43 116.00">
+<g transform="scale(1 1) rotate(0) translate(4 112)">
 <title>Taskflow</title>
 <g class="m-node m-flat">
 <title>p0xce2720</title>
-<ellipse cx="596.7193" cy="-18.3848" rx="181.9532" ry="18.2703"/>
-<text text-anchor="middle" x="596.7193" y="-14.5848">[0, 100) with the step size of 2</text>
+<ellipse cx="423" cy="-18" rx="97.26" ry="18"/>
+<text text-anchor="middle" x="423" y="-15.5" font-family="Helvetica,sans-Serif" font-size="10.00">[0, 100) with the step size of 2</text>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c000b50</title>
-<ellipse cx="41.7193" cy="-91.1543" rx="41.9398" ry="18.2703"/>
-<text text-anchor="middle" x="41.7193" y="-87.3543">pfg_0</text>
+<ellipse cx="27" cy="-90" rx="27" ry="18"/>
+<text text-anchor="middle" x="27" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_0</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c000b50&#45;&gt;p0xce2720</title>
-<path d="M72.2973,-78.5711C78.632,-76.3457 85.3253,-74.2654 91.7193,-72.7696 199.5302,-47.5474 323.0709,-33.9837 420.9751,-26.7098"/>
-<polygon points="421.2503,-30.1992 430.9698,-25.9824 420.7421,-23.2176 421.2503,-30.1992"/>
+<path d="M47.53,-78.04C52.48,-75.75 57.84,-73.56 63,-72 148.62,-46.11 249.65,-32.64 322.86,-25.78"/>
+<polygon points="323.36,-29.25 333,-24.86 322.73,-22.28 323.36,-29.25"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c000c58</title>
-<ellipse cx="142.7193" cy="-91.1543" rx="41.9398" ry="18.2703"/>
-<text text-anchor="middle" x="142.7193" y="-87.3543">pfg_1</text>
+<ellipse cx="99" cy="-90" rx="27" ry="18"/>
+<text text-anchor="middle" x="99" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_1</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c000c58&#45;&gt;p0xce2720</title>
-<path d="M173.597,-78.6094C179.8497,-76.4085 186.4355,-74.3278 192.7193,-72.7696 274.7292,-52.4323 368.1146,-39.2357 444.4284,-30.9428"/>
-<polygon points="445.0304,-34.3985 454.6016,-29.8552 444.2862,-27.4381 445.0304,-34.3985"/>
+<path d="M119.57,-78.17C124.52,-75.88 129.87,-73.65 135,-72 199.48,-51.23 274.86,-37.72 332.33,-29.55"/>
+<polygon points="333.06,-32.98 342.48,-28.13 332.09,-26.05 333.06,-32.98"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c000d60</title>
-<ellipse cx="243.7193" cy="-91.1543" rx="41.9398" ry="18.2703"/>
-<text text-anchor="middle" x="243.7193" y="-87.3543">pfg_2</text>
+<ellipse cx="171" cy="-90" rx="27" ry="18"/>
+<text text-anchor="middle" x="171" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_2</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c000d60&#45;&gt;p0xce2720</title>
-<path d="M274.9214,-78.7316C281.0891,-76.5467 287.5604,-74.4408 293.7193,-72.7696 353.6903,-56.4961 421.6881,-43.7864 478.051,-34.7602"/>
-<polygon points="478.7432,-38.1943 488.0732,-33.1742 477.649,-31.2803 478.7432,-38.1943"/>
+<path d="M191.64,-78.39C196.59,-76.08 201.92,-73.8 207,-72 252.82,-55.75 305.82,-42.66 347.85,-33.56"/>
+<polygon points="348.69,-36.96 357.74,-31.45 347.22,-30.11 348.69,-36.96"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c000e68</title>
-<ellipse cx="344.7193" cy="-91.1543" rx="41.9398" ry="18.2703"/>
-<text text-anchor="middle" x="344.7193" y="-87.3543">pfg_3</text>
+<ellipse cx="243" cy="-90" rx="27" ry="18"/>
+<text text-anchor="middle" x="243" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_3</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c000e68&#45;&gt;p0xce2720</title>
-<path d="M376.3124,-79.0535C382.388,-76.8641 388.7255,-74.6742 394.7193,-72.7696 434.7538,-60.048 479.8473,-47.7202 517.256,-38.0272"/>
-<polygon points="518.2809,-41.3775 527.0915,-35.4933 516.5345,-34.5988 518.2809,-41.3775"/>
+<path d="M264.18,-78.62C269.01,-76.35 274.16,-74.03 279,-72 308.43,-59.66 341.85,-47.27 369.08,-37.57"/>
+<polygon points="370.55,-40.76 378.81,-34.12 368.22,-34.16 370.55,-40.76"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c000f70</title>
-<ellipse cx="445.7193" cy="-91.1543" rx="41.9398" ry="18.2703"/>
-<text text-anchor="middle" x="445.7193" y="-87.3543">pfg_4</text>
+<ellipse cx="315" cy="-90" rx="27" ry="18"/>
+<text text-anchor="middle" x="315" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_4</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c000f70&#45;&gt;p0xce2720</title>
-<path d="M474.1212,-77.4669C495.4838,-67.1719 525.2224,-52.8404 550.06,-40.8707"/>
-<polygon points="551.8226,-43.9066 559.3116,-36.4122 548.7837,-37.6006 551.8226,-43.9066"/>
+<path d="M333.81,-76.81C348.98,-66.98 370.7,-52.9 388.91,-41.09"/>
+<polygon points="391.04,-43.89 397.53,-35.51 387.23,-38.01 391.04,-43.89"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c001078</title>
-<ellipse cx="546.7193" cy="-91.1543" rx="41.9398" ry="18.2703"/>
-<text text-anchor="middle" x="546.7193" y="-87.3543">pfg_5</text>
+<ellipse cx="387" cy="-90" rx="27" ry="18"/>
+<text text-anchor="middle" x="387" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_5</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c001078&#45;&gt;p0xce2720</title>
-<path d="M558.8229,-73.5389C564.6646,-65.0368 571.8001,-54.652 578.2974,-45.1959"/>
-<polygon points="581.2511,-47.0775 584.0295,-36.8534 575.4817,-43.1133 581.2511,-47.0775"/>
+<path d="M395.35,-72.76C399.54,-64.61 404.73,-54.53 409.47,-45.31"/>
+<polygon points="412.73,-46.62 414.19,-36.12 406.51,-43.42 412.73,-46.62"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c001180</title>
-<ellipse cx="647.7193" cy="-91.1543" rx="41.9398" ry="18.2703"/>
-<text text-anchor="middle" x="647.7193" y="-87.3543">pfg_6</text>
+<ellipse cx="459" cy="-90" rx="27" ry="18"/>
+<text text-anchor="middle" x="459" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_6</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c001180&#45;&gt;p0xce2720</title>
-<path d="M635.3736,-73.5389C629.415,-65.0368 622.1369,-54.652 615.5096,-45.1959"/>
-<polygon points="618.2684,-43.0338 609.6629,-36.8534 612.536,-47.0513 618.2684,-43.0338"/>
+<path d="M450.65,-72.76C446.46,-64.61 441.27,-54.53 436.53,-45.31"/>
+<polygon points="439.49,-43.42 431.81,-36.12 433.27,-46.62 439.49,-43.42"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c001288</title>
-<ellipse cx="748.7193" cy="-91.1543" rx="41.9398" ry="18.2703"/>
-<text text-anchor="middle" x="748.7193" y="-87.3543">pfg_7</text>
+<ellipse cx="531" cy="-90" rx="27" ry="18"/>
+<text text-anchor="middle" x="531" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_7</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c001288&#45;&gt;p0xce2720</title>
-<path d="M720.1293,-77.4669C698.6252,-67.1719 668.6897,-52.8404 643.6876,-40.8707"/>
-<polygon points="644.9057,-37.5735 634.3747,-36.4122 641.883,-43.8872 644.9057,-37.5735"/>
+<path d="M512.19,-76.81C497.02,-66.98 475.3,-52.9 457.09,-41.09"/>
+<polygon points="458.77,-38.01 448.47,-35.51 454.96,-43.89 458.77,-38.01"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c001390</title>
-<ellipse cx="849.7193" cy="-91.1543" rx="41.9398" ry="18.2703"/>
-<text text-anchor="middle" x="849.7193" y="-87.3543">pfg_8</text>
+<ellipse cx="603" cy="-90" rx="27" ry="18"/>
+<text text-anchor="middle" x="603" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_8</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c001390&#45;&gt;p0xce2720</title>
-<path d="M818.1281,-79.0475C812.0523,-76.8587 805.7143,-74.6705 799.7193,-72.7696 759.4921,-60.0142 714.1758,-47.6831 676.5809,-37.9966"/>
-<polygon points="677.2522,-34.5556 666.6964,-35.4648 675.5152,-41.3367 677.2522,-34.5556"/>
+<path d="M581.82,-78.62C576.99,-76.35 571.84,-74.03 567,-72 537.57,-59.66 504.15,-47.27 476.92,-37.57"/>
+<polygon points="477.78,-34.16 467.19,-34.12 475.45,-40.76 477.78,-34.16"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c001498</title>
-<ellipse cx="950.7193" cy="-91.1543" rx="41.9398" ry="18.2703"/>
-<text text-anchor="middle" x="950.7193" y="-87.3543">pfg_9</text>
+<ellipse cx="675" cy="-90" rx="27" ry="18"/>
+<text text-anchor="middle" x="675" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_9</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c001498&#45;&gt;p0xce2720</title>
-<path d="M919.518,-78.7288C913.3502,-76.5442 906.8787,-74.439 900.7193,-72.7696 840.5518,-56.4613 772.3298,-43.7484 715.7806,-34.729"/>
-<polygon points="716.1482,-31.2439 705.7252,-33.1444 715.0584,-38.1585 716.1482,-31.2439"/>
+<path d="M654.36,-78.39C649.41,-76.08 644.08,-73.8 639,-72 593.18,-55.75 540.18,-42.66 498.15,-33.56"/>
+<polygon points="498.78,-30.11 488.26,-31.45 497.31,-36.96 498.78,-30.11"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c0015a0</title>
-<ellipse cx="1059.7193" cy="-91.1543" rx="48.5816" ry="18.2703"/>
-<text text-anchor="middle" x="1059.7193" y="-87.3543">pfg_10</text>
+<ellipse cx="749" cy="-90" rx="29.37" ry="18"/>
+<text text-anchor="middle" x="749" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_10</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c0015a0&#45;&gt;p0xce2720</title>
-<path d="M1023.7847,-78.6996C1016.5411,-76.4913 1008.935,-74.3848 1001.7193,-72.7696 916.7466,-53.7482 820.1559,-40.4648 742.6206,-31.7898"/>
-<polygon points="742.619,-28.2684 732.2951,-30.6491 741.8502,-35.2261 742.619,-28.2684"/>
+<path d="M726.84,-78.02C721.73,-75.79 716.25,-73.63 711,-72 645.97,-51.79 570.13,-38.22 512.61,-29.87"/>
+<polygon points="512.85,-26.37 502.46,-28.42 511.86,-33.3 512.85,-26.37"/>
 </g>
 <g class="m-node m-flat">
 <title>p0x7f322c0016a8</title>
-<ellipse cx="1175.7193" cy="-91.1543" rx="48.5816" ry="18.2703"/>
-<text text-anchor="middle" x="1175.7193" y="-87.3543">pfg_11</text>
+<ellipse cx="826" cy="-90" rx="29.37" ry="18"/>
+<text text-anchor="middle" x="826" y="-87.5" font-family="Helvetica,sans-Serif" font-size="10.00">pfg_11</text>
 </g>
 <g class="m-edge">
 <title>p0x7f322c0016a8&#45;&gt;p0xce2720</title>
-<path d="M1139.8211,-78.531C1132.5746,-76.3365 1124.958,-74.2783 1117.7193,-72.7696 1002.5873,-48.773 870.8259,-35.1425 768.6148,-27.5285"/>
-<polygon points="768.7331,-24.0279 758.504,-26.7877 768.2215,-31.0092 768.7331,-24.0279"/>
+<path d="M803.69,-78.06C798.32,-75.78 792.54,-73.58 787,-72 699.31,-46.99 596.21,-33.39 522.16,-26.26"/>
+<polygon points="522.19,-22.74 511.91,-25.29 521.53,-29.71 522.19,-22.74"/>
 </g>
 </g>
 </svg>
@@ -311,7 +311,7 @@
   <div class="m-container">
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
-        <p>Taskflow handbook is part of the <a href="https://taskflow.github.io">Taskflow project</a>, copyright © <a href="https://tsung-wei-huang.github.io/">Dr. Tsung-Wei Huang</a>, 2018&ndash;2023.<br />Generated by <a href="https://doxygen.org/">Doxygen</a> 1.8.14 and <a href="https://mcss.mosra.cz/">m.css</a>.</p>
+        <p>Taskflow handbook is part of the <a href="https://taskflow.github.io">Taskflow project</a>, copyright © <a href="https://tsung-wei-huang.github.io/">Dr. Tsung-Wei Huang</a>, 2018&ndash;2023.<br />Generated by <a href="https://doxygen.org/">Doxygen</a> 1.9.1 and <a href="https://mcss.mosra.cz/">m.css</a>.</p>
       </div>
     </div>
   </div>

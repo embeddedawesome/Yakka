@@ -1,5 +1,9 @@
 #pragma once
 
+#if __has_include(<version>)
+#  include <version>
+#endif
+
 #include <type_traits>
 #include <iterator>
 #include <iostream>
@@ -277,8 +281,20 @@ template <typename T>
 constexpr static bool is_std_compare_v = is_std_compare<T>::value;
 
 // ----------------------------------------------------------------------------
-// is_invocable_r_on_value
+// check if all types are the same
 // ----------------------------------------------------------------------------
+
+template<bool...> 
+struct bool_pack;
+
+template<bool... bs>
+using all_true = std::is_same<bool_pack<bs..., true>, bool_pack<true, bs...>>;
+
+template <typename T, typename... Ts>
+using all_same = all_true<std::is_same_v<T, Ts>...>;
+
+template <typename T, typename... Ts>
+constexpr bool all_same_v = all_same<T, Ts...>::value;
 
 
 }  // end of namespace tf. ----------------------------------------------------

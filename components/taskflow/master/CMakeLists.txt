@@ -6,6 +6,11 @@
 #
 # To enable address and leak sanitizers
 # -DCMAKE_CXX_FLAGS="-fsanitize=address  -fsanitize=leak -g"
+#
+# To enable different c++ standards
+# -DCMAKE_CXX_STANDARD=17
+# -DCMAKE_CXX_STANDARD=20
+# -DCMAKE_CXX_STANDARD=23
 # -------------------------------------------------------------------
 
 
@@ -14,7 +19,7 @@ cmake_minimum_required (VERSION 3.18)
 MESSAGE(STATUS "CMAKE_ROOT: " ${CMAKE_ROOT})
 
 # Project name
-project(Taskflow VERSION 3.5.0 LANGUAGES CXX)
+project(Taskflow VERSION 3.7.0 LANGUAGES CXX)
 
 # build options
 option(TF_BUILD_BENCHMARKS "Enables builds of benchmarks" OFF)
@@ -163,9 +168,9 @@ add_library(tf::error_settings ALIAS error_settings)
 target_compile_options(
   error_settings
   INTERFACE
-  $<$<CXX_COMPILER_ID:AppleClang>:-Wall -Wextra -Wfatal-errors>
-  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang>>:-Wall -Wextra -Wfatal-errors>
-  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU>>:-Wall -Wextra -Wfatal-errors>
+  $<$<CXX_COMPILER_ID:AppleClang>:-Wall -Wextra -Wfatal-errors -Wshadow>
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang>>:-Wall -Wextra -Wfatal-errors -Wshadow>
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU>>:-Wall -Wextra -Wfatal-errors -Wshadow>
   $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/W3 /permissive->
 )
 
@@ -176,7 +181,7 @@ if(TF_BUILD_CUDA)
     error_settings
     BEFORE
     INTERFACE
-    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda -Xcompiler=-Wall,-Wextra,-Wfatal-errors>
+    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda -Xcompiler=-Wall,-Wextra,-Wfatal-errors,-Wshadow>
   )
 endif(TF_BUILD_CUDA)
 
@@ -247,6 +252,7 @@ message(STATUS "CMAKE_CXX_COMPILER: " ${CMAKE_CXX_COMPILER})
 message(STATUS "CMAKE_CXX_COMPILER_ID: " ${CMAKE_CXX_COMPILER_ID})
 message(STATUS "CMAKE_CXX_COMPILER_VERSION: " ${CMAKE_CXX_COMPILER_VERSION})
 message(STATUS "CMAKE_CXX_FLAGS: " ${CMAKE_CXX_FLAGS})
+message(STATUS "CMAKE_CXX_STANDARD: " ${CMAKE_CXX_STANDARD})
 message(STATUS "CMAKE_CUDA_COMPILER: " ${CMAKE_CUDA_COMPILER})
 message(STATUS "CMAKE_CUDA_COMPILER_ID: " ${CMAKE_CUDA_COMPILER_ID})
 message(STATUS "CMAKE_CUDA_COMPILER_VERSION: " ${CMAKE_CUDA_COMPILER_VERSION})
@@ -364,7 +370,7 @@ configure_package_config_file(
 
 write_basic_package_version_file(
   ${PROJECT_NAME}ConfigVersion.cmake 
-  COMPATIBILITY SameMajorVersion
+  COMPATIBILITY SameMinorVersion
 )
 
 install(

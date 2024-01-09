@@ -3,6 +3,8 @@ list(APPEND TF_EXAMPLES
   attach_data
   async
   subflow_async
+  dependent_async
+  dependent_async_algorithm
   observer 
   subflow 
   fibonacci 
@@ -31,11 +33,10 @@ list(APPEND TF_EXAMPLES
   run 
   corun
   runtime
-  worker_interface
   composition
   limited_concurrency
   cancel
-  cancel_async
+  exception
 )
 
 foreach(example IN LISTS TF_EXAMPLES)

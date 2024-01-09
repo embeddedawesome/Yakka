@@ -531,3 +531,110 @@ TEST_CASE("StatefulParallelFor.Random.11threads" * doctest::timeout(300)) {
 TEST_CASE("StatefulParallelFor.Random.12threads" * doctest::timeout(300)) {
   stateful_for_each<tf::RandomPartitioner>(12);
 }
+
+// ----------------------------------------------------------------------------
+// for_each_index negative index
+// ----------------------------------------------------------------------------
+
+void test_for_each_index_negative(unsigned w) {    
+  tf::Executor executor(w);
+  for(int beg=10; beg>=-10; --beg) {
+    for(int end=beg; end>=-10; --end) {
+      for(int s=1; s<=beg-end; ++s) {
+        int n = 0;
+        for(int b = beg; b>end; b-=s) {
+          ++n;
+        }
+        //for(size_t c=0; c<10; c++) {
+          tf::Taskflow tf;
+          std::atomic<int> counter {0};
+          tf.for_each_index(beg, end, -s, [&] (auto) {
+            counter.fetch_add(1, std::memory_order_relaxed);
+          }/*, c*/);
+          executor.run(tf);
+          executor.wait_for_all();
+          REQUIRE(n == counter);
+        //}
+      }
+    }
+  }
+}
+
+TEST_CASE("ForEachIndex.NegativeIndex.1thread" * doctest::timeout(300)) {
+  test_for_each_index_negative(1);
+}
+
+TEST_CASE("ForEachIndex.NegativeIndex.2threads" * doctest::timeout(300)) {
+  test_for_each_index_negative(2);
+}
+
+TEST_CASE("ForEachIndex.NegativeIndex.3threads" * doctest::timeout(300)) {
+  test_for_each_index_negative(3);
+}
+
+TEST_CASE("ForEachIndex.NegativeIndex.4threads" * doctest::timeout(300)) {
+  test_for_each_index_negative(4);
+}
+
+// ----------------------------------------------------------------------------
+// ForEachIndex.InvalidRange
+// ----------------------------------------------------------------------------
+
+TEST_CASE("ForEachIndex.InvalidRange" * doctest::timeout(300)) {
+  std::atomic<size_t> counter(0);
+	tf::Executor ex;
+	tf::Taskflow flow;
+	flow.for_each_index(0, -1, 1, [&](int i) {
+		counter.fetch_add(i, std::memory_order_relaxed);
+	});
+	ex.run(flow).wait();
+  REQUIRE(counter == 0);
+}
+
+//// ----------------------------------------------------------------------------
+//// Parallel For Exception
+//// ----------------------------------------------------------------------------
+//
+//void parallel_for_exception(unsigned W) {
+//
+//  tf::Taskflow taskflow;
+//  tf::Executor executor(W);
+//
+//  std::vector<int> data(1000000);
+//
+//  // for_each
+//  taskflow.for_each(data.begin(), data.end(), [](int){
+//    throw std::runtime_error("x");
+//  });
+//  REQUIRE_THROWS_WITH_AS(executor.run(taskflow).get(), "x", std::runtime_error);
+//  
+//  // for_each_index
+//  taskflow.clear();
+//  taskflow.for_each_index(0, 10000, 1, [](int){
+//    throw std::runtime_error("y");
+//  });
+//  REQUIRE_THROWS_WITH_AS(executor.run(taskflow).get(), "y", std::runtime_error);
+//}
+//
+//TEST_CASE("ParallelFor.Exception.1thread") {
+//  parallel_for_exception(1);
+//}
+//
+//TEST_CASE("ParallelFor.Exception.2threads") {
+//  parallel_for_exception(2);
+//}
+//
+//TEST_CASE("ParallelFor.Exception.3threads") {
+//  parallel_for_exception(3);
+//}
+//
+//TEST_CASE("ParallelFor.Exception.4threads") {
+//  parallel_for_exception(4);
+//}
+
+
+
+
+
+
+

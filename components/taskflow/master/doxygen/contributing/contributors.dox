@@ -21,6 +21,7 @@ We are grateful for the following contributors (alphabetic order) to the %Taskfl
   @li <a href="https://github.com/dian-lun-lin">Dian-Lun Lin</a>: applied %Taskflow to win the champion award of the IEEE HPEC 2020 %Graph Challenge 
   @li <a href="https://github.com/fstrugar">Filip Strugar</a>: fixed the bugs in fire-and-get taskflow execution and parallel algorithms
   @li <a href="https://github.com/ForgeMistress">Foge Mistress</a>: helped design the executor interface to avoid over-subscribed threads
+  @li <a href="https://github.com/fran6co">Francisco Facioni</a>: improved the interface of %Taskflow exception support through macro
   @li <a href="https://github.com/largerock">George Price</a>: improved the documentation pages and fixed several typos
   @li <a href="https://github.com/totalgee">Glen Fraser</a>: contributed to the design of executor and threadpool
   @li <a href="https://github.com/guannan-git">Guannan Guo</a>: benchmarked different scheduling algorithms and architectures
@@ -48,6 +49,7 @@ We are grateful for the following contributors (alphabetic order) to the %Taskfl
   @li <a href="https://github.com/paolobolzoni">Paolo Bolzoni</a>: helped remove extraneous semicolons to suppress extra warning
   @li <a href="https://github.com/patrikhuber">Patrik Huber</a>: fixed the typos of documentation
   @li <a href="https://github.com/p12tic">Povilas Kanapickas</a>: helped design a new scheduling invariant to avoid busy stealing
+  @li <a href="https://github.com/qbojj">qbojj</a>: helped fixed documentation errors related to dependent asynchronous tasking
   @li <a href="https://github.com/PhrygianGates">Zizheng Xiong</a>: added data-parallel programming models through GSoC 2022
   @li <a href="https://github.com/Pursche">Pursche</a>: fixed compilation warning on MSVC
   @li <a href="https://github.com/remz1337">Remi Bedard-Couture</a>: added big object compilation support on MSVC
@@ -63,7 +65,9 @@ We are grateful for the following contributors (alphabetic order) to the %Taskfl
   @li <a href="https://github.com/innermous">Vladyslav</a>: fixed comment errors in README.md and examples
   @li <a href="https://github.com/Ya-Za">Yasin Zamani</a>: benchmarked the parallel sort with the TBB baseline
   @li <a href="http://yibolin.com/">Yibo Lin</a>: helped design the interface of conditional tasking
+  @li <a href="https://github.com/QiuYilin">Yilin Qiu</a>: helped implement the dependency removal methods in %Taskflow
   @li <a href="https://guozz.cn/">Zizheng Guo</a>: applied %Taskflow to speed up VLSI timing analysis and shared his feedback
+
 
 Please @ContactUs if we forgot your name!
 
@@ -108,6 +112,8 @@ We are grateful for the following organizations and projects that are using %Tas
 @li <a href="https://github.com/rapidsai/cucim">RAPIDS CuCim</a>: An open-source, accelerated computer vision and image processing software library
 @li <a href="https://github.com/tesseract-robotics/tesseract">Tesseract Robotics</a>: Lightweight robotics motion planning environment
 @li <a href="https://github.com/NcStudios/NcEngine">NcEngine</a>: 3D game engine written in C++20 targeting Windows
+@li <a href="https://www.xilinx.com/products/design-tools/vivado.html">AMD Vivao</a>: AMD's software synthesis suite for hardware designs
+@li <a href="https://www.moduleworks.com/">ModuleWorks</a>: Industry-proven ModuleWorks CAD/CAM technology into software solutions
 
 ... more at [GitHub](https://github.com/search?q=taskflow&type=Code).
 

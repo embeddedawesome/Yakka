@@ -130,83 +130,83 @@
 <span class="n">taskflow</span><span class="p">.</span><span class="n">dump</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="p">);</span><span class="w"></span>
 
 <span class="c1">// run the pipeline</span>
-<span class="n">executor</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">taskflow</span><span class="p">).</span><span class="n">wait</span><span class="p">();</span><span class="w"></span></pre><div class="m-graph"><svg style="width: 28.500rem; height: 15.375rem;" viewBox="0.00 0.00 456.00 246.00">
-<g transform="scale(1 1) rotate(0) translate(4 242)">
+<span class="n">executor</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">taskflow</span><span class="p">).</span><span class="n">wait</span><span class="p">();</span><span class="w"></span></pre><p><br /></p><div class="m-graph"><svg style="width: 41.600rem; height: 17.800rem;" viewBox="0.00 0.00 416.00 178.00">
+<g transform="scale(1 1) rotate(0) translate(4 174)">
 <title>Taskflow</title>
 <g class="m-cluster">
 <title>cluster_p0x7ffc47e53358</title>
-<polygon points="8,-144 8,-222 146,-222 146,-144 8,-144"/>
-<text text-anchor="middle" x="77" y="-205.2">Taskflow</text>
+<polygon points="8,-91 8,-162 106,-162 106,-91 8,-91"/>
+<text text-anchor="middle" x="57" y="-150" font-family="Helvetica,sans-Serif" font-size="10.00">Taskflow</text>
 </g>
 <g class="m-cluster">
 <title>cluster_p0x7ffc47e53220</title>
-<polygon points="154,-8 154,-230 440,-230 440,-8 154,-8"/>
-<text text-anchor="middle" x="297" y="-213.2">m1</text>
+<polygon points="114,-8 114,-162 400,-162 400,-8 114,-8"/>
+<text text-anchor="middle" x="257" y="-150" font-family="Helvetica,sans-Serif" font-size="10.00">m1</text>
 </g>
 <g class="m-node m-flat">
 <title>p0x1878a88</title>
-<polygon points="137.5,-188 20.5,-188 16.5,-184 16.5,-152 133.5,-152 137.5,-156 137.5,-188"/>
-<polyline points="133.5,-184 16.5,-184 "/>
-<polyline points="133.5,-184 133.5,-152 "/>
-<polyline points="133.5,-184 137.5,-188 "/>
-<text text-anchor="middle" x="77" y="-166.2">pipeline [m1]</text>
+<polygon points="98,-135 20,-135 16,-131 16,-99 94,-99 98,-103 98,-135"/>
+<polyline points="94,-131 16,-131 "/>
+<polyline points="94,-131 94,-99 "/>
+<polyline points="94,-131 98,-135 "/>
+<text text-anchor="middle" x="57" y="-114.5" font-family="Helvetica,sans-Serif" font-size="10.00">pipeline [m1]</text>
 </g>
 <g class="m-node">
 <title>p0x1878600</title>
-<polygon points="297,-196 242,-170 297,-144 352,-170 297,-196"/>
-<text text-anchor="middle" x="297" y="-166.2">cond</text>
+<polygon points="256,-135 222.9,-117 256,-99 289.1,-117 256,-135"/>
+<text text-anchor="middle" x="256" y="-114.5" font-family="Helvetica,sans-Serif" font-size="10.00">cond</text>
 </g>
 <g class="m-node m-flat">
 <title>p0x18786e8</title>
-<polygon points="216,-52 162,-52 162,-48 158,-48 158,-44 162,-44 162,-24 158,-24 158,-20 162,-20 162,-16 216,-16 216,-52"/>
-<polyline points="162,-48 166,-48 166,-44 162,-44 "/>
-<polyline points="162,-24 166,-24 166,-20 162,-20 "/>
-<text text-anchor="middle" x="189" y="-30.2">rt&#45;0</text>
+<polygon points="176,-52 122,-52 122,-48 118,-48 118,-44 122,-44 122,-24 118,-24 118,-20 122,-20 122,-16 176,-16 176,-52"/>
+<polyline points="122,-48 126,-48 126,-44 122,-44 "/>
+<polyline points="122,-24 126,-24 126,-20 122,-20 "/>
+<text text-anchor="middle" x="149" y="-31.5" font-family="Helvetica,sans-Serif" font-size="10.00">rt&#45;0</text>
 </g>
 <g class="m-edge">
 <title>p0x1878600&#45;&gt;p0x18786e8</title>
-<path stroke-dasharray="5,2" d="M281.9831,-151.0898C263.2598,-127.5123 231.1482,-87.0755 209.996,-60.4394"/>
-<polygon points="212.5041,-57.9696 203.5443,-52.3151 207.0223,-62.3228 212.5041,-57.9696"/>
-<text text-anchor="middle" x="251" y="-94.2">0</text>
+<path stroke-dasharray="5,2" d="M242.88,-106.07C227.21,-94.21 200.5,-73.99 179.57,-58.14"/>
+<polygon points="181.66,-55.34 171.58,-52.09 177.44,-60.92 181.66,-55.34"/>
+<text text-anchor="middle" x="211.5" y="-73" font-family="Helvetica,sans-Serif" font-size="10.00">0</text>
 </g>
 <g class="m-node m-flat">
 <title>p0x18787d0</title>
-<polygon points="288,-52 234,-52 234,-48 230,-48 230,-44 234,-44 234,-24 230,-24 230,-20 234,-20 234,-16 288,-16 288,-52"/>
-<polyline points="234,-48 238,-48 238,-44 234,-44 "/>
-<polyline points="234,-24 238,-24 238,-20 234,-20 "/>
-<text text-anchor="middle" x="261" y="-30.2">rt&#45;1</text>
+<polygon points="248,-52 194,-52 194,-48 190,-48 190,-44 194,-44 194,-24 190,-24 190,-20 194,-20 194,-16 248,-16 248,-52"/>
+<polyline points="194,-48 198,-48 198,-44 194,-44 "/>
+<polyline points="194,-24 198,-24 198,-20 194,-20 "/>
+<text text-anchor="middle" x="221" y="-31.5" font-family="Helvetica,sans-Serif" font-size="10.00">rt&#45;1</text>
 </g>
 <g class="m-edge">
 <title>p0x1878600&#45;&gt;p0x18787d0</title>
-<path stroke-dasharray="5,2" d="M290.8114,-146.6208C284.6195,-123.2294 275.0892,-87.2258 268.4777,-62.249"/>
-<polygon points="271.7836,-61.06 265.8411,-52.2886 265.0166,-62.8513 271.7836,-61.06"/>
-<text text-anchor="middle" x="285" y="-94.2">1</text>
+<path stroke-dasharray="5,2" d="M249.9,-101.89C245.08,-90.73 238.21,-74.83 232.38,-61.34"/>
+<polygon points="235.54,-59.83 228.36,-52.04 229.11,-62.6 235.54,-59.83"/>
+<text text-anchor="middle" x="243.5" y="-73" font-family="Helvetica,sans-Serif" font-size="10.00">1</text>
 </g>
 <g class="m-node m-flat">
 <title>p0x18788b8</title>
-<polygon points="360,-52 306,-52 306,-48 302,-48 302,-44 306,-44 306,-24 302,-24 302,-20 306,-20 306,-16 360,-16 360,-52"/>
-<polyline points="306,-48 310,-48 310,-44 306,-44 "/>
-<polyline points="306,-24 310,-24 310,-20 306,-20 "/>
-<text text-anchor="middle" x="333" y="-30.2">rt&#45;2</text>
+<polygon points="320,-52 266,-52 266,-48 262,-48 262,-44 266,-44 266,-24 262,-24 262,-20 266,-20 266,-16 320,-16 320,-52"/>
+<polyline points="266,-48 270,-48 270,-44 266,-44 "/>
+<polyline points="266,-24 270,-24 270,-20 266,-20 "/>
+<text text-anchor="middle" x="293" y="-31.5" font-family="Helvetica,sans-Serif" font-size="10.00">rt&#45;2</text>
 </g>
 <g class="m-edge">
 <title>p0x1878600&#45;&gt;p0x18788b8</title>
-<path stroke-dasharray="5,2" d="M303.1886,-146.6208C309.3805,-123.2294 318.9108,-87.2258 325.5223,-62.249"/>
-<polygon points="328.9834,-62.8513 328.1589,-52.2886 322.2164,-61.06 328.9834,-62.8513"/>
-<text text-anchor="middle" x="323" y="-94.2">2</text>
+<path stroke-dasharray="5,2" d="M262.28,-102.26C267.35,-91.15 274.65,-75.16 280.86,-61.57"/>
+<polygon points="284.17,-62.75 285.15,-52.2 277.81,-59.84 284.17,-62.75"/>
+<text text-anchor="middle" x="279.5" y="-73" font-family="Helvetica,sans-Serif" font-size="10.00">2</text>
 </g>
 <g class="m-node m-flat">
 <title>p0x18789a0</title>
-<polygon points="432,-52 378,-52 378,-48 374,-48 374,-44 378,-44 378,-24 374,-24 374,-20 378,-20 378,-16 432,-16 432,-52"/>
-<polyline points="378,-48 382,-48 382,-44 378,-44 "/>
-<polyline points="378,-24 382,-24 382,-20 378,-20 "/>
-<text text-anchor="middle" x="405" y="-30.2">rt&#45;3</text>
+<polygon points="392,-52 338,-52 338,-48 334,-48 334,-44 338,-44 338,-24 334,-24 334,-20 338,-20 338,-16 392,-16 392,-52"/>
+<polyline points="338,-48 342,-48 342,-44 338,-44 "/>
+<polyline points="338,-24 342,-24 342,-20 338,-20 "/>
+<text text-anchor="middle" x="365" y="-31.5" font-family="Helvetica,sans-Serif" font-size="10.00">rt&#45;3</text>
 </g>
 <g class="m-edge">
 <title>p0x1878600&#45;&gt;p0x18789a0</title>
-<path stroke-dasharray="5,2" d="M312.0169,-151.0898C330.7402,-127.5123 362.8518,-87.0755 384.004,-60.4394"/>
-<polygon points="386.9777,-62.3228 390.4557,-52.3151 381.4959,-57.9696 386.9777,-62.3228"/>
-<text text-anchor="middle" x="365" y="-94.2">3</text>
+<path stroke-dasharray="5,2" d="M269.37,-106.07C285.32,-94.21 312.53,-73.99 333.86,-58.14"/>
+<polygon points="336.06,-60.87 342,-52.09 331.89,-55.25 336.06,-60.87"/>
+<text text-anchor="middle" x="320.5" y="-73" font-family="Helvetica,sans-Serif" font-size="10.00">3</text>
 </g>
 </g>
 </svg>
@@ -255,7 +255,7 @@
   <div class="m-container">
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
-        <p>Taskflow handbook is part of the <a href="https://taskflow.github.io">Taskflow project</a>, copyright © <a href="https://tsung-wei-huang.github.io/">Dr. Tsung-Wei Huang</a>, 2018&ndash;2023.<br />Generated by <a href="https://doxygen.org/">Doxygen</a> 1.8.14 and <a href="https://mcss.mosra.cz/">m.css</a>.</p>
+        <p>Taskflow handbook is part of the <a href="https://taskflow.github.io">Taskflow project</a>, copyright © <a href="https://tsung-wei-huang.github.io/">Dr. Tsung-Wei Huang</a>, 2018&ndash;2023.<br />Generated by <a href="https://doxygen.org/">Doxygen</a> 1.9.1 and <a href="https://mcss.mosra.cz/">m.css</a>.</p>
       </div>
     </div>
   </div>

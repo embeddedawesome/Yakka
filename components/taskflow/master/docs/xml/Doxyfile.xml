@@ -60,6 +60,7 @@
     <value><![CDATA["std_variant_get=<a href=\"https://en.cppreference.com/w/cpp/utility/variant/get\">std::get</a>"]]></value>
     <value><![CDATA["std_optional=<a href=\"https://en.cppreference.com/w/cpp/utility/optional\">std::optional</a>"]]></value>
     <value><![CDATA["std_nullopt=<a href=\"https://en.cppreference.com/w/cpp/utility/optional/nullopt\">std::nullopt</a>"]]></value>
+    <value><![CDATA["std_ref=<a href=\"https://en.cppreference.com/w/cpp/utility/functional/ref\">std::ref</a>"]]></value>
     <value><![CDATA["Doxygen=<a href=\"https://www.doxygen.nl/index.html\">Doxygen</a>"]]></value>
     <value><![CDATA["MCSS=<a href=\"https://mcss.mosra.cz/documentation/doxygen/\">m.css</a>"]]></value>
     <value><![CDATA["GraphVizOnline=<a href=\"https://dreampuf.github.io/GraphvizOnline/\">GraphViz Online</a>"]]></value>
@@ -172,6 +173,7 @@
     <value><![CDATA[../taskflow/core/worker.hpp]]></value>
     <value><![CDATA[../taskflow/core/executor.hpp]]></value>
     <value><![CDATA[../taskflow/core/task.hpp]]></value>
+    <value><![CDATA[../taskflow/core/async_task.hpp]]></value>
     <value><![CDATA[../taskflow/core/semaphore.hpp]]></value>
     <value><![CDATA[../taskflow/core/taskflow.hpp]]></value>
     <value><![CDATA[../taskflow/core/observer.hpp]]></value>
@@ -198,6 +200,7 @@
     <value><![CDATA[QuickStart.dox]]></value>
     <value><![CDATA[releases/releases.dox]]></value>
     <value><![CDATA[releases/release-roadmap.dox]]></value>
+    <value><![CDATA[releases/release-3.7.0.dox]]></value>
     <value><![CDATA[releases/release-3.6.0.dox]]></value>
     <value><![CDATA[releases/release-3.5.0.dox]]></value>
     <value><![CDATA[releases/release-3.4.0.dox]]></value>
@@ -229,6 +232,7 @@
     <value><![CDATA[cookbook/prioritized_tasking.dox]]></value>
     <value><![CDATA[cookbook/semaphore.dox]]></value>
     <value><![CDATA[cookbook/async_tasking.dox]]></value>
+    <value><![CDATA[cookbook/dependent_async_tasking.dox]]></value>
     <value><![CDATA[cookbook/gpu_tasking_cudaflow.dox]]></value>
     <value><![CDATA[cookbook/gpu_tasking_cudaflow_capturer.dox]]></value>
     <value><![CDATA[cookbook/cancellation.dox]]></value>
@@ -240,6 +244,7 @@
     <value><![CDATA[algorithms/reduce.dox]]></value>
     <value><![CDATA[algorithms/sort.dox]]></value>
     <value><![CDATA[algorithms/scan.dox]]></value>
+    <value><![CDATA[algorithms/find.dox]]></value>
     <value><![CDATA[algorithms/pipeline.dox]]></value>
     <value><![CDATA[algorithms/scalable_pipeline.dox]]></value>
     <value><![CDATA[algorithms/data_pipeline.dox]]></value>

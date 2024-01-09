@@ -274,8 +274,8 @@ TEST_CASE("SelectionSort" * doctest::timeout(300)) {
     auto minr = new int(-1);
 
     auto SL = sf.emplace(
-      [&spawn, &data, beg, m, l=minl] (tf::Subflow& sf) mutable {
-      spawn(sf, data, beg, m, *l);
+      [&spawn, &data, beg, m, l=minl] (tf::Subflow& sf2) mutable {
+      spawn(sf2, data, beg, m, *l);
     }).name(std::string("[")
           + std::to_string(beg)
           + ':'
@@ -283,8 +283,8 @@ TEST_CASE("SelectionSort" * doctest::timeout(300)) {
           + ')');
 
     auto SR = sf.emplace(
-      [&spawn, &data, m, end, r=minr] (tf::Subflow& sf) mutable {
-      spawn(sf, data, m, end, *r);
+      [&spawn, &data, m, end, r=minr] (tf::Subflow& sf2) mutable {
+      spawn(sf2, data, m, end, *r);
     }).name(std::string("[")
           + std::to_string(m)
           + ':'
@@ -382,16 +382,16 @@ TEST_CASE("MergeSort" * doctest::timeout(300)) {
 
     int m = (beg + end + 1) / 2;
 
-    auto SL = sf.emplace([&spawn, &data, beg, m] (tf::Subflow& sf) {
-      spawn(sf, data, beg, m);
+    auto SL = sf.emplace([&spawn, &data, beg, m] (tf::Subflow& sf2) {
+      spawn(sf2, data, beg, m);
     }).name(std::string("[")
           + std::to_string(beg)
           + ':'
           + std::to_string(m)
           + ')');
 
-    auto SR = sf.emplace([&spawn, &data, m, end] (tf::Subflow& sf) {
-      spawn(sf, data, m, end);
+    auto SR = sf.emplace([&spawn, &data, m, end] (tf::Subflow& sf2) {
+      spawn(sf2, data, m, end);
     }).name(std::string("[")
           + std::to_string(m)
           + ':'
@@ -485,16 +485,16 @@ TEST_CASE("QuickSort" * doctest::timeout(300)) {
 
     std::iter_swap(pvt, end-1);
 
-    sf.emplace([&spawn, &data, beg, pvt] (tf::Subflow& sf) {
-      spawn(sf, data, beg, pvt);
+    sf.emplace([&spawn, &data, beg, pvt] (tf::Subflow& sf2) {
+      spawn(sf2, data, beg, pvt);
     }).name(std::string("[")
           + std::to_string(beg-data.begin())
           + ':'
           + std::to_string(pvt-data.begin())
           + ')');
 
-    sf.emplace([&spawn, &data, pvt, end] (tf::Subflow& sf) {
-      spawn(sf, data, pvt+1, end);
+    sf.emplace([&spawn, &data, pvt, end] (tf::Subflow& sf2) {
+      spawn(sf2, data, pvt+1, end);
     }).name(std::string("[")
           + std::to_string(pvt-data.begin())
           + ':'
@@ -529,7 +529,41 @@ TEST_CASE("QuickSort" * doctest::timeout(300)) {
       REQUIRE(gold == data);
     }
   }
-
 }
+
+//// ----------------------------------------------------------------------------
+//// Exception
+//// ----------------------------------------------------------------------------
+//
+//void parallel_sort_exception(unsigned W) {
+//
+//  tf::Taskflow taskflow;
+//  tf::Executor executor(W);
+//
+//  std::vector<int> data(1000000);
+//
+//  // for_each
+//  taskflow.sort(data.begin(), data.end(), [](int a, int b){
+//    throw std::runtime_error("x");
+//    return a < b;
+//  });
+//  REQUIRE_THROWS_WITH_AS(executor.run(taskflow).get(), "x", std::runtime_error);
+//}
+//
+//TEST_CASE("ParallelSort.Exception.1thread") {
+//  parallel_sort_exception(1);
+//}
+//
+//TEST_CASE("ParallelSort.Exception.2threads") {
+//  parallel_sort_exception(2);
+//}
+//
+//TEST_CASE("ParallelSort.Exception.3threads") {
+//  parallel_sort_exception(3);
+//}
+//
+//TEST_CASE("ParallelSort.Exception.4threads") {
+//  parallel_sort_exception(4);
+//}
 
 

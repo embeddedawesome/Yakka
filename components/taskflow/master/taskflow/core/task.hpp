@@ -307,7 +307,7 @@ class Task {
     @return @c *this
     */
     Task& data(void* data);
-      
+    
     /**
     @brief assigns a priority value to the task
 
@@ -517,7 +517,7 @@ inline TaskType Task::type() const {
     case Node::MULTI_CONDITION: return TaskType::CONDITION;
     case Node::MODULE:          return TaskType::MODULE;
     case Node::ASYNC:           return TaskType::ASYNC;
-    case Node::SILENT_ASYNC:    return TaskType::ASYNC;
+    case Node::DEPENDENT_ASYNC: return TaskType::ASYNC;
     default:                    return TaskType::UNDEFINED;
   }
 }
@@ -607,6 +607,8 @@ inline std::ostream& operator << (std::ostream& os, const Task& task) {
   return os;
 }
 
+// ----------------------------------------------------------------------------
+// Task View
 // ----------------------------------------------------------------------------
 
 /**
@@ -714,7 +716,7 @@ inline TaskType TaskView::type() const {
     case Node::MULTI_CONDITION: return TaskType::CONDITION;
     case Node::MODULE:          return TaskType::MODULE;
     case Node::ASYNC:           return TaskType::ASYNC;
-    case Node::SILENT_ASYNC:    return TaskType::ASYNC;
+    case Node::DEPENDENT_ASYNC: return TaskType::ASYNC;
     default:                    return TaskType::UNDEFINED;
   }
 }

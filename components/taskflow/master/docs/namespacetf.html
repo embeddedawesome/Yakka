@@ -68,64 +68,123 @@
           <h2><a href="#nested-classes">Classes</a></h2>
           <dl class="m-doc">
             <dt>
+              <div class="m-doc-template">template&lt;typename T, unsigned N = 2&gt;</div>
+              class <a href="classtf_1_1SmallVector.html" class="m-doc">SmallVector</a>
+            </dt>
+            <dd>class to define a vector optimized for small array</dd>
+            <dt>
+              class <a href="classtf_1_1Graph.html" class="m-doc">Graph</a>
+            </dt>
+            <dd>class to create a graph object</dd>
+            <dt>
+              class <a href="classtf_1_1Runtime.html" class="m-doc">Runtime</a>
+            </dt>
+            <dd>class to include a runtime object in a task</dd>
+            <dt>
+              <div class="m-doc-template">template&lt;typename T, unsigned TF_MAX_PRIORITY = static_cast&lt;unsigned&gt;(<a href="namespacetf.html#ac9f4add8f716ed323b0bdbbc1d89346fa26a4b44a837bf97b972628509912b4a5" class="m-doc">TaskPriority::<wbr />MAX</a>)&gt;</div>
+              class <a href="classtf_1_1TaskQueue.html" class="m-doc">TaskQueue</a>
+            </dt>
+            <dd>class to create a lock-free unbounded single-producer multiple-consumer queue</dd>
+            <dt>
+              class <a href="classtf_1_1FlowBuilder.html" class="m-doc">FlowBuilder</a>
+            </dt>
+            <dd>class to build a task dependency graph</dd>
+            <dt>
+              class <a href="classtf_1_1Subflow.html" class="m-doc">Subflow</a>
+            </dt>
+            <dd>class to construct a subflow graph from the execution of a dynamic task</dd>
+            <dt>
+              class <a href="classtf_1_1Worker.html" class="m-doc">Worker</a>
+            </dt>
+            <dd>class to create a worker in an executor</dd>
+            <dt>
+              class <a href="classtf_1_1WorkerView.html" class="m-doc">WorkerView</a>
+            </dt>
+            <dd>class to create an immutable view of a worker in an executor</dd>
+            <dt>
+              class <a href="classtf_1_1Executor.html" class="m-doc">Executor</a>
+            </dt>
+            <dd>class to create an executor for running a taskflow graph</dd>
+            <dt>
+              class <a href="classtf_1_1Task.html" class="m-doc">Task</a>
+            </dt>
+            <dd>class to create a task handle over a node in a taskflow graph</dd>
+            <dt>
+              class <a href="classtf_1_1TaskView.html" class="m-doc">TaskView</a>
+            </dt>
+            <dd>class to access task information from the observer interface</dd>
+            <dt>
+              class <a href="classtf_1_1AsyncTask.html" class="m-doc">AsyncTask</a>
+            </dt>
+            <dd>class to create a dependent asynchronous task</dd>
+            <dt>
+              class <a href="classtf_1_1Semaphore.html" class="m-doc">Semaphore</a>
+            </dt>
+            <dd>class to create a semophore object for building a concurrency constraint</dd>
+            <dt>
+              class <a href="classtf_1_1Taskflow.html" class="m-doc">Taskflow</a>
+            </dt>
+            <dd>class to create a taskflow object</dd>
+            <dt>
+              <div class="m-doc-template">template&lt;typename T&gt;</div>
+              class <a href="classtf_1_1Future.html" class="m-doc">Future</a>
+            </dt>
+            <dd>class to access the result of an execution</dd>
+            <dt>
+              class <a href="classtf_1_1ObserverInterface.html" class="m-doc">ObserverInterface</a>
+            </dt>
+            <dd>class to derive an executor observer</dd>
+            <dt>
               class <a href="classtf_1_1ChromeObserver.html" class="m-doc">ChromeObserver</a>
             </dt>
             <dd>class to create an observer based on Chrome tracing format</dd>
+            <dt>
+              class <a href="classtf_1_1TFProfObserver.html" class="m-doc">TFProfObserver</a>
+            </dt>
+            <dd>class to create an observer based on the built-in taskflow profiler format</dd>
+            <dt>
+              class <a href="classtf_1_1PartitionerBase.html" class="m-doc">PartitionerBase</a>
+            </dt>
+            <dd>class to derive a partitioner for scheduling parallel algorithms</dd>
+            <dt>
+              class <a href="classtf_1_1GuidedPartitioner.html" class="m-doc">GuidedPartitioner</a>
+            </dt>
+            <dd>class to construct a guided partitioner for scheduling parallel algorithms</dd>
+            <dt>
+              class <a href="classtf_1_1DynamicPartitioner.html" class="m-doc">DynamicPartitioner</a>
+            </dt>
+            <dd>class to construct a dynamic partitioner for scheduling parallel algorithms</dd>
+            <dt>
+              class <a href="classtf_1_1StaticPartitioner.html" class="m-doc">StaticPartitioner</a>
+            </dt>
+            <dd>class to construct a dynamic partitioner for scheduling parallel algorithms</dd>
+            <dt>
+              class <a href="classtf_1_1RandomPartitioner.html" class="m-doc">RandomPartitioner</a>
+            </dt>
+            <dd>class to construct a random partitioner for scheduling parallel algorithms</dd>
             <dt>
               class <a href="classtf_1_1CriticalSection.html" class="m-doc">CriticalSection</a>
             </dt>
             <dd>class to create a critical region of limited workers to run tasks</dd>
             <dt>
-              <div class="m-doc-template">template&lt;typename T&gt;</div>
-              class <a href="classtf_1_1cudaDeviceAllocator.html" class="m-doc">cudaDeviceAllocator</a>
+              class <a href="classtf_1_1Pipeflow.html" class="m-doc">Pipeflow</a>
             </dt>
-            <dd>class to create a CUDA device allocator</dd>
+            <dd>class to create a pipeflow object used by the pipe callable</dd>
             <dt>
-              class <a href="classtf_1_1cudaEvent.html" class="m-doc">cudaEvent</a>
+              <div class="m-doc-template">template&lt;typename C = <a href="http://en.cppreference.com/w/cpp/utility/functional/function.html" class="m-doc-external">std::<wbr />function</a>&lt;void(<a href="classtf_1_1Pipeflow.html" class="m-doc">tf::<wbr />Pipeflow</a>&amp;)&gt;&gt;</div>
+              class <a href="classtf_1_1Pipe.html" class="m-doc">Pipe</a>
             </dt>
-            <dd>class to create an RAII-styled wrapper over a native CUDA event</dd>
+            <dd>class to create a pipe object for a pipeline stage</dd>
             <dt>
-              <div class="m-doc-template">template&lt;unsigned NT, unsigned VT&gt;</div>
-              class <a href="classtf_1_1cudaExecutionPolicy.html" class="m-doc">cudaExecutionPolicy</a>
+              <div class="m-doc-template">template&lt;typename... Ps&gt;</div>
+              class <a href="classtf_1_1Pipeline.html" class="m-doc">Pipeline</a>
             </dt>
-            <dd>class to define execution policy for CUDA standard algorithms</dd>
+            <dd>class to create a pipeline scheduling framework</dd>
             <dt>
-              class <a href="classtf_1_1cudaFlow.html" class="m-doc">cudaFlow</a>
+              <div class="m-doc-template">template&lt;typename P&gt;</div>
+              class <a href="classtf_1_1ScalablePipeline.html" class="m-doc">ScalablePipeline</a>
             </dt>
-            <dd>class to create a cudaFlow task dependency graph</dd>
-            <dt>
-              class <a href="classtf_1_1cudaFlowCapturer.html" class="m-doc">cudaFlowCapturer</a>
-            </dt>
-            <dd>class to create a cudaFlow graph using stream capture</dd>
-            <dt>
-              class <a href="classtf_1_1cudaFlowLinearOptimizer.html" class="m-doc">cudaFlowLinearOptimizer</a>
-            </dt>
-            <dd>class to capture a linear CUDA graph using a sequential stream</dd>
-            <dt>
-              class <a href="classtf_1_1cudaFlowRoundRobinOptimizer.html" class="m-doc">cudaFlowRoundRobinOptimizer</a>
-            </dt>
-            <dd>class to capture a CUDA graph using a round-robin algorithm</dd>
-            <dt>
-              class <a href="classtf_1_1cudaFlowSequentialOptimizer.html" class="m-doc">cudaFlowSequentialOptimizer</a>
-            </dt>
-            <dd>class to capture a CUDA graph using a sequential stream</dd>
-            <dt>
-              class <a href="classtf_1_1cudaScopedDevice.html" class="m-doc">cudaScopedDevice</a>
-            </dt>
-            <dd>class to create an RAII-styled context switch</dd>
-            <dt>
-              class <a href="classtf_1_1cudaStream.html" class="m-doc">cudaStream</a>
-            </dt>
-            <dd>class to create an RAII-styled wrapper over a native CUDA stream</dd>
-            <dt>
-              class <a href="classtf_1_1cudaTask.html" class="m-doc">cudaTask</a>
-            </dt>
-            <dd>class to create a task handle over an internal node of a cudaFlow graph</dd>
-            <dt>
-              <div class="m-doc-template">template&lt;typename T&gt;</div>
-              class <a href="classtf_1_1cudaUSMAllocator.html" class="m-doc">cudaUSMAllocator</a>
-            </dt>
-            <dd>class to create a unified shared memory (USM) allocator</dd>
+            <dd>class to create a scalable pipeline object</dd>
             <dt>
               <div class="m-doc-template">template&lt;typename Input, typename Output, typename C&gt;</div>
               class <a href="classtf_1_1DataPipe.html" class="m-doc">DataPipe</a>
@@ -137,115 +196,56 @@
             </dt>
             <dd>class to create a data-parallel pipeline scheduling framework</dd>
             <dt>
-              class <a href="classtf_1_1DynamicPartitioner.html" class="m-doc">DynamicPartitioner</a>
+              class <a href="classtf_1_1cudaScopedDevice.html" class="m-doc">cudaScopedDevice</a>
             </dt>
-            <dd>class to construct a dynamic partitioner for scheduling parallel algorithms</dd>
-            <dt>
-              class <a href="classtf_1_1Executor.html" class="m-doc">Executor</a>
-            </dt>
-            <dd>class to create an executor for running a taskflow graph</dd>
-            <dt>
-              class <a href="classtf_1_1FlowBuilder.html" class="m-doc">FlowBuilder</a>
-            </dt>
-            <dd>class to build a task dependency graph</dd>
+            <dd>class to create an RAII-styled context switch</dd>
             <dt>
               <div class="m-doc-template">template&lt;typename T&gt;</div>
-              class <a href="classtf_1_1Future.html" class="m-doc">Future</a>
+              class <a href="classtf_1_1cudaDeviceAllocator.html" class="m-doc">cudaDeviceAllocator</a>
             </dt>
-            <dd>class to access the result of an execution</dd>
+            <dd>class to create a CUDA device allocator</dd>
             <dt>
-              class <a href="classtf_1_1Graph.html" class="m-doc">Graph</a>
+              <div class="m-doc-template">template&lt;typename T&gt;</div>
+              class <a href="classtf_1_1cudaUSMAllocator.html" class="m-doc">cudaUSMAllocator</a>
             </dt>
-            <dd>class to create a graph object</dd>
+            <dd>class to create a unified shared memory (USM) allocator</dd>
             <dt>
-              class <a href="classtf_1_1GuidedPartitioner.html" class="m-doc">GuidedPartitioner</a>
+              class <a href="classtf_1_1cudaStream.html" class="m-doc">cudaStream</a>
             </dt>
-            <dd>class to construct a guided partitioner for scheduling parallel algorithms</dd>
+            <dd>class to create an RAII-styled wrapper over a native CUDA stream</dd>
             <dt>
-              class <a href="classtf_1_1ObserverInterface.html" class="m-doc">ObserverInterface</a>
+              class <a href="classtf_1_1cudaEvent.html" class="m-doc">cudaEvent</a>
             </dt>
-            <dd>class to derive an executor observer</dd>
+            <dd>class to create an RAII-styled wrapper over a native CUDA event</dd>
             <dt>
-              class <a href="classtf_1_1PartitionerBase.html" class="m-doc">PartitionerBase</a>
+              class <a href="classtf_1_1cudaTask.html" class="m-doc">cudaTask</a>
             </dt>
-            <dd>class to derive a partitioner for scheduling parallel algorithms</dd>
+            <dd>class to create a task handle over an internal node of a cudaFlow graph</dd>
             <dt>
-              <div class="m-doc-template">template&lt;typename C = <a href="http://en.cppreference.com/w/cpp/utility/functional/function.html" class="m-doc-external">std::<wbr />function</a>&lt;void(<a href="classtf_1_1Pipeflow.html" class="m-doc">tf::<wbr />Pipeflow</a>&amp;)&gt;&gt;</div>
-              class <a href="classtf_1_1Pipe.html" class="m-doc">Pipe</a>
+              class <a href="classtf_1_1cudaFlow.html" class="m-doc">cudaFlow</a>
             </dt>
-            <dd>class to create a pipe object for a pipeline stage</dd>
+            <dd>class to create a cudaFlow task dependency graph</dd>
             <dt>
-              class <a href="classtf_1_1Pipeflow.html" class="m-doc">Pipeflow</a>
+              class <a href="classtf_1_1cudaFlowSequentialOptimizer.html" class="m-doc">cudaFlowSequentialOptimizer</a>
             </dt>
-            <dd>class to create a pipeflow object used by the pipe callable</dd>
+            <dd>class to capture a CUDA graph using a sequential stream</dd>
             <dt>
-              <div class="m-doc-template">template&lt;typename... Ps&gt;</div>
-              class <a href="classtf_1_1Pipeline.html" class="m-doc">Pipeline</a>
+              class <a href="classtf_1_1cudaFlowLinearOptimizer.html" class="m-doc">cudaFlowLinearOptimizer</a>
             </dt>
-            <dd>class to create a pipeline scheduling framework</dd>
+            <dd>class to capture a linear CUDA graph using a sequential stream</dd>
             <dt>
-              class <a href="classtf_1_1RandomPartitioner.html" class="m-doc">RandomPartitioner</a>
+              class <a href="classtf_1_1cudaFlowRoundRobinOptimizer.html" class="m-doc">cudaFlowRoundRobinOptimizer</a>
             </dt>
-            <dd>class to construct a random partitioner for scheduling parallel algorithms</dd>
+            <dd>class to capture a CUDA graph using a round-robin algorithm</dd>
             <dt>
-              class <a href="classtf_1_1Runtime.html" class="m-doc">Runtime</a>
+              class <a href="classtf_1_1cudaFlowCapturer.html" class="m-doc">cudaFlowCapturer</a>
             </dt>
-            <dd>class to include a runtime object in a task</dd>
+            <dd>class to create a cudaFlow graph using stream capture</dd>
             <dt>
-              <div class="m-doc-template">template&lt;typename P&gt;</div>
-              class <a href="classtf_1_1ScalablePipeline.html" class="m-doc">ScalablePipeline</a>
+              <div class="m-doc-template">template&lt;unsigned NT, unsigned VT&gt;</div>
+              class <a href="classtf_1_1cudaExecutionPolicy.html" class="m-doc">cudaExecutionPolicy</a>
             </dt>
-            <dd>class to create a scalable pipeline object</dd>
-            <dt>
-              class <a href="classtf_1_1Semaphore.html" class="m-doc">Semaphore</a>
-            </dt>
-            <dd>class to create a semophore object for building a concurrency constraint</dd>
-            <dt>
-              <div class="m-doc-template">template&lt;typename T, unsigned N = 2&gt;</div>
-              class <a href="classtf_1_1SmallVector.html" class="m-doc">SmallVector</a>
-            </dt>
-            <dd>class to define a vector optimized for small array</dd>
-            <dt>
-              class <a href="classtf_1_1StaticPartitioner.html" class="m-doc">StaticPartitioner</a>
-            </dt>
-            <dd>class to construct a dynamic partitioner for scheduling parallel algorithms</dd>
-            <dt>
-              class <a href="classtf_1_1Subflow.html" class="m-doc">Subflow</a>
-            </dt>
-            <dd>class to construct a subflow graph from the execution of a dynamic task</dd>
-            <dt>
-              class <a href="classtf_1_1Task.html" class="m-doc">Task</a>
-            </dt>
-            <dd>class to create a task handle over a node in a taskflow graph</dd>
-            <dt>
-              class <a href="classtf_1_1Taskflow.html" class="m-doc">Taskflow</a>
-            </dt>
-            <dd>class to create a taskflow object</dd>
-            <dt>
-              <div class="m-doc-template">template&lt;typename T, unsigned TF_MAX_PRIORITY = static_cast&lt;unsigned&gt;(<a href="namespacetf.html#ac9f4add8f716ed323b0bdbbc1d89346fa26a4b44a837bf97b972628509912b4a5" class="m-doc">TaskPriority::<wbr />MAX</a>)&gt;</div>
-              class <a href="classtf_1_1TaskQueue.html" class="m-doc">TaskQueue</a>
-            </dt>
-            <dd>class to create a lock-free unbounded single-producer multiple-consumer queue</dd>
-            <dt>
-              class <a href="classtf_1_1TaskView.html" class="m-doc">TaskView</a>
-            </dt>
-            <dd>class to access task information from the observer interface</dd>
-            <dt>
-              class <a href="classtf_1_1TFProfObserver.html" class="m-doc">TFProfObserver</a>
-            </dt>
-            <dd>class to create an observer based on the built-in taskflow profiler format</dd>
-            <dt>
-              class <a href="classtf_1_1Worker.html" class="m-doc">Worker</a>
-            </dt>
-            <dd>class to create a worker in an executor</dd>
-            <dt>
-              class <a href="classtf_1_1WorkerInterface.html" class="m-doc">WorkerInterface</a>
-            </dt>
-            <dd>class to configure worker behavior in an executor</dd>
-            <dt>
-              class <a href="classtf_1_1WorkerView.html" class="m-doc">WorkerView</a>
-            </dt>
-            <dd>class to create an immutable view of a worker in an executor</dd>
+            <dd>class to define execution policy for CUDA standard algorithms</dd>
           </dl>
         </section>
         <section id="enum-members">
@@ -312,11 +312,6 @@
         <section id="func-members">
           <h2><a href="#func-members">Functions</a></h2>
           <dl class="m-doc">
-            <dt>
-              <div class="m-doc-template">template&lt;typename T, typename... ArgsT&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a href="#a6371ab1b1b0e57db6ca95cb4456ac5d3" class="m-doc">make_worker_interface</a>(</span><span class="m-doc-wrap">ArgsT &amp;&amp; ... args) -&gt; <a href="http://en.cppreference.com/w/cpp/memory/shared_ptr.html" class="m-doc-external">std::<wbr />shared_ptr</a>&lt;T&gt;</span>
-            </dt>
-            <dd>helper function to create an instance derived from <a href="classtf_1_1WorkerInterface.html" class="m-doc">tf::<wbr />WorkerInterface</a></dd>
             <dt>
               <span class="m-doc-wrap-bumper">auto <a href="#a9ca58dc6c666698cc7373eb0262140ef" class="m-doc">to_string</a>(</span><span class="m-doc-wrap"><a href="namespacetf.html#a1355048578785a80414707ff308b395a" class="m-doc">TaskType</a> type) -&gt; const char*</span>
             </dt>
@@ -736,13 +731,13 @@
                 <tr>
                   <td><a href="#ac9f4add8f716ed323b0bdbbc1d89346fab89de3b4b81c4facfac906edf29aec8c" class="m-doc-self" id="ac9f4add8f716ed323b0bdbbc1d89346fab89de3b4b81c4facfac906edf29aec8c">HIGH</a></td>
                   <td>
-                  <p>value of the highest priority (i.e., 0)</p>
+                  <p>value of the highest priority (i.e., 0)<br /></p>
                   </td>
                 </tr>
                 <tr>
                   <td><a href="#ac9f4add8f716ed323b0bdbbc1d89346fa1e23852820b9154316c7c06e2b7ba051" class="m-doc-self" id="ac9f4add8f716ed323b0bdbbc1d89346fa1e23852820b9154316c7c06e2b7ba051">NORMAL</a></td>
                   <td>
-                  <p>value of the normal priority (i.e., 1)</p>
+                  <p>value of the normal priority (i.e., 1)<br /></p>
                   </td>
                 </tr>
                 <tr>
@@ -908,39 +903,6 @@
         </section>
         <section>
           <h2>Function documentation</h2>
-          <section class="m-doc-details" id="a6371ab1b1b0e57db6ca95cb4456ac5d3"><div>
-            <h3>
-              <div class="m-doc-template">
-                template&lt;typename T, typename... ArgsT&gt;
-              </div>
-              <span class="m-doc-wrap-bumper"><a href="http://en.cppreference.com/w/cpp/memory/shared_ptr.html" class="m-doc-external">std::<wbr />shared_ptr</a>&lt;T&gt; tf::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a6371ab1b1b0e57db6ca95cb4456ac5d3" class="m-doc-self">make_worker_interface</a>(</span><span class="m-doc-wrap">ArgsT &amp;&amp; ... args)</span></span>
-            </h3>
-            <p>helper function to create an instance derived from <a href="classtf_1_1WorkerInterface.html" class="m-doc">tf::<wbr />WorkerInterface</a></p>
-            <table class="m-table m-fullwidth m-flat">
-              <thead>
-                <tr><th colspan="2">Template parameters</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="width: 1%">T</td>
-                  <td>type derived from <a href="classtf_1_1WorkerInterface.html" class="m-doc">tf::<wbr />WorkerInterface</a></td>
-                </tr>
-                <tr>
-                  <td>ArgsT</td>
-                  <td>argument types to construct <code>T</code></td>
-                </tr>
-              </tbody>
-              <thead>
-                <tr><th colspan="2">Parameters</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>args</td>
-                  <td>arguments to forward to the constructor of <code>T</code></td>
-                </tr>
-              </tbody>
-            </table>
-          </div></section>
           <section class="m-doc-details" id="a9ca58dc6c666698cc7373eb0262140ef"><div>
             <h3>
               <span class="m-doc-wrap-bumper">const char* tf::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a9ca58dc6c666698cc7373eb0262140ef" class="m-doc-self">to_string</a>(</span><span class="m-doc-wrap"><a href="namespacetf.html#a1355048578785a80414707ff308b395a" class="m-doc">TaskType</a> type)</span></span>
@@ -981,7 +943,7 @@
                 </tr>
               </tbody>
             </table>
-<p><a href="namespacetf.html#a8975fa5762088789adb0b60f38208309" class="m-doc">tf::<wbr />make_data_pipe</a> is a helper function to create a data pipe (<a href="classtf_1_1DataPipe.html" class="m-doc">tf::<wbr />DataPipe</a>) in a data-parallel pipeline (<a href="classtf_1_1DataPipeline.html" class="m-doc">tf::<wbr />DataPipeline</a>). The first argument specifies the direction of the data pipe, either <a href="namespacetf.html#abb7a11e41fd457f69e7ff45d4c769564a7b804a28d6154ab8007287532037f1d0" class="m-doc">tf::<wbr />PipeType::<wbr />SERIAL</a> or tf::PipeType::PARALLE, and the second argument is a callable to invoke by the pipeline scheduler. Input and output data types are specified via template parameters, which will always be decayed by the library to its original form for storage purpose. The callable must take the input data type in its first argument and returns a value of the output data type.</p><pre class="m-code"><span class="n">tf</span><span class="o">::</span><span class="n">make_data_pipe</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="p">(</span><span class="w"></span>
+<p><a href="namespacetf.html#a8975fa5762088789adb0b60f38208309" class="m-doc">tf::<wbr />make_data_pipe</a> is a helper function to create a data pipe (<a href="classtf_1_1DataPipe.html" class="m-doc">tf::<wbr />DataPipe</a>) in a data-parallel pipeline (<a href="classtf_1_1DataPipeline.html" class="m-doc">tf::<wbr />DataPipeline</a>). The first argument specifies the direction of the data pipe, either <a href="namespacetf.html#abb7a11e41fd457f69e7ff45d4c769564a7b804a28d6154ab8007287532037f1d0" class="m-doc">tf::<wbr />PipeType::<wbr />SERIAL</a> or <a href="namespacetf.html#abb7a11e41fd457f69e7ff45d4c769564adf13a99b035d6f0bce4f44ab18eec8eb" class="m-doc">tf::<wbr />PipeType::<wbr />PARALLEL</a>, and the second argument is a callable to invoke by the pipeline scheduler. Input and output data types are specified via template parameters, which will always be decayed by the library to its original form for storage purpose. The callable must take the input data type in its first argument and returns a value of the output data type.</p><pre class="m-code"><span class="n">tf</span><span class="o">::</span><span class="n">make_data_pipe</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="p">(</span><span class="w"></span>
 <span class="w">  </span><span class="n">tf</span><span class="o">::</span><span class="n">PipeType</span><span class="o">::</span><span class="n">SERIAL</span><span class="p">,</span><span class="w"> </span>
 <span class="w">  </span><span class="p">[](</span><span class="kt">int</span><span class="o">&amp;</span><span class="w"> </span><span class="n">input</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">input</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">100</span><span class="p">);</span><span class="w"></span>
@@ -2696,7 +2658,7 @@
   <div class="m-container">
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
-        <p>Taskflow handbook is part of the <a href="https://taskflow.github.io">Taskflow project</a>, copyright © <a href="https://tsung-wei-huang.github.io/">Dr. Tsung-Wei Huang</a>, 2018&ndash;2023.<br />Generated by <a href="https://doxygen.org/">Doxygen</a> 1.8.14 and <a href="https://mcss.mosra.cz/">m.css</a>.</p>
+        <p>Taskflow handbook is part of the <a href="https://taskflow.github.io">Taskflow project</a>, copyright © <a href="https://tsung-wei-huang.github.io/">Dr. Tsung-Wei Huang</a>, 2018&ndash;2023.<br />Generated by <a href="https://doxygen.org/">Doxygen</a> 1.9.1 and <a href="https://mcss.mosra.cz/">m.css</a>.</p>
       </div>
     </div>
   </div>
