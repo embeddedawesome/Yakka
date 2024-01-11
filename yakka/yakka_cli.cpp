@@ -26,7 +26,9 @@ static void evaluate_project_choices(yakka::workspace &workspace, yakka::project
 static void run_taskflow(yakka::project &project);
 
 tf::Task &create_tasks(yakka::project &project, const std::string &name, std::map<std::string, tf::Task> &tasks, tf::Taskflow &taskflow);
-static const semver::version yakka_version{};
+static const semver::version yakka_version{
+#include "yakka_version.h"
+};
 
 int main(int argc, char **argv)
 {
