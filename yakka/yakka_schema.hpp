@@ -72,7 +72,7 @@ class schema_validator {
       type: object
       description: Choices
       propertyNames:
-        pattern: "^[A-Za-z_.]*$"
+        pattern: "^[A-Za-z0-9_.]*$"
       patternProperties:
         '.*':
           type: object
