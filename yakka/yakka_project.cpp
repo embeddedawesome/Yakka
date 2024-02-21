@@ -1,3 +1,4 @@
+#include "yakka.hpp"
 #include "yakka_project.hpp"
 #include "yakka_schema.hpp"
 #include "utilities.hpp"
@@ -95,47 +96,32 @@ void project::process_requirements(nlohmann::json &component, nlohmann::json chi
   // Merge the feature values into the parent component
   json_node_merge(component, child_node);
 
-  // If the feature has no requires we stop here
-  if (child_node.contains("requires")) {
-    // Process all the requires for this feature
-    auto child_node_requirements = child_node["requires"];
-    if (child_node_requirements.is_string() || child_node_requirements.is_array()) {
-      log->error("Node 'requires' entry is malformed: '{}'", child_node_requirements.get<std::string>());
-      return;
-    }
-
-    try {
-      // Process required components
-      if (child_node_requirements.contains("components")) {
-        // Add the item/s to the new_component list
-        if (child_node_requirements["components"].is_string())
-          unprocessed_components.insert(child_node_requirements["components"].get<std::string>());
-        else if (child_node_requirements["components"].is_array())
-          for (const auto &i: child_node_requirements["components"])
-            unprocessed_components.insert(i.get<std::string>());
-        else
-          log->error("Node '{}' has invalid 'requires'", child_node_requirements.get<std::string>());
-      }
-
-      // Process required features
-      if (child_node_requirements.contains("features")) {
-        std::vector<std::string> new_features;
-
-        // Add the item/s to the new_features list
-        if (child_node_requirements["features"].is_string())
-          unprocessed_features.insert(child_node_requirements["features"].get<std::string>());
-        else if (child_node_requirements["features"].is_array())
-          for (const auto &i: child_node_requirements["features"])
-            unprocessed_features.insert(i.get<std::string>());
-        else
-          log->error("Node '{}' has invalid 'requires'", child_node_requirements.get<std::string>());
-      }
-    } catch (YAML::Exception &e) {
-      log->error("Failed to process requirements for '{}'\n{}", child_node_requirements.get<std::string>(), e.msg);
-    }
+  // Process required components
+  if (child_node.contains("/requires/components"_json_pointer)) {
+    // Add the item/s to the new_component list
+    if (child_node["requires"]["components"].is_string())
+      unprocessed_components.insert(child_node["requires"]["components"].get<std::string>());
+    else if (child_node["requires"]["components"].is_array())
+      for (const auto &i: child_node["requires"]["components"])
+        unprocessed_components.insert(i.get<std::string>());
+    else
+      log->error("Node '{}' has invalid 'requires'", child_node["requires"].get<std::string>());
   }
 
-  if (child_node.contains("/provides/features")) {
+  // Process required features
+  if (child_node.contains("/requires/features"_json_pointer)) {
+    // Add the item/s to the new_features list
+    if (child_node["requires"]["features"].is_string())
+      unprocessed_features.insert(child_node["requires"]["features"].get<std::string>());
+    else if (child_node["requires"]["features"].is_array())
+      for (const auto &i: child_node["requires"]["features"])
+        unprocessed_features.insert(i.get<std::string>());
+    else
+      log->error("Node '{}' has invalid 'requires'", child_node["requires"].get<std::string>());
+  }
+
+  // Process provided features
+  if (child_node.contains("/provides/features"_json_pointer)) {
     auto child_node_provides = child_node["provides"]["features"];
     if (child_node_provides.is_string())
       unprocessed_features.insert(child_node_provides.get<std::string>());
@@ -151,6 +137,24 @@ void project::process_requirements(nlohmann::json &component, nlohmann::json chi
       project_summary["choices"][choice_name]           = choice;
       project_summary["choices"][choice_name]["parent"] = component["name"].get<std::string>();
     }
+  }
+
+  // Process supported components
+  if (child_node.contains("/supports/components"_json_pointer)) {
+    for (const auto &c: required_components)
+      if (child_node["supports"]["components"].contains(c)) {
+        log->info("Processing component '{}' in {}", c, component["name"].get<std::string>());
+        process_requirements(component, child_node["supports"]["components"][c]);
+      }
+  }
+
+  // Process supported features
+  if (child_node.contains("/supports/features"_json_pointer)) {
+    for (const auto &f: required_features)
+      if (child_node["supports"]["features"].contains(f)) {
+        log->info("Processing feature '{}' in {}", f, component["name"].get<std::string>());
+        process_requirements(component, child_node["supports"]["features"][f]);
+      }
   }
 }
 
@@ -188,6 +192,7 @@ void project::update_summary()
 project::state project::evaluate_dependencies()
 {
   std::unordered_map<std::string, std::string> new_replacements;
+  bool project_has_slcc = false;
 
   // Start processing all the required components and features
   while (!unprocessed_components.empty() || !unprocessed_features.empty()) {
@@ -219,10 +224,13 @@ project::state project::evaluate_dependencies()
         continue;
 
       std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
-      if (new_component->parse_file(component_path.value(), blueprint_database) == yakka::yakka_status::SUCCESS)
+      if (new_component->parse_file(component_path.value()) == yakka::yakka_status::SUCCESS)
         components.push_back(new_component);
       else
         return project::state::PROJECT_HAS_INVALID_COMPONENT;
+
+      if (new_component->type == yakka::component::SLCC_FILE)
+        project_has_slcc = true;
 
       // Add all the required components into the unprocessed list
       if (new_component->json.contains("/requires/components"_json_pointer))
@@ -240,13 +248,14 @@ project::state project::evaluate_dependencies()
           unprocessed_features.insert(f.get<std::string>());
 
       // Add all the component choices to the global choice list
-      for (auto &[choice_name, value]: new_component->json["choices"].items()) {
-        if (!project_summary["choices"].contains(choice_name)) {
-          unprocessed_choices.insert(choice_name);
-          project_summary["choices"][choice_name]           = value;
-          project_summary["choices"][choice_name]["parent"] = new_component->id;
+      if (new_component->json.contains("choices"))
+        for (auto &[choice_name, value]: new_component->json["choices"].items()) {
+          if (!project_summary["choices"].contains(choice_name)) {
+            unprocessed_choices.insert(choice_name);
+            project_summary["choices"][choice_name]           = value;
+            project_summary["choices"][choice_name]["parent"] = new_component->id;
+          }
         }
-      }
 
       // for (const auto& c: new_component->json["replaces"]["component"]) {
       if (new_component->json.contains("/replaces/component"_json_pointer)) {
@@ -285,7 +294,8 @@ project::state project::evaluate_dependencies()
 
       // Process all the existing components support for the new component
       for (auto &c: components)
-        if (c->json.contains("supports") && c->json["supports"].contains("components") && c->json["supports"]["components"].contains(component_id)) {
+        if (c->json.contains("/supports/components"_json_pointer / c->id)) {
+          // if (c->json.contains("supports") && c->json["supports"].contains("components") && c->json["supports"]["components"].contains(component_id)) {
           log->info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
           process_requirements(c->json, c->json["supports"]["components"][component_id]);
         }
@@ -301,7 +311,8 @@ project::state project::evaluate_dependencies()
 
       // Process the feature "supports" for each existing component
       for (auto &c: components)
-        if (c->json.contains("supports") && c->json["supports"].contains("features") && c->json["supports"]["features"].contains(f)) {
+        if (c->json.contains("/supports/features"_json_pointer / f)) {
+          // if (c->json.contains("supports") && c->json["supports"].contains("features") && c->json["supports"]["features"].contains(f)) {
           log->info("Processing feature '{}' in {}", f, c->json["name"].get<std::string>());
           process_requirements(c->json, c->json["supports"]["features"][f]);
         }
@@ -367,6 +378,42 @@ project::state project::evaluate_dependencies()
         unprocessed_features.insert(f);
 
       log->info("Start project processing again...");
+    }
+
+    // Check if we have finished but our project is using SLCC files
+    if (unprocessed_components.empty() && unprocessed_features.empty() && project_has_slcc) {
+      // Make a list of required features from each SLC component
+      nlohmann::json required = nlohmann::json::array();
+      nlohmann::json provided = nlohmann::json::array();
+      for (const auto &c: components)
+        if (c->type == yakka::component::SLCC_FILE) {
+          const auto new_required = c->json["requires"]["features"];
+          required.insert(required.end(), new_required.begin(), new_required.end());
+          const auto new_provided = c->json["provides"]["features"];
+          provided.insert(provided.end(), new_provided.begin(), new_provided.end());
+        }
+
+      // Find any features that aren't provided
+      for (const auto &r: required)
+        if (!provided.contains(r)) {
+          // Check if there is a component with the same name
+          const std::string feature_name = r.get<std::string>();
+          auto path                      = workspace.find_component(feature_name);
+          if (path.has_value()) {
+            // See if it provides the feature we need
+            yakka::component temp;
+            temp.parse_file(path.value());
+            auto node = temp.json["/provides/features"_json_pointer];
+            if (std::find(node.begin(), node.end(), feature_name) != node.end()) {
+              // Add component to the component list
+              unprocessed_components.insert(feature_name);
+            }
+          }
+        }
+
+      // Find components that provide those features
+
+      // Hopefully there is only one component
     }
   }
 

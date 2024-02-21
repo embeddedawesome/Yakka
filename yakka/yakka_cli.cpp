@@ -23,6 +23,7 @@ using namespace std::chrono_literals;
 
 static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::project &project);
 static void evaluate_project_choices(yakka::workspace &workspace, yakka::project &project);
+static void evaluate_slcc_requirements(yakka::workspace &workspace, yakka::project &project);
 static void run_taskflow(yakka::project &project);
 
 tf::Task &create_tasks(yakka::project &project, const std::string &name, std::map<std::string, tf::Task> &tasks, tf::Taskflow &taskflow);
@@ -216,6 +217,7 @@ int main(int argc, char **argv)
   if (!result["no-eval"].as<bool>()) {
     evaluate_project_dependencies(workspace, project);
     evaluate_project_choices(workspace, project);
+    evaluate_slcc_requirements(workspace, project);
   } else {
     spdlog::info("Skipping project evalutaion");
 
@@ -235,7 +237,7 @@ int main(int argc, char **argv)
         continue;
 
       std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
-      if (new_component->parse_file(component_path.value(), project.blueprint_database) == yakka::yakka_status::SUCCESS) {
+      if (new_component->parse_file(component_path.value()) == yakka::yakka_status::SUCCESS) {
         project.components.push_back(new_component);
       } else {
         spdlog::error("Failed to parse {}", component_path.value().generic_string());
@@ -313,6 +315,11 @@ void run_taskflow(yakka::project &project)
 
   building_bar.set_option(option::PostfixText{ std::to_string(project.work_task_count) + "/" + std::to_string(project.work_task_count) });
   building_bar.set_progress(project.work_task_count);
+}
+
+static void evaluate_slcc_requirements(yakka::workspace &workspace, yakka::project &project)
+{
+  
 }
 
 static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::project &project)

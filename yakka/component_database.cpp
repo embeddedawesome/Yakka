@@ -79,7 +79,7 @@ void component_database::add_component(fs::path path)
 
 void component_database::scan_for_components(fs::path search_start_path)
 {
-  std::vector<std::future<slcc>> parsed_slcc_files;
+  // std::vector<std::future<slcc>> parsed_slcc_files;
 
   if (search_start_path.empty())
     search_start_path = this->workspace_path;
@@ -98,26 +98,27 @@ void component_database::scan_for_components(fs::path search_start_path)
         continue;
       }
 
-      if (p->path().filename().extension() == yakka_component_extension || p->path().filename().extension() == yakka_component_old_extension) {
+      if (p->path().filename().extension() == yakka_component_extension || p->path().filename().extension() == yakka_component_old_extension || p->path().filename().extension() == slcc_component_extension
+          || p->path().filename().extension() == slcp_component_extension) {
         spdlog::info("Found {}", p->path().string());
         add_component(p->path());
       }
-#ifdef SLCC_SUPPORT
-      else if (p.path().filename().extension() == ".slcc") {
-        parsed_slcc_files.push_back(std::async(
-          std::launch::async,
-          [](fs::path path) {
-            try {
-              slcc uc(path);
-              uc.convert_to_yakka();
-              return uc;
-            } catch (...) {
-              return slcc();
-            }
-          },
-          p.path()));
-      }
-#endif
+      // else if (p.path().filename().extension() == slcc_component_extension) {
+      //   spdlog::info("Found {}", p->path().string());
+      //   add_component(p->path());
+      // parsed_slcc_files.push_back(std::async(
+      //   std::launch::async,
+      //   [](fs::path path) {
+      //     try {
+      //       slcc uc(path);
+      //       uc.convert_to_yakka();
+      //       return uc;
+      //     } catch (...) {
+      //       return slcc();
+      //     }
+      //   },
+      //   p.path()));
+      // }
     }
 #ifdef SLCC_SUPPORT
     // TODO: SLCC database should be initialized elsewhere
