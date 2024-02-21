@@ -193,6 +193,8 @@ project::state project::evaluate_dependencies()
 {
   std::unordered_map<std::string, std::string> new_replacements;
   bool project_has_slcc = false;
+  std::unordered_set<std::string> slc_required;
+  std::unordered_set<std::string> slc_provided;
 
   // Start processing all the required components and features
   while (!unprocessed_components.empty() || !unprocessed_features.empty()) {
@@ -229,8 +231,13 @@ project::state project::evaluate_dependencies()
       else
         return project::state::PROJECT_HAS_INVALID_COMPONENT;
 
-      if (new_component->type == yakka::component::SLCC_FILE)
+      if (new_component->type == yakka::component::SLCC_FILE) {
         project_has_slcc = true;
+        for (const auto &f: new_component->json["requires"]["features"])
+          slc_required.insert(f.get<std::string>());
+        for (const auto &f: new_component->json["provides"]["features"])
+          slc_provided.insert(f.get<std::string>());
+      }
 
       // Add all the required components into the unprocessed list
       if (new_component->json.contains("/requires/components"_json_pointer))
@@ -382,31 +389,19 @@ project::state project::evaluate_dependencies()
 
     // Check if we have finished but our project is using SLCC files
     if (unprocessed_components.empty() && unprocessed_features.empty() && project_has_slcc) {
-      // Make a list of required features from each SLC component
-      nlohmann::json required = nlohmann::json::array();
-      nlohmann::json provided = nlohmann::json::array();
-      for (const auto &c: components)
-        if (c->type == yakka::component::SLCC_FILE) {
-          const auto new_required = c->json["requires"]["features"];
-          required.insert(required.end(), new_required.begin(), new_required.end());
-          const auto new_provided = c->json["provides"]["features"];
-          provided.insert(provided.end(), new_provided.begin(), new_provided.end());
-        }
-
       // Find any features that aren't provided
-      for (const auto &r: required)
-        if (!provided.contains(r)) {
+      for (const auto &r: slc_required)
+        if (!slc_provided.contains(r)) {
           // Check if there is a component with the same name
-          const std::string feature_name = r.get<std::string>();
-          auto path                      = workspace.find_component(feature_name);
+          auto path = workspace.find_component(r);
           if (path.has_value()) {
             // See if it provides the feature we need
             yakka::component temp;
             temp.parse_file(path.value());
             auto node = temp.json["/provides/features"_json_pointer];
-            if (std::find(node.begin(), node.end(), feature_name) != node.end()) {
+            if (std::find(node.begin(), node.end(), r) != node.end()) {
               // Add component to the component list
-              unprocessed_components.insert(feature_name);
+              unprocessed_components.insert(r);
             }
           }
         }
