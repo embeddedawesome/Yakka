@@ -4,7 +4,7 @@
 #include "semver.hpp"
 
 namespace yakka {
-yakka_status component::parse_file(fs::path file_path)
+yakka_status component::parse_file(fs::path file_path, fs::path package_path)
 {
   this->file_path         = file_path;
   std::string path_string = file_path.generic_string();
@@ -20,10 +20,10 @@ yakka_status component::parse_file(fs::path file_path)
 
   if (file_path.filename().extension() == slcc_component_extension) {
     this->type = SLCC_FILE;
-    convert_to_yakka();
+    convert_to_yakka(package_path);
   } else if (file_path.filename().extension() == slcp_component_extension) {
     this->type = SLCP_FILE;
-    convert_to_yakka();
+    convert_to_yakka(package_path);
   } else {
     this->type = YAKKA_FILE;
     // Validate basic Yakka data
@@ -83,7 +83,7 @@ yakka_status component::parse_file(fs::path file_path)
   return yakka_status::SUCCESS;
 }
 
-void component::convert_to_yakka()
+void component::convert_to_yakka(fs::path package_path)
 {
   // Check if SLCC file is an omap. Convert it to a map
   if (json.is_array()) {
@@ -97,12 +97,19 @@ void component::convert_to_yakka()
   // Set basic data such as directory and name
   json["name"] = json["label"];
 
-  if (json.contains("component_root_path"))
-    json["directory"] = json["component_root_path"];
-  else if (file_path.has_parent_path())
-    json["directory"] = file_path.parent_path().generic_string();
-  else
-    json["directory"] = ".";
+  if (json.contains("component_root_path")) {
+    std::string temp_path;
+    if (!package_path.empty())
+      temp_path = package_path.string() + "/";
+    json["directory"] = temp_path + json["component_root_path"].get<std::string>();
+  } else if (json.contains("root_path")) {
+    std::string temp_path;
+    if (!package_path.empty())
+      temp_path = package_path.string() + "/";
+    json["directory"] = temp_path + json["root_path"].get<std::string>();
+  } else {
+    json["directory"] = file_path.parent_path().string();
+  }
 
   // Process 'provides'
   if (json.contains("provides")) {

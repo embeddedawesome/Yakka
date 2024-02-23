@@ -18,6 +18,7 @@ public:
   void clear();
   void add_component(fs::path path);
   void scan_for_components(fs::path search_start_path = "");
+  fs::path get_path() const;
 
   bool has_scanned;
 

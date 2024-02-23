@@ -150,4 +150,9 @@ void component_database::scan_for_components(fs::path search_start_path)
   this->has_scanned = true;
 }
 
+fs::path component_database::get_path() const
+{
+  return this->workspace_path;
+}
+
 } /* namespace yakka */

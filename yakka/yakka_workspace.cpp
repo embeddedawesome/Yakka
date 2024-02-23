@@ -50,6 +50,14 @@ void workspace::init(fs::path workspace_path)
     shared_database.load(this->shared_components_path);
   }
 
+  if (!this->packages.empty()) {
+    for (const auto &p: packages) {
+      component_database db;
+      db.load(p);
+      package_databases.push_back(db);
+    }
+  }
+
   configuration["host_os"]              = host_os_string;
   configuration["executable_extension"] = executable_extension;
   configuration_json                    = configuration.as<nlohmann::json>();
@@ -84,30 +92,42 @@ std::optional<YAML::Node> workspace::find_registry_component(const std::string &
   return {};
 }
 
-std::optional<fs::path> workspace::find_component(const std::string component_dotname)
+std::optional<std::pair<fs::path, fs::path>> workspace::find_component(const std::string component_dotname)
 {
   bool try_update_the_database   = false;
   const std::string component_id = yakka::component_dotname_to_id(component_dotname);
 
-  // Get component from database
+  // Get component from local and shared databases
   auto local  = local_database[component_id];
   auto shared = shared_database[component_id];
 
   // Check if that component is in the database
-  if (!local && !shared)
+  if (!local && !shared) {
+    // Check the packages
+    for (const auto &db: package_databases) {
+      auto &remote = db[component_id];
+      if (remote) {
+        auto value = remote[0].Scalar();
+        if (fs::exists(value)) {
+          return std::pair<fs::path, fs::path>{ { remote[0].Scalar() }, db.get_path() };
+        }
+      }
+    }
+
     return {};
+  }
 
   if (local) {
     if (local.IsScalar()) {
       if (fs::exists(local.Scalar())) {
-        return local.Scalar();
+        return std::pair<fs::path, fs::path>{ { local.Scalar() }, {} };
       } else {
         try_update_the_database = true;
       }
     }
     if (local.IsSequence() && local.size() == 1) {
       if (fs::exists(local[0].Scalar())) {
-        return local[0].Scalar();
+        return std::pair<fs::path, fs::path>{ { local[0].Scalar() }, {} };
       } else {
         try_update_the_database = true;
       }
@@ -116,9 +136,9 @@ std::optional<fs::path> workspace::find_component(const std::string component_do
 
   if (shared) {
     if (shared.IsScalar() && fs::exists(shared.Scalar()))
-      return shared.Scalar();
+      return std::pair<fs::path, fs::path>{ { shared.Scalar() }, {} };
     if (shared.IsSequence() && shared.size() == 1 && fs::exists(shared[0].Scalar()))
-      return shared[0].Scalar();
+      return std::pair<fs::path, fs::path>{ { shared[0].Scalar() }, {} };
   }
 
   if (local_database.has_scanned == false && try_update_the_database == true) {
@@ -149,6 +169,10 @@ void workspace::load_config_file(const fs::path config_file_path)
 #else
       setenv("PATH", path.c_str(), 1);
 #endif
+    }
+    if (configuration["packages"].IsDefined()) {
+      for (const auto &p: configuration["packages"])
+        packages.push_back(p.as<std::string>());
     }
 
     if (configuration["home"].IsDefined()) {

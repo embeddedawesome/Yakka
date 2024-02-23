@@ -135,10 +135,11 @@ int main(int argc, char **argv)
   } else if (action == "remove") {
     // Find all the component repos in .yakka
     for (auto &i: result.unmatched()) {
-      auto optional_path = workspace.find_component(i);
-      if (optional_path) {
-        spdlog::info("Removing {}", optional_path.value().string());
-        fs::remove_all(optional_path.value());
+      auto optional_location = workspace.find_component(i);
+      if (optional_location) {
+        auto [path, package] = optional_location.value();
+        spdlog::info("Removing {}", path.string());
+        fs::remove_all(path);
       }
     }
 
@@ -225,8 +226,8 @@ int main(int argc, char **argv)
       // Convert string to id
       const auto component_id = yakka::component_dotname_to_id(i);
       // Find the component in the project component database
-      auto component_path = workspace.find_component(component_id);
-      if (!component_path) {
+      auto component_location = workspace.find_component(component_id);
+      if (!component_location) {
         // log->info("{}: Couldn't find it", c);
         continue;
       }
@@ -236,11 +237,12 @@ int main(int argc, char **argv)
       if (project.required_components.insert(component_id).second == false)
         continue;
 
+      auto [component_path, package_path]             = component_location.value();
       std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
-      if (new_component->parse_file(component_path.value()) == yakka::yakka_status::SUCCESS) {
+      if (new_component->parse_file(component_path, package_path) == yakka::yakka_status::SUCCESS) {
         project.components.push_back(new_component);
       } else {
-        spdlog::error("Failed to parse {}", component_path.value().generic_string());
+        spdlog::error("Failed to parse {}", component_path.generic_string());
         exit(-1);
       }
     }
@@ -319,7 +321,6 @@ void run_taskflow(yakka::project &project)
 
 static void evaluate_slcc_requirements(yakka::workspace &workspace, yakka::project &project)
 {
-  
 }
 
 static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::project &project)

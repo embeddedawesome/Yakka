@@ -213,8 +213,8 @@ project::state project::evaluate_dependencies()
       }
 
       // Find the component in the project component database
-      auto component_path = workspace.find_component(component_id);
-      if (!component_path) {
+      auto component_location = workspace.find_component(component_id);
+      if (!component_location) {
         // log->info("{}: Couldn't find it", c);
         unknown_components.insert(component_id);
         continue;
@@ -225,8 +225,9 @@ project::state project::evaluate_dependencies()
       if (required_components.insert(component_id).second == false)
         continue;
 
+      auto [component_path, package_path]             = component_location.value();
       std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
-      if (new_component->parse_file(component_path.value()) == yakka::yakka_status::SUCCESS)
+      if (new_component->parse_file(component_path, package_path) == yakka::yakka_status::SUCCESS)
         components.push_back(new_component);
       else
         return project::state::PROJECT_HAS_INVALID_COMPONENT;
@@ -237,6 +238,10 @@ project::state project::evaluate_dependencies()
           slc_required.insert(f.get<std::string>());
         for (const auto &f: new_component->json["provides"]["features"])
           slc_provided.insert(f.get<std::string>());
+      }
+      if (new_component->type == yakka::component::SLCP_FILE) {
+        for (const auto &f: new_component->json["requires"]["features"])
+          slc_required.insert(f.get<std::string>());
       }
 
       // Add all the required components into the unprocessed list
@@ -301,7 +306,7 @@ project::state project::evaluate_dependencies()
 
       // Process all the existing components support for the new component
       for (auto &c: components)
-        if (c->json.contains("/supports/components"_json_pointer / c->id)) {
+        if (c->json.contains("/supports/components"_json_pointer / component_id)) {
           // if (c->json.contains("supports") && c->json["supports"].contains("components") && c->json["supports"]["components"].contains(component_id)) {
           log->info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
           process_requirements(c->json, c->json["supports"]["components"][component_id]);
@@ -393,16 +398,22 @@ project::state project::evaluate_dependencies()
       for (const auto &r: slc_required)
         if (!slc_provided.contains(r)) {
           // Check if there is a component with the same name
-          auto path = workspace.find_component(r);
-          if (path.has_value()) {
+          auto component_location = workspace.find_component(r);
+          if (component_location.has_value()) {
             // See if it provides the feature we need
+            auto [path, package] = component_location.value();
             yakka::component temp;
-            temp.parse_file(path.value());
+            temp.parse_file(path, package);
             auto node = temp.json["/provides/features"_json_pointer];
             if (std::find(node.begin(), node.end(), r) != node.end()) {
               // Add component to the component list
+              log->info("Adding {} to satisfy {}", path.string(), r);
               unprocessed_components.insert(r);
+            } else {
+              log->error("Component {} failed to provide {}", path.string(), r);
             }
+          } else {
+            log->error("Failed to provide {}", r);
           }
         }
 

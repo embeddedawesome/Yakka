@@ -18,7 +18,7 @@ public:
   void load_component_registries();
   yakka_status add_component_registry(const std::string &url);
   std::optional<YAML::Node> find_registry_component(const std::string &name);
-  std::optional<fs::path> find_component(const std::string component_dotname);
+  std::optional<std::pair<fs::path, fs::path>> find_component(const std::string component_dotname);
   void load_config_file(const fs::path config_file_path);
   std::string template_render(const std::string input);
   yakka_status fetch_registry(const std::string &url);
@@ -44,5 +44,7 @@ public:
   component_database local_database;
   component_database shared_database;
   std::filesystem::path yakka_shared_home;
+  std::vector<std::filesystem::path> packages;
+  std::vector<component_database> package_databases;
 };
 } // namespace yakka
