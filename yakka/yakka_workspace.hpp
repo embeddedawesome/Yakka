@@ -13,6 +13,7 @@ namespace yakka {
 class workspace {
 public:
   workspace();
+  ~workspace();
   void init(fs::path workspace_path = ".");
   std::future<fs::path> fetch_component(const std::string &name, YAML::Node node, std::function<void(std::string, size_t)> progress_handler);
   void load_component_registries();

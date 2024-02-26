@@ -18,6 +18,13 @@ workspace::workspace()
 {
 }
 
+workspace::~workspace()
+{
+  // for (auto &db: package_databases) {
+  //   db.clear();
+  // }
+}
+
 void workspace::init(fs::path workspace_path)
 {
   // Load the local configuration
@@ -52,9 +59,9 @@ void workspace::init(fs::path workspace_path)
 
   if (!this->packages.empty()) {
     for (const auto &p: packages) {
-      component_database db;
-      db.load(p);
-      package_databases.push_back(db);
+      //component_database db;
+      package_databases.push_back({});
+      package_databases.back().load(p);
     }
   }
 
@@ -98,48 +105,26 @@ std::optional<std::pair<fs::path, fs::path>> workspace::find_component(const std
   const std::string component_id = yakka::component_dotname_to_id(component_dotname);
 
   // Get component from local and shared databases
-  auto local  = local_database[component_id];
-  auto shared = shared_database[component_id];
+  auto local  = local_database.get_component(component_id);
+  auto shared = shared_database.get_component(component_id);
 
   // Check if that component is in the database
-  if (!local && !shared) {
+  if (local.empty() && shared.empty()) {
     // Check the packages
     for (const auto &db: package_databases) {
-      auto &remote = db[component_id];
-      if (remote) {
-        auto value = remote[0].Scalar();
-        if (fs::exists(value)) {
-          return std::pair<fs::path, fs::path>{ { remote[0].Scalar() }, db.get_path() };
-        }
-      }
+      auto remote = db.get_component(component_id);
+      if (!remote.empty())
+        return std::pair<fs::path, fs::path>{ remote, db.get_path() };
     }
 
     return {};
   }
 
-  if (local) {
-    if (local.IsScalar()) {
-      if (fs::exists(local.Scalar())) {
-        return std::pair<fs::path, fs::path>{ { local.Scalar() }, {} };
-      } else {
-        try_update_the_database = true;
-      }
-    }
-    if (local.IsSequence() && local.size() == 1) {
-      if (fs::exists(local[0].Scalar())) {
-        return std::pair<fs::path, fs::path>{ { local[0].Scalar() }, {} };
-      } else {
-        try_update_the_database = true;
-      }
-    }
-  }
+  if (!local.empty())
+    return std::pair<fs::path, fs::path>{ local, {} };
 
-  if (shared) {
-    if (shared.IsScalar() && fs::exists(shared.Scalar()))
-      return std::pair<fs::path, fs::path>{ { shared.Scalar() }, {} };
-    if (shared.IsSequence() && shared.size() == 1 && fs::exists(shared[0].Scalar()))
-      return std::pair<fs::path, fs::path>{ { shared[0].Scalar() }, {} };
-  }
+  if (!shared.empty())
+    return std::pair<fs::path, fs::path>{ shared, {} };
 
   if (local_database.has_scanned == false && try_update_the_database == true) {
     local_database.clear();
@@ -213,9 +198,9 @@ yakka_status workspace::update_component(const std::string &name)
 {
   // This function could be async like fetch_component
   std::string git_directory_string;
-  if (local_database[name])
+  if (!local_database.get_component(name).empty())
     git_directory_string = "--git-dir .yakka/repos/" + name + "/.git --work-tree components/" + name + " ";
-  else if (shared_database[name])
+  else if (!shared_database.get_component(name).empty())
     git_directory_string = "-C " + shared_components_path.string() + "/repos/" + name + " ";
   else
     return FAIL;
