@@ -1,7 +1,6 @@
 #pragma once
 
 #include "yakka_blueprint.hpp"
-#include "yaml-cpp/yaml.h"
 #include "yakka.hpp"
 #include "semver.hpp"
 #include <vector>

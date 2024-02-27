@@ -1,6 +1,6 @@
 #pragma once
 
-#include "yaml-cpp/yaml.h"
+#include "json.hpp"
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -20,12 +20,15 @@ public:
   void scan_for_components(fs::path search_start_path = "");
   fs::path get_path() const;
   fs::path get_component(const std::string id) const;
-  fs::path get_feature_provider(const std::string feature) const;
+  nlohmann::json get_feature_provider(const std::string feature) const;
+
+  void process_slc_sdk(fs::path slcs_path);
 
   bool has_scanned;
 
 private:
-  YAML::Node database;
+  // YAML::Node database;
+  nlohmann::json database;
   // YAML::Node feature_database;
   fs::path workspace_path;
   fs::path database_filename;

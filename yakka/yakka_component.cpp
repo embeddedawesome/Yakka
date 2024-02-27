@@ -139,6 +139,8 @@ void component::convert_to_yakka(fs::path package_path)
   if (json.contains("source")) {
     nlohmann::json sources;
     for (const auto &p: json["source"]) {
+      if (!p.contains("path"))
+        continue;
       if (p.contains("condition"))
         json[create_condition_pointer(p["condition"])]["sources"] = p["path"];
       else
@@ -165,6 +167,43 @@ void component::convert_to_yakka(fs::path package_path)
   if (json.contains("component")) {
     for (const auto &p: json["component"]) {
       json["requires"]["components"].push_back(p["id"]);
+    }
+  }
+
+  // Process 'template_file'
+  if (json.contains("template_file")) {
+    for (const auto &t: json["template_file"]) {
+      fs::path template_file = t["path"].get<std::string>();
+      fs::path target_file   = template_file.filename();
+      target_file.replace_extension();
+
+      const auto target = "{{project_output}}/generated/" + target_file.string();
+
+      auto add_generated_item = [&](nlohmann::json &node) {
+        // Create generated items
+        if (target_file.extension() == ".c" || target_file.extension() == ".cpp")
+          node["generated"]["sources"].push_back(target);
+        else if (target_file.extension() == ".h" || target_file.extension() == ".hpp")
+          node["generated"]["includes"].push_back(target);
+        else
+          node["generated"]["files"].push_back(target);
+      };
+
+      if (t.contains("condition")) {
+        auto pointer = create_condition_pointer(t["condition"]);
+        if (!json.contains(pointer))
+          json[pointer] = {};
+
+        add_generated_item(json[pointer]);
+      } else
+        add_generated_item(json);
+
+      // Create blueprints
+      nlohmann::json blueprint = { { "process", nullptr } };
+      blueprint["process"].push_back({ { "inja", { { "template_file", json["directory"].get<std::string>() + "/" + template_file.string() } } } });
+      blueprint["process"].push_back({ { "save", nullptr } });
+
+      json["blueprints"][target] = blueprint;
     }
   }
 }

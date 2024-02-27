@@ -195,6 +195,7 @@ project::state project::evaluate_dependencies()
   bool project_has_slcc = false;
   std::unordered_set<std::string> slc_required;
   std::unordered_set<std::string> slc_provided;
+  std::unordered_set<std::string> slc_recommended;
 
   // Start processing all the required components and features
   while (!unprocessed_components.empty() || !unprocessed_features.empty()) {
@@ -238,10 +239,13 @@ project::state project::evaluate_dependencies()
           slc_required.insert(f.get<std::string>());
         for (const auto &f: new_component->json["provides"]["features"])
           slc_provided.insert(f.get<std::string>());
-      }
-      if (new_component->type == yakka::component::SLCP_FILE) {
+        for (const auto &r: new_component->json["recommends"])
+          slc_recommended.insert(r["id"].get<std::string>());
+      } else if (new_component->type == yakka::component::SLCP_FILE) {
         for (const auto &f: new_component->json["requires"]["features"])
           slc_required.insert(f.get<std::string>());
+        for (const auto &r: new_component->json["recommends"])
+          slc_recommended.insert(r["id"].get<std::string>());
       }
 
       // Add all the required components into the unprocessed list
@@ -397,6 +401,9 @@ project::state project::evaluate_dependencies()
       // Find any features that aren't provided
       for (const auto &r: slc_required)
         if (!slc_provided.contains(r)) {
+          // Check the databases
+          auto f = workspace.find_feature(r);
+
           // Check if there is a component with the same name
           auto component_location = workspace.find_component(r);
           if (component_location.has_value()) {
@@ -409,12 +416,12 @@ project::state project::evaluate_dependencies()
               // Add component to the component list
               log->info("Adding {} to satisfy {}", path.string(), r);
               unprocessed_components.insert(r);
-            } else {
-              log->error("Component {} failed to provide {}", path.string(), r);
+              continue;
             }
-          } else {
-            log->error("Failed to provide {}", r);
           }
+
+          // Check if any recommendations help
+          log->error("Failed to provide {}", r);
         }
 
       // Find components that provide those features

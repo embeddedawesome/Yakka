@@ -135,6 +135,24 @@ std::optional<std::pair<fs::path, fs::path>> workspace::find_component(const std
   }
 }
 
+std::optional<nlohmann::json> workspace::find_feature(const std::string feature) const
+{
+  nlohmann::json node;
+  node = local_database.get_feature_provider(feature);
+  if (!node.is_null())
+    return node;
+  node = shared_database.get_feature_provider(feature);
+  if (!node.is_null())
+    return node;
+  for (const auto &db: package_databases) {
+    node = db.get_feature_provider(feature);
+    if (!node.is_null())
+      return node;
+  }
+
+  return {};
+}
+
 void workspace::load_config_file(const fs::path config_file_path)
 {
   try {

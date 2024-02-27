@@ -20,6 +20,7 @@ public:
   yakka_status add_component_registry(const std::string &url);
   std::optional<YAML::Node> find_registry_component(const std::string &name);
   std::optional<std::pair<fs::path, fs::path>> find_component(const std::string component_dotname);
+  std::optional<nlohmann::json> find_feature(const std::string feature) const;
   void load_config_file(const fs::path config_file_path);
   std::string template_render(const std::string input);
   yakka_status fetch_registry(const std::string &url);
