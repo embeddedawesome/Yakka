@@ -399,10 +399,31 @@ project::state project::evaluate_dependencies()
     // Check if we have finished but our project is using SLCC files
     if (unprocessed_components.empty() && unprocessed_features.empty() && project_has_slcc) {
       // Find any features that aren't provided
-      for (const auto &r: slc_required)
+      for (const auto &r: slc_required) {
         if (!slc_provided.contains(r)) {
           // Check the databases
           auto f = workspace.find_feature(r);
+          if (f.has_value()) {
+            auto feature_node = f.value();
+            bool resolved     = false;
+            spdlog::info("Found a component that provides '{}'", r);
+            if (feature_node.size() > 1) {
+              // Check if any of the options is recommended
+              for (const auto &option: feature_node)
+                if (slc_recommended.contains(option.get<std::string>())) {
+                  unprocessed_components.insert(option.get<std::string>());
+                  resolved = true;
+                  break;
+                }
+
+              if (!resolved)
+                spdlog::error("Found a possible solution for {} but there are multiple options:\n{}", r, feature_node.dump(2));
+            } else
+              unprocessed_components.insert(feature_node.front().get<std::string>());
+
+            // This item is now resolved
+            continue;
+          }
 
           // Check if there is a component with the same name
           auto component_location = workspace.find_component(r);
@@ -423,7 +444,7 @@ project::state project::evaluate_dependencies()
           // Check if any recommendations help
           log->error("Failed to provide {}", r);
         }
-
+      }
       // Find components that provide those features
 
       // Hopefully there is only one component
