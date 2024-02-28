@@ -1,0 +1,14 @@
+name: Rapid YAML
+
+includes:
+  global:
+    - master/src
+    - master/src/c4/yml
+
+sources:
+  - rapidyaml_helper.cpp
+  - master/src/c4/yml/common.cpp
+  - master/src/c4/yml/node.cpp
+  - master/src/c4/yml/parse.cpp
+  - master/src/c4/yml/preprocess.cpp
+  - master/src/c4/yml/tree.cpp
