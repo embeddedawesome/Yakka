@@ -166,6 +166,25 @@ void component::convert_to_yakka(fs::path package_path)
     json.erase("include");
   }
 
+  // Process 'define'
+  if (json.contains("define")) {
+    nlohmann::json defines;
+    for (const auto &p: json["define"]) {
+      nlohmann::json temp;
+      if (p.contains("value"))
+        temp = p;
+      else
+        temp = p["name"];
+
+      if (p.contains("condition"))
+        json[create_condition_pointer(p["condition"])]["defines"]["global"].push_back(temp);
+      else
+        defines["global"].push_back(temp);
+    }
+    json["defines"] = defines;
+    json.erase("define");
+  }
+
   // Process 'component' (only available for slcp)
   if (json.contains("component")) {
     for (const auto &p: json["component"]) {
