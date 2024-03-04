@@ -33,7 +33,8 @@ void component_database::load(const fs::path workspace_path)
       scan_for_components(this->workspace_path);
       save();
     } else {
-      database = YAML::LoadFile(database_filename.string()).as<nlohmann::json>();
+      std::ifstream ifs(database_filename.string());
+      database = nlohmann::json::parse(ifs);
       if (!database.contains("components")) {
         database.clear();
         database = { { "components", nullptr }, { "features", nullptr } };
