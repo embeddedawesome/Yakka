@@ -321,6 +321,41 @@ void run_taskflow(yakka::project &project)
 
 static void evaluate_slcc_requirements(yakka::workspace &workspace, yakka::project &project)
 {
+  // Go through the template_contributions and filter out any items excluded by the `unless` criteria
+  for (auto i = project.template_contributions.begin(); i != project.template_contributions.end();) {
+    bool include_contribution = true;
+    if (i->contains("unless")) {
+      for (const auto &u: (*i)["unless"]) {
+        auto a = u.get<std::string>();
+        if (project.required_features.contains(a)) {
+          include_contribution = false;
+          spdlog::error("Removing template contribution '{}' because of {}", (*i)["name"].get<std::string>(), u.get<std::string>());
+          break;
+        }
+      }
+    }
+
+    if (i->contains("condition")) {
+      for (const auto &u: (*i)["condition"]) {
+        if (!project.required_features.contains(u.get<std::string>())) {
+          spdlog::error("Removing template contribution '{}' because of {}", (*i)["name"].get<std::string>(), u.get<std::string>());
+          include_contribution = false;
+          break;
+        }
+      }
+    }
+    if (include_contribution == false)
+      i = project.template_contributions.erase(i);
+    else
+      ++i;
+  }
+
+  // Convert to the right structure
+  nlohmann::json new_contributions;
+  for (const auto &i: project.template_contributions) {
+    new_contributions[i["name"].get<std::string>()].push_back(i["value"]);
+  }
+  project.template_contributions = new_contributions;
 }
 
 static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::project &project)
