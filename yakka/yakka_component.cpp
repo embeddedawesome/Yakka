@@ -108,7 +108,10 @@ void component::convert_to_yakka(fs::path package_path)
       temp_path = package_path.string() + "/";
     json["directory"] = temp_path + json["root_path"].get<std::string>();
   } else {
-    json["directory"] = package_path.string(); // file_path.parent_path().string();
+    if (package_path.empty())
+      json["directory"] = file_path.parent_path().string();
+    else
+      json["directory"] = package_path.string();
   }
 
   // Process 'provides'
