@@ -123,6 +123,9 @@ public:
   std::map<std::string, blueprint_command> blueprint_commands;
   std::function<void()> task_complete_handler;
 
+  // SLC specific data
+  nlohmann::json template_contributions;
+
 private:
   void init_project();
 };

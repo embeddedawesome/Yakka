@@ -233,19 +233,27 @@ project::state project::evaluate_dependencies()
       else
         return project::state::PROJECT_HAS_INVALID_COMPONENT;
 
+      // Add special processing of SLC related files
       if (new_component->type == yakka::component::SLCC_FILE) {
         project_has_slcc = true;
+        unprocessed_components.insert("jinja");
         for (const auto &f: new_component->json["requires"]["features"])
           slc_required.insert(f.get<std::string>());
         for (const auto &f: new_component->json["provides"]["features"])
           slc_provided.insert(f.get<std::string>());
         for (const auto &r: new_component->json["recommends"])
           slc_recommended.insert(r["id"].get<std::string>());
+        for (const auto &t: new_component->json["template_contribution"]) {
+          template_contributions.push_back(t); //template_contributions[t["name"].get<std::string>()].push_back(t["value"]);
+        }
       } else if (new_component->type == yakka::component::SLCP_FILE) {
+        unprocessed_components.insert("jinja");
         for (const auto &f: new_component->json["requires"]["features"])
           slc_required.insert(f.get<std::string>());
         for (const auto &r: new_component->json["recommends"])
           slc_recommended.insert(r["id"].get<std::string>());
+        for (const auto &t: new_component->json["template_contribution"])
+          template_contributions.push_back(t);
       }
 
       // Add all the required components into the unprocessed list
@@ -289,23 +297,20 @@ project::state project::evaluate_dependencies()
       }
 
       // Process all the currently required features. Note new feature will be processed in the features pass
-      if (new_component->json.contains("supports")) {
-        if (new_component->json["supports"].contains("features")) {
-          for (auto &f: required_features)
-            if (new_component->json["supports"]["features"].contains(f)) {
-              log->info("Processing required feature '{}' in {}", f, component_id);
-              process_requirements(new_component->json, new_component->json["supports"]["features"][f]);
-            }
-        }
-
-        if (new_component->json["supports"].contains("components")) {
-          // Process the new components support for all the currently required components
-          for (auto &c: required_components)
-            if (new_component->json["supports"]["components"].contains(c)) {
-              log->info("Processing required component '{}' in {}", c, component_id);
-              process_requirements(new_component->json, new_component->json["supports"]["components"][c]);
-            }
-        }
+      if (new_component->json.contains("/supports/features"_json_pointer)) {
+        for (auto &f: required_features)
+          if (new_component->json["supports"]["features"].contains(f)) {
+            log->info("Processing required feature '{}' in {}", f, component_id);
+            process_requirements(new_component->json, new_component->json["supports"]["features"][f]);
+          }
+      }
+      if (new_component->json.contains("/supports/components"_json_pointer)) {
+        // Process the new components support for all the currently required components
+        for (auto &c: required_components)
+          if (new_component->json["supports"]["components"].contains(c)) {
+            log->info("Processing required component '{}' in {}", c, component_id);
+            process_requirements(new_component->json, new_component->json["supports"]["components"][c]);
+          }
       }
 
       // Process all the existing components support for the new component
@@ -334,8 +339,8 @@ project::state project::evaluate_dependencies()
         }
     }
 
-    // Check if we need to process default choices
-    if (unprocessed_components.empty() && unprocessed_features.empty()) {
+    // Check if we have finished but we have unprocessed choices
+    if (unprocessed_components.empty() && unprocessed_features.empty() && !unprocessed_choices.empty()) {
       for (const auto &c: unprocessed_choices) {
         const auto &choice = project_summary["choices"][c];
         int matches        = 0;
@@ -1162,6 +1167,10 @@ void project::save_summary()
   std::ofstream json_file(project_summary["project_output"].get<std::string>() + "/yakka_summary.json");
   json_file << project_summary.dump(3);
   json_file.close();
+
+  std::ofstream template_contributions_file(project_summary["project_output"].get<std::string>() + "/template_contributions.json");
+  template_contributions_file << template_contributions.dump(3);
+  template_contributions_file.close();
 }
 
 class custom_error_handler : public nlohmann::json_schema::basic_error_handler {

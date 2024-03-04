@@ -222,7 +222,7 @@ void component::convert_to_yakka(fs::path package_path)
 
       // Create blueprints
       nlohmann::json blueprint = { { "process", nullptr } };
-      blueprint["process"].push_back({ { "inja", { { "template_file", json["directory"].get<std::string>() + "/" + template_file.string() } } } });
+      blueprint["process"].push_back({ { "jinja", "-t " + json["directory"].get<std::string>() + "/" + template_file.string() + " -d {{project_output}}/template_contributions.json" } });
       blueprint["process"].push_back({ { "save", nullptr } });
 
       json["blueprints"][target] = blueprint;
