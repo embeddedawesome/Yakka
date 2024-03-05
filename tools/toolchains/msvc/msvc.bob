@@ -1,7 +1,7 @@
 name: Microsoft Visual C compiler
 
 tooling:
-  build_tool_path: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.34.31933"
+  build_tool_path: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.37.32822"
   kit:
     path: "C:/Program Files (x86)/Windows Kits/10"
     version: "10.0.22621.0"

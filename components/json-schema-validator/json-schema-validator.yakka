@@ -1,0 +1,17 @@
+name: JSON Schema Validator
+
+sources:
+  - src/json-patch.cpp
+  - src/json-schema-draft7.json.cpp
+  - src/json-uri.cpp
+  - src/json-validator.cpp
+  - src/smtp-address-validator.cpp
+  - src/string-format-check.cpp
+
+includes:
+  global:
+    - src
+
+requires:
+  components:
+    - json

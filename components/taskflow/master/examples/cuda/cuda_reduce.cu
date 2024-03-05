@@ -27,19 +27,24 @@ int main(int argc, char* argv[]) {
   *res2 = 10;
   
   // perform reduction
-  tf::cudaFlow cudaflow;
+  tf::cudaStream stream;
+  tf::cudaDefaultExecutionPolicy policy(stream);
+
+  // get the buffer size needed for reduction
+  void* buff;
+  cudaMalloc(&buff, policy.reduce_bufsz<int>(N));
   
   // res1 = res1 + data[0] + data[1] + ... 
-  cudaflow.reduce(
-    data, data+N, res1, [] __device__ (int a, int b){ return a+b; }
+  tf::cuda_reduce(policy,
+    data, data+N, res1, [] __device__ (int a, int b){ return a+b; }, buff
   );
   
   // res2 = data[0] + data[1] + data[2] + ...
-  cudaflow.uninitialized_reduce(
-    data, data+N, res2, [] __device__ (int a, int b){ return a+b; }
+  tf::cuda_uninitialized_reduce(policy,
+    data, data+N, res2, [] __device__ (int a, int b){ return a+b; }, buff
   );
 
-  cudaflow.offload();
+  stream.synchronize();
   
   // inspect 
   if(hres + 10 != *res1 || hres != *res2) {
@@ -47,6 +52,10 @@ int main(int argc, char* argv[]) {
   }
 
   std::cout << "correct result\n";
+  
+  cudaFree(data);
+  cudaFree(res1);
+  cudaFree(res2);
 
   return 0;
 }

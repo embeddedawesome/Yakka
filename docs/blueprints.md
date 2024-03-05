@@ -1,4 +1,5 @@
 # Blueprints
+
 Blueprints are akin to Makefile recipes that map targets to dependencies and the process that performs the actions required by that target.
 Targets can be simple strings, template strings, or complicated regex strings with capture groups.
 
@@ -24,14 +25,17 @@ blueprints:
 A blueprint may contain a `depends` sequence that lists all the dependencies and/or a `process` sequence that lists the steps to execute to apply the blueprint.
 
 ## Targets
+
 A simple string target is matched to a command or dependency by a string comparison.
 These targets are typically used for commands such as `compile`, `link`, or `analyze`.
 
 ## Dependencies
+
 The `depends` sequence is a list of dependencies that are matched to other blueprints or files in the filesystem.
 Each entry is expanded as a template string and there is support for entries that expand to a YAML sequence by wrapping the dependency string in `[` `]`. Note in the example below that the expansion tolerates a trailing comma to simplify the declaration.
 
 *List expansion example*
+
 ```
 # The blueprint to build a binary executable of a project
 '{{project_output}}/{{project_name}}':
@@ -44,6 +48,7 @@ Each entry is expanded as a template string and there is support for entries tha
 Blueprints can also depend on specific data within component files by defining a data dependency. Data dependencies can apply to a specific component or can use a wildcard "*" to depend on a data path in every component in the project. During blueprint evaluation Yakka will determine if those specific data entries have been modified since the previous run.
 
 *Data dependency examples*
+
 ```
 # This blueprint generates a file that contains all the GCC options that affect every source file
 '{{project_output}}/{{project_name}}.global_c_options':
@@ -62,6 +67,7 @@ Blueprints can also depend on specific data within component files by defining a
         -I{{project_output}}"
       - save:
 ```
+
 ```
 # This blueprint generates a file that contains all the GCC options that are specific for a particular component
 compiler_option_files:
@@ -74,10 +80,59 @@ compiler_option_files:
     process:
       - create_directory: '{{$(0)}}'
       - inja: "{% set component = at(components,$(1)) -%}
-        {% for flag in component.flags.c.local) %}{{flag}} {% endfor %}
+        {% for flag in component.flags.c.local %}{{flag}} {% endfor %}
         {% for include in component.includes.local %}-I{{component.directory}}/{{include}} {% endfor %}
         {% for define in component.defines.local %}-D{{define}} {% endfor %}"
       - save:
 ```
 
 ## Processes
+
+A process is a sequence of commands that are evaluated
+
+# Built-in Commands
+
+## 'echo'
+
+## 'execute'
+
+## 'regex'
+
+## 'inja'
+
+## 'save'
+
+## 'create_directory'
+
+## 'verify'
+
+## 'rm'
+
+## 'rmdir'
+
+## 'pack'
+
+## 'copy'
+
+Structure
+
+```
+copy:
+  source: "file.txt"
+  source:
+    - "file1"
+    - "file2"
+  source:
+    folder_paths:
+      - "a/b/c/"
+    folders:
+      - "a/b/c"
+    file_paths:
+      - "a/b/c/file"
+    files:
+      - "a/b/c/file"
+  yaml_list:
+  destination:
+```
+
+## 'cat'

@@ -3,6 +3,7 @@
 //   + plain integral indices
 
 #include <taskflow/taskflow.hpp>
+#include <taskflow/algorithm/for_each.hpp>
 
 // Procedure: for_each
 void for_each(int N) {
@@ -18,6 +19,8 @@ void for_each(int N) {
   });
 
   executor.run(taskflow).get();
+
+  taskflow.dump(std::cout);
 }
 
 // Procedure: for_each_index
@@ -32,6 +35,8 @@ void for_each_index(int N) {
   });
 
   executor.run(taskflow).get();
+  
+  taskflow.dump(std::cout);
 }
 
 // ----------------------------------------------------------------------------

@@ -1,3 +1,4 @@
-# How to use BOB
+# Using Yakka
+
 
 ## Create a component

@@ -66,6 +66,7 @@ class Worker {
     Notifier::Waiter* _waiter;
     std::default_random_engine _rdgen { std::random_device{}() };
     TaskQueue<Node*> _wsq;
+    Node* _cache;
 };
 
 // ----------------------------------------------------------------------------
@@ -164,79 +165,6 @@ inline size_t WorkerView::queue_size() const {
 inline size_t WorkerView::queue_capacity() const {
   return static_cast<size_t>(_worker._wsq.capacity());
 }
-
-
-// ----------------------------------------------------------------------------
-// Class Definition: WorkerInterface
-// ----------------------------------------------------------------------------
-
-/**
-@class WorkerInterface
-
-@brief class to configure worker behavior in an executor
-
-The tf::WorkerInterface class lets users interact with the executor
-to customize the worker behavior,
-such as calling custom methods before and after a worker enters and leaves
-the loop.
-When you create an executor, it spawns a set of workers to run tasks.
-The interaction between the executor and its spawned workers looks like
-the following:
-
-for(size_t n=0; n<num_workers; n++) {
-  create_thread([](Worker& worker)
-  
-    // pre-processing executor-specific worker information
-    // ...
-  
-    // enter the scheduling loop
-    // Here, WorkerInterface::scheduler_prologue is invoked, if any
-    
-    while(1) {
-      perform_work_stealing_algorithm();
-      if(stop) {
-        break; 
-      }
-    }
-  
-    // leaves the scheduling loop and joins this worker thread
-    // Here, WorkerInterface::scheduler_epilogue is invoked, if any
-  );
-}
-
-@note
-Methods defined in tf::WorkerInterface are not thread-safe and may be
-be invoked by multiple workers concurrently.
-
-*/
-class WorkerInterface {
-
-  public:
-  
-  /**
-  @brief default destructor
-  */
-  virtual ~WorkerInterface() = default;
-  
-  /**
-  @brief method to call before a worker enters the scheduling loop
-  @param worker a reference to the worker
-
-  The method is called by the constructor of an executor.
-  */
-  virtual void scheduler_prologue(Worker& worker) = 0;
-  
-  /**
-  @brief method to call after a worker leaves the scheduling loop
-  @param worker a reference to the worker
-  @param ptr an pointer to the exception thrown by the scheduling loop
-
-  The method is called by the constructor of an executor.
-  */
-  virtual void scheduler_epilogue(Worker& worker, std::exception_ptr ptr) = 0;
-
-
-};
 
 
 }  // end of namespact tf -----------------------------------------------------

@@ -8,7 +8,7 @@ int main() {
 
   // create asynchronous tasks from the executor
   // (using executor as a thread pool)
-  tf::Future<std::optional<int>> future1 = executor.async([](){
+  std::future<int> fu = executor.async([](){
     std::cout << "async task 1 returns 1\n";
     return 1;
   });
@@ -18,12 +18,12 @@ int main() {
   });
 
   // create asynchronous tasks with names (for profiling)
-  executor.named_async("async_task", [](){
+  executor.async("async_task", [](){
     std::cout << "named async task returns 1\n";
     return 1;
   });
 
-  executor.named_silent_async("silent_async_task", [](){
+  executor.silent_async("silent_async_task", [](){
     std::cout << "named silent async task does not return\n";
   });
 
@@ -54,4 +54,11 @@ int main() {
 
   return 0;
 }
+
+
+
+
+
+
+
 

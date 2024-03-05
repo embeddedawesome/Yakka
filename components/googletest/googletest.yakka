@@ -1,0 +1,5 @@
+name: Google Test
+
+includes:
+  global:
+    - main/googletest/include

@@ -1,6 +1,7 @@
 // The example shows how to use cudaFlow to multiply two 2D matrices.
 
 #include <taskflow/taskflow.hpp>
+#include <taskflow/algorithm/for_each.hpp>
 #include <taskflow/cuda/cudaflow.hpp>
 
 // Kernel: matmul
@@ -44,7 +45,9 @@ auto gpu(int M, int N, int K) {
   }).name("allocate_c");
   
   // create a cudaFlow to run the matrix multiplication
-  auto cudaFlow = taskflow.emplace([&](tf::cudaFlow& cf){
+  auto cudaFlow = taskflow.emplace([&](){
+
+    tf::cudaFlow cf;
 
     // copy data to da, db, and dc
     auto copy_da = cf.copy(da, ha.data(), M*N).name("H2D_a");
@@ -59,6 +62,10 @@ auto gpu(int M, int N, int K) {
 
     kmatmul.succeed(copy_da, copy_db)
            .precede(copy_hc);
+    
+    tf::cudaStream stream;
+    cf.run(stream);
+    stream.synchronize(); 
 
   }).name("cudaFlow");
 

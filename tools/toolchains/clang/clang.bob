@@ -24,7 +24,7 @@ flags:
       - -Wl,--gc-sections
 
 tools:
-  clang: clang++
+  clang: clang++-15
 
 blueprints:
   link:
@@ -78,7 +78,7 @@ blueprints:
     regex: '.+/components/([^/]*)/\1\.(cpp|c)_options'
     depends:
       - data:
-          - '/{{$(1)}}/flags/.{{$(2)}}/local'
+          - '/{{$(1)}}/flags/{{$(2)}}/local'
           - '/{{$(1)}}/includes/local'
           - '/{{$(1)}}/defines/local'
     process:

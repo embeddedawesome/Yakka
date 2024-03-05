@@ -3,6 +3,8 @@ list(APPEND TF_EXAMPLES
   attach_data
   async
   subflow_async
+  dependent_async
+  dependent_async_algorithm
   observer 
   subflow 
   fibonacci 
@@ -15,23 +17,26 @@ list(APPEND TF_EXAMPLES
   nested_if_else
   priority
   visualization 
-  reduce 
   parallel_for 
   parallel_sort
+  reduce 
+  inclusive_scan
+  exclusive_scan
   pipeline
   scalable_pipeline
+  scalable_pipeline_with_deferred_tokens
   text_pipeline
   taskflow_pipeline
   parallel_graph_pipeline
   parallel_data_pipeline
+  pipeline_with_deferred_tokens
   run 
-  run_and_wait
+  corun
   runtime
-  worker_interface
   composition
   limited_concurrency
   cancel
-  cancel_async
+  exception
 )
 
 foreach(example IN LISTS TF_EXAMPLES)

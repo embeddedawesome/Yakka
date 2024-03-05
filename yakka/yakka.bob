@@ -21,3 +21,18 @@ requires:
     - spdlog
     - taskflow
     - glob
+    - json-schema-validator
+
+supports:
+  components:
+    gcc:
+      flags:
+        cpp:
+          global:
+          - -Wno-error=sign-compare
+    xcode:
+      flags:
+        cpp:
+          global:
+            - -Wno-deprecated-declarations
+

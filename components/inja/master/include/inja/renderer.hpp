@@ -226,7 +226,10 @@ class Renderer : public NodeVisitor {
     } break;
     case Op::NotEqual: {
       const auto args = get_arguments<2>(node);
-      make_result(*args[0] != *args[1]);
+      if (!args[0] || !args[1])
+        make_result(true);
+      else
+        make_result(*args[0] != *args[1]);
     } break;
     case Op::Greater: {
       const auto args = get_arguments<2>(node);
@@ -300,7 +303,10 @@ class Renderer : public NodeVisitor {
       const auto id_node = not_found_stack.top();
       not_found_stack.pop();
       data_eval_stack.pop();
-      data_eval_stack.push(&container->at(id_node->name));
+      if (container->contains(id_node->name))
+        data_eval_stack.push(&container->at(id_node->name));
+      else
+        data_eval_stack.push(nullptr);
     } break;
     case Op::At: {
       const auto args = get_arguments<2>(node);
@@ -579,7 +585,11 @@ class Renderer : public NodeVisitor {
   void visit(const IfStatementNode& node) {
     const auto result = eval_expression_list(node.condition);
     if (result->is_null()) {
-      return;
+      if (node.has_false_statement) {
+        node.false_statement.accept(*this);
+      } else {
+        return;
+      }
     }
     if (truthy(result.get())) {
       node.true_statement.accept(*this);

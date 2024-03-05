@@ -23,7 +23,7 @@ To use %Taskflow v3.0.0, you need a compiler that supports C++17:
 @li GNU C++ Compiler at least v7.0 with -std=c++17
 @li Clang C++ Compiler at least v6.0 with -std=c++17
 @li Microsoft Visual Studio at least v19.27 with /std:c++17
-@li AppleClang Xode Version at least v12.0 with -std=c++17
+@li AppleClang Xcode Version at least v12.0 with -std=c++17
 @li Nvidia CUDA Toolkit and Compiler (nvcc) at least v11.1 with -std=c++17
 @li Intel C++ Compiler at least v19.0.1 with -std=c++17
 
@@ -58,8 +58,8 @@ To use %Taskflow v3.0.0, you need a compiler that supports C++17:
 @li added tf::Taskflow::emplace_on to place a %cudaFlow on a GPU
 @li added tf::cudaFlow::dump and tf::cudaFlowCapturer::dump to visualize %cudaFlow
 @li added tf::cudaFlow::offload and update methods to run and update a %cudaFlow explicitly
-@li supported standalone %cudaFlow (see @ref UsecudaFlowInAStandaloneEnvironment)
-@li supported standalone %cudaFlowCapturer (see @ref UsecudaFlowCapturerInAStandaloneEnvironment)
+@li supported standalone %cudaFlow 
+@li supported standalone %cudaFlowCapturer 
 @li added tf::cublasFlowCapturer to support @cuBLAS (see LinearAlgebracublasFlowCapturer)
 
 @subsection release-3-0-0_utilities Utilities
@@ -85,8 +85,8 @@ To use %Taskflow v3.0.0, you need a compiler that supports C++17:
 
 @li added single task (see @ref SingleTaskCUDA)
 @li added parallel iterations (see @ref ForEachCUDA)
-@li added parallel transforms (see @ref ParallelTransformsCUDA)
-@li added parallel reduction (see @ref cudaFlowReduce)
+@li added parallel transforms 
+@li added parallel reduction
 
 
 @section release-3-0-0_bug_fixes Bug Fixes 
@@ -121,7 +121,6 @@ to support cancellation (see @ref AsyncTasking and @ref RequestCancellation)
   + @ref SingleTaskCUDA to run a kernel function in just a single thread
   + @ref ForEachCUDA to perform parallel iterations over a range of items
   + @ref ParallelTransformsCUDA to perform parallel transforms over a range of items
-  + @ref cudaFlowReduce to perform parallel reduction over a range of items
 @li added @ref Governance
   + @ref rules
   + @ref team

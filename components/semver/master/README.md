@@ -17,12 +17,10 @@ __      __           _             _                _____
 
 [![Github releases](https://img.shields.io/github/release/Neargye/semver.svg)](https://github.com/Neargye/semver/releases)
 [![Vcpkg package](https://img.shields.io/badge/Vcpkg-package-blueviolet)](https://github.com/microsoft/vcpkg/tree/master/ports/neargye-semver)
+[![Conan package](https://img.shields.io/badge/Conan-package-blueviolet)](https://conan.io/center/neargye-semver)
 [![License](https://img.shields.io/github/license/Neargye/semver.svg)](LICENSE)
-[![Build Status](https://travis-ci.org/Neargye/semver.svg?branch=master)](https://travis-ci.org/Neargye/semver)
-[![Build status](https://ci.appveyor.com/api/projects/status/5k62fhf7u1v5h1st/branch/master?svg=true)](https://ci.appveyor.com/project/Neargye/semver/branch/master)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/04b3ef8b2be24f72b670af76855307cc)](https://www.codacy.com/app/Neargye/semver?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Neargye/semver&amp;utm_campaign=Badge_Grade)
 
-C++ library compare and manipulate versions are available as extensions to the `<major>.<minor>.<patch>-<prerelease_type>.<prerelease_number>` format complying with [Semantic Versioning 2.0.0](semver.org)
+C++ library compare and manipulate versions are available as extensions to the `<major>.<minor>.<patch>-<prerelease_type>.<prerelease_number>` format complying with [Semantic Versioning 2.0.0](https://semver.org)
 
 ## Features
 
@@ -32,8 +30,9 @@ C++ library compare and manipulate versions are available as extensions to the `
 * Constexpr comparison: <, <=, ==, !=, > >=
 * Constexpr from string
 * Constexpr to string
+* Constexpr range matching
 
-## [Examples](example/example.cpp)
+## [Examples](example/)
 
 * Create
 
@@ -98,16 +97,41 @@ C++ library compare and manipulate versions are available as extensions to the `
   std::optional<version> v6 = semver::from_string_noexcept(s); // constexpr and no throw.
 
   // From string.
-  semver::version v6;
+  semver::version v7;
   v7.from_string(s); // constexpr and may throw.
-  bool success = v8.from_string_noexcept(s); // constexpr and no throw.
+  bool success = v7.from_string_noexcept(s); // constexpr and no throw.
   ```
+  
+* Range matching
 
+  ```cpp
+  constexpr auto range = semver::range(">=1.0.0 <2.0.0 || >3.2.1");
+  constexpr auto version = semver::version("1.2.3");
+  if (range.satisfies(version)) {
+    // Do something.
+  }
+  ```
+  
+* Range matching with prerelease tag
+
+  ```cpp
+  constexpr auto range = semver::range(">1.2.3-beta.1");
+  constexpr auto version = semver::version("3.4.5-alpha.0");
+
+  // By default, version is allowed to satisfy range if at least one comparator with the same [major, minor, patch] has a prerelease tag.
+  static_assert(!range.satisfies(version));
+  // Suppress this behavior and treat prerelease versions as normal.
+  static_assert(range.satisfies(version, semver::range::option::include_prerelease));
+  ```
+  
 ## Integration
 
 You should add required file [semver.hpp](include/semver.hpp).
 
-If you are using [vcpkg](https://github.com/Microsoft/vcpkg/) on your project for external dependencies, then you can use the [neargye-semver package](https://github.com/microsoft/vcpkg/tree/master/ports/neargye-semver).
+If you are using [vcpkg](https://github.com/Microsoft/vcpkg/) on your project for external dependencies, then you can use the [neargye-semver](https://github.com/microsoft/vcpkg/tree/master/ports/neargye-semver).
+
+If you are using [Conan](https://www.conan.io/) to manage your dependencies, merely add `neargye-semver/x.y.z` to your conan's requires, where `x.y.z` is the release version you want to use.
+
 
 Alternatively, you can use something like [CPM](https://github.com/TheLartians/CPM) which is based on CMake's `Fetch_Content` module.
 
