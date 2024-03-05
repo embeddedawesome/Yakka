@@ -7,8 +7,10 @@
 #include <filesystem>
 
 namespace yakka {
-component_database::component_database() : has_scanned(false), database_is_dirty(false), workspace_path("")
+component_database::component_database() : workspace_path("")
 {
+  has_scanned       = false;
+  database_is_dirty = false;
 }
 
 component_database::~component_database()
