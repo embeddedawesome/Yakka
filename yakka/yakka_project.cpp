@@ -416,9 +416,6 @@ project::state project::evaluate_dependencies()
     if (unprocessed_components.empty() && unprocessed_features.empty() && project_has_slcc) {
       // Find any features that aren't provided
       for (const auto &r: slc_required) {
-        if (r == "freertos_config") {
-          spdlog::info("Checking freertos_config");
-        }
         if (!slc_provided.contains(r)) {
           // Check the databases
           auto f = workspace.find_feature(r);
@@ -1250,34 +1247,50 @@ bool project::condition_is_fulfilled(const nlohmann::json &node)
 
 void project::process_slc_rules()
 {
-  // Process sources
+  // Go through each SLC based component
   for (const auto &c: components) {
+    if (c->type == component::YAKKA_FILE)
+      continue;
+
+    // Process sources
     if (c->json.contains("source")) {
-      nlohmann::json sources;
       for (const auto &p: c->json["source"]) {
         if (!p.contains("path"))
           continue;
-        if (is_disqualified_by_unless(p))
-          continue;
-        if (!condition_is_fulfilled(p))
+        if (is_disqualified_by_unless(p) || !condition_is_fulfilled(p))
           continue;
 
-        sources.push_back(p["path"]);
+        c->json["sources"].push_back(p["path"]);
       }
-      c->json["sources"] = sources;
-      c->json.erase("source");
     }
-  }
 
-  // Process config_file
-  for (const auto &c: components) {
+    // Process 'include'
+    if (c->json.contains("include")) {
+      for (const auto &p: c->json["include"]) {
+        if (is_disqualified_by_unless(p) || !condition_is_fulfilled(p))
+          continue;
+
+        c->json["includes"]["global"].push_back(p["path"]);
+      }
+    }
+
+    // Process 'define'
+    if (c->json.contains("define")) {
+      for (const auto &p: c->json["define"]) {
+        if (is_disqualified_by_unless(p) || !condition_is_fulfilled(p))
+          continue;
+
+        nlohmann::json temp = p.contains("value") ? p : p["name"];
+        c->json["defines"]["global"].push_back(temp);
+      }
+    }
+
+    // Process config_file
     if (c->json.contains("config_file")) {
       for (const auto &config: c->json["config_file"]) {
         if (!config.contains("path"))
           continue;
-        if (is_disqualified_by_unless(config))
-          continue;
-        if (!condition_is_fulfilled(config))
+        if (is_disqualified_by_unless(config) || !condition_is_fulfilled(config))
           continue;
         if (config.contains("override"))
           continue;
@@ -1292,6 +1305,61 @@ void project::process_slc_rules()
           fs::copy_file(source_path, destination_path, fs::copy_options::update_existing);
       }
     }
+
+    // Process 'template_file'
+    if (c->json.contains("template_file")) {
+      for (const auto &t: c->json["template_file"]) {
+        if (is_disqualified_by_unless(t) || !condition_is_fulfilled(t))
+          continue;
+
+        fs::path template_file = t["path"].get<std::string>();
+        fs::path target_file   = template_file.filename();
+        target_file.replace_extension();
+
+        const auto target = "{{project_output}}/generated/" + target_file.string();
+
+        auto add_generated_item = [&](nlohmann::json &node) {
+          // Create generated items
+          if (target_file.extension() == ".c" || target_file.extension() == ".cpp")
+            node["generated"]["sources"].push_back(target);
+          else if (target_file.extension() == ".h" || target_file.extension() == ".hpp")
+            node["generated"]["includes"].push_back(target);
+          else if (target_file.extension() == ".ld")
+            node["generated"]["linker_script"].push_back(target);
+          else
+            node["generated"]["files"].push_back(target);
+        };
+
+        // if (t.contains("condition")) {
+        //   auto pointer = create_condition_pointer(t["condition"]);
+        //   if (!c->json.contains(pointer))
+        //     c->json[pointer] = {};
+
+        //   add_generated_item(c->json[pointer]);
+        // } else
+        add_generated_item(c->json);
+
+        // Create blueprints
+        nlohmann::json blueprint = { { "process", nullptr } };
+        blueprint["process"].push_back({ { "jinja", "-t " + c->json["directory"].get<std::string>() + "/" + template_file.string() + " -d {{project_output}}/template_contributions.json" } });
+        blueprint["process"].push_back({ { "save", nullptr } });
+
+        c->json["blueprints"][target] = blueprint;
+      }
+    }
+
+    // Process special toolchain settings
+    if (c->json.contains("toolchain_settings")) {
+      for (const auto &s: c->json["toolchain_settings"]) {
+        if (s["option"] == "linkerfile") {
+          if (is_disqualified_by_unless(s))
+            continue;
+          if (!condition_is_fulfilled(s))
+            continue;
+          c->json["generated"]["linker_script"] = "{{project_output}}/generated/" + fs::path{ s["value"].get<std::string>() }.filename().string();
+        }
+      }
+    }
   }
 
   // Go through the template_contributions and filter out any items excluded by the `unless` criteria
@@ -1302,38 +1370,10 @@ void project::process_slc_rules()
       continue;
     if (!condition_is_fulfilled(i))
       continue;
-    // if (i->contains("unless")) {
-    //   for (const auto &u: (*i)["unless"]) {
-    //     auto a = u.get<std::string>();
-    //     if (required_features.contains(a)) {
-    //       include_contribution = false;
-    //       spdlog::error("Removing template contribution '{}' because of {}", (*i)["name"].get<std::string>(), u.get<std::string>());
-    //       break;
-    //     }
-    //   }
-    // }
-
-    // if (i->contains("condition")) {
-    //   for (const auto &u: (*i)["condition"]) {
-    //     if (!required_features.contains(u.get<std::string>())) {
-    //       spdlog::error("Removing template contribution '{}' because of {}", (*i)["name"].get<std::string>(), u.get<std::string>());
-    //       include_contribution = false;
-    //       break;
-    //     }
-    //   }
-    // }
 
     new_contributions[i["name"].get<std::string>()].push_back(i["value"]);
-    // if (include_contribution == false)
-    //   i = template_contributions.erase(i);
-    // else
-    //   ++i;
   }
 
-  // Convert to the right structure
-  // for (const auto &i: template_contributions) {
-  //   new_contributions[i["name"].get<std::string>()].push_back(i["value"]);
-  // }
   template_contributions = new_contributions;
 
   // Process toolchain settings
@@ -1348,32 +1388,11 @@ void project::process_slc_rules()
       if (!condition_is_fulfilled(s))
         continue;
 
-      // bool skip = false;
-      // if (s.contains("unless")) {
-      //   for (const auto &u: s["unless"]) {
-      //     if (required_features.contains(u.get<std::string>())) {
-      //       skip = true;
-      //       break;
-      //     }
-      //   }
-      // }
-
-      // if (s.contains("condition")) {
-      //   for (const auto &u: s["condition"]) {
-      //     if (!required_features.contains(u.get<std::string>())) {
-      //       skip = true;
-      //       break;
-      //     }
-      //   }
-      // }
-
-      // if (!skip) {
       const auto key = s["option"].get<std::string>();
       if (project_summary["toolchain_settings"].contains(key))
         project_summary["toolchain_settings"][key].push_back(s["value"]);
       else
         project_summary["toolchain_settings"][key] = s["value"];
-      // }
     }
   }
 }
