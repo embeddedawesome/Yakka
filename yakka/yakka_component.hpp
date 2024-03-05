@@ -22,6 +22,7 @@ struct component {
   // Variables
   std::string id;
   fs::path file_path;
+  fs::path component_path;
   nlohmann::json json;
   semver::version version;
 
@@ -33,8 +34,6 @@ struct component {
     SLCC_FILE,
     SLCP_FILE,
   } type;
-
-  nlohmann::json::json_pointer create_condition_pointer(nlohmann::json condition);
 };
 
 } /* namespace yakka */

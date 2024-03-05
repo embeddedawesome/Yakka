@@ -22,8 +22,7 @@ using namespace indicators;
 using namespace std::chrono_literals;
 
 static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::project &project);
-static void evaluate_project_choices(yakka::workspace &workspace, yakka::project &project);
-static void evaluate_slcc_requirements(yakka::workspace &workspace, yakka::project &project);
+static void print_project_choice_errors(yakka::project &project);
 static void run_taskflow(yakka::project &project);
 
 tf::Task &create_tasks(yakka::project &project, const std::string &name, std::map<std::string, tf::Task> &tasks, tf::Taskflow &taskflow);
@@ -201,7 +200,7 @@ int main(int argc, char **argv)
   if (!cli_set_project_name.empty())
     project_name = cli_set_project_name;
 
-  // Create a project
+  // Create a project and output
   yakka::project project(project_name, workspace, yakkalog);
 
   // Move the CLI parsed data to the project
@@ -217,8 +216,12 @@ int main(int argc, char **argv)
 
   if (!result["no-eval"].as<bool>()) {
     evaluate_project_dependencies(workspace, project);
-    evaluate_project_choices(workspace, project);
-    evaluate_slcc_requirements(workspace, project);
+
+    project.evaluate_choices();
+    if (!project.incomplete_choices.empty() || !project.multiple_answer_choices.empty())
+      print_project_choice_errors(project);
+
+    project.process_slc_rules();
   } else {
     spdlog::info("Skipping project evalutaion");
 
@@ -317,45 +320,6 @@ void run_taskflow(yakka::project &project)
 
   building_bar.set_option(option::PostfixText{ std::to_string(project.work_task_count) + "/" + std::to_string(project.work_task_count) });
   building_bar.set_progress(project.work_task_count);
-}
-
-static void evaluate_slcc_requirements(yakka::workspace &workspace, yakka::project &project)
-{
-  // Go through the template_contributions and filter out any items excluded by the `unless` criteria
-  for (auto i = project.template_contributions.begin(); i != project.template_contributions.end();) {
-    bool include_contribution = true;
-    if (i->contains("unless")) {
-      for (const auto &u: (*i)["unless"]) {
-        auto a = u.get<std::string>();
-        if (project.required_features.contains(a)) {
-          include_contribution = false;
-          spdlog::error("Removing template contribution '{}' because of {}", (*i)["name"].get<std::string>(), u.get<std::string>());
-          break;
-        }
-      }
-    }
-
-    if (i->contains("condition")) {
-      for (const auto &u: (*i)["condition"]) {
-        if (!project.required_features.contains(u.get<std::string>())) {
-          spdlog::error("Removing template contribution '{}' because of {}", (*i)["name"].get<std::string>(), u.get<std::string>());
-          include_contribution = false;
-          break;
-        }
-      }
-    }
-    if (include_contribution == false)
-      i = project.template_contributions.erase(i);
-    else
-      ++i;
-  }
-
-  // Convert to the right structure
-  nlohmann::json new_contributions;
-  for (const auto &i: project.template_contributions) {
-    new_contributions[i["name"].get<std::string>()].push_back(i["value"]);
-  }
-  project.template_contributions = new_contributions;
 }
 
 static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::project &project)
@@ -469,43 +433,33 @@ static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::pr
   spdlog::info("{}ms to process components", duration);
 }
 
-static void evaluate_project_choices(yakka::workspace &workspace, yakka::project &project)
+static void print_project_choice_errors(yakka::project &project)
 {
-  project.evaluate_choices();
+  for (auto &i: project.incomplete_choices) {
+    bool valid_options = false;
+    spdlog::error("Component '{}' has a choice '{}' - Must choose from the following", i.first, i.second);
+    if (project.project_summary["choices"][i.second].contains("features")) {
+      valid_options = true;
+      spdlog::error("Features: ");
+      for (auto &b: project.project_summary["choices"][i.second]["features"])
+        spdlog::error("  - {}", b.get<std::string>());
+    }
 
-  // Evaluate default values for empty choices
-  // for (auto& i: project.incomplete_choices)
-  // {
-  // }
+    if (project.project_summary["choices"][i.second].contains("components")) {
+      valid_options = true;
+      spdlog::error("Components: ");
+      for (auto &b: project.project_summary["choices"][i.second]["components"])
+        spdlog::error("  - {}", b.get<std::string>());
+    }
 
-  if (!project.incomplete_choices.empty()) {
-    for (auto &i: project.incomplete_choices) {
-      bool valid_options = false;
-      spdlog::error("Component '{}' has a choice '{}' - Must choose from the following", i.first, i.second);
-      if (project.project_summary["choices"][i.second].contains("features")) {
-        valid_options = true;
-        spdlog::error("Features: ");
-        for (auto &b: project.project_summary["choices"][i.second]["features"])
-          spdlog::error("  - {}", b.get<std::string>());
-      }
-
-      if (project.project_summary["choices"][i.second].contains("components")) {
-        valid_options = true;
-        spdlog::error("Components: ");
-        for (auto &b: project.project_summary["choices"][i.second]["components"])
-          spdlog::error("  - {}", b.get<std::string>());
-      }
-
-      if (!valid_options) {
-        spdlog::error("ERROR: Choice data is invalid");
-      }
+    if (!valid_options) {
+      spdlog::error("ERROR: Choice data is invalid");
     }
     project.current_state = yakka::project::state::PROJECT_HAS_INCOMPLETE_CHOICES;
   }
-  if (!project.multiple_answer_choices.empty()) {
-    for (auto a: project.multiple_answer_choices) {
-      spdlog::error("Choice {} - Has multiple selections", a);
-    }
+
+  for (auto a: project.multiple_answer_choices) {
+    spdlog::error("Choice {} - Has multiple selections", a);
     project.current_state = yakka::project::state::PROJECT_HAS_MULTIPLE_ANSWERS_FOR_CHOICES;
   }
 }

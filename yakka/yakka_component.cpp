@@ -33,9 +33,10 @@ yakka_status component::parse_file(fs::path file_path, fs::path package_path)
     }
 
     if (file_path.has_parent_path())
-      path_string = file_path.parent_path().generic_string();
+      component_path = file_path.parent_path();
     else
-      path_string = ".";
+      component_path = ".";
+    path_string       = component_path.generic_string();
     json["directory"] = path_string;
 
     // Set version
@@ -75,10 +76,11 @@ yakka_status component::parse_file(fs::path file_path, fs::path package_path)
               n = n.get<std::string>().insert(0, path_string);
       }
     }
+
+    this->id = file_path.stem().string();
   }
 
   // Add known information
-  this->id           = file_path.stem().string();
   json["yakka_file"] = file_path.string();
   return yakka_status::SUCCESS;
 }
@@ -95,24 +97,31 @@ void component::convert_to_yakka(fs::path package_path)
   }
 
   // Set basic data such as directory and name
-  json["name"] = json["label"];
+  if (json.contains("id")) {
+    json["name"] = json["id"];
+    this->id     = json["id"].get<std::string>();
+  } else {
+    this->id     = file_path.stem().string();
+    json["name"] = this->id;
+  }
 
   if (json.contains("component_root_path")) {
     std::string temp_path;
     if (!package_path.empty())
       temp_path = package_path.string() + "/";
-    json["directory"] = temp_path + json["component_root_path"].get<std::string>();
+    component_path = temp_path + json["component_root_path"].get<std::string>();
   } else if (json.contains("root_path")) {
     std::string temp_path;
     if (!package_path.empty())
       temp_path = package_path.string() + "/";
-    json["directory"] = temp_path + json["root_path"].get<std::string>();
+    component_path = temp_path + json["root_path"].get<std::string>();
   } else {
     if (package_path.empty())
-      json["directory"] = file_path.parent_path().string();
+      component_path = file_path.parent_path();
     else
-      json["directory"] = package_path.string();
+      component_path = package_path;
   }
+  json["directory"] = component_path.string();
 
   // Process 'provides'
   if (json.contains("provides")) {
@@ -138,7 +147,8 @@ void component::convert_to_yakka(fs::path package_path)
     json["requires"] = temp;
   }
 
-  // Process 'source'
+// Process 'source'
+#if 0
   if (json.contains("source")) {
     nlohmann::json sources;
     for (const auto &p: json["source"]) {
@@ -152,6 +162,7 @@ void component::convert_to_yakka(fs::path package_path)
     json["sources"] = sources;
     json.erase("source");
   }
+#endif
 
   // Process 'include'
   if (json.contains("include")) {
@@ -228,18 +239,6 @@ void component::convert_to_yakka(fs::path package_path)
       json["blueprints"][target] = blueprint;
     }
   }
-}
-
-nlohmann::json::json_pointer component::create_condition_pointer(nlohmann::json condition)
-{
-  nlohmann::json::json_pointer pointer;
-
-  for (const auto &item: condition) {
-    pointer /= "/supports/features"_json_pointer;
-    pointer /= item.get<std::string>();
-  }
-
-  return pointer;
 }
 
 } /* namespace yakka */

@@ -71,8 +71,8 @@ void project::init_project(std::vector<std::string> components, std::vector<std:
 
 void project::init_project()
 {
-  output_path          = yakka::default_output_directory;
-  project_summary_file = "output/" + project_name + "/yakka_summary.json";
+  output_path          = yakka::default_output_directory + project_name;
+  project_summary_file = output_path + "/yakka_summary.json";
   // previous_summary["components"] = YAML::Node();
 
   if (fs::exists(project_summary_file)) {
@@ -91,10 +91,10 @@ void project::init_project()
     fs::create_directories(output_path);
 }
 
-void project::process_requirements(nlohmann::json &component, nlohmann::json child_node)
+void project::process_requirements(std::shared_ptr<yakka::component> component, nlohmann::json child_node)
 {
   // Merge the feature values into the parent component
-  json_node_merge(component, child_node);
+  json_node_merge(component->json, child_node);
 
   // Process required components
   if (child_node.contains("/requires/components"_json_pointer)) {
@@ -111,11 +111,18 @@ void project::process_requirements(nlohmann::json &component, nlohmann::json chi
   // Process required features
   if (child_node.contains("/requires/features"_json_pointer)) {
     // Add the item/s to the new_features list
-    if (child_node["requires"]["features"].is_string())
-      unprocessed_features.insert(child_node["requires"]["features"].get<std::string>());
-    else if (child_node["requires"]["features"].is_array())
-      for (const auto &i: child_node["requires"]["features"])
-        unprocessed_features.insert(i.get<std::string>());
+    if (child_node["requires"]["features"].is_string()) {
+      const auto feature = child_node["requires"]["features"].get<std::string>();
+      if (component->type == yakka::component::SLCC_FILE || component->type == yakka::component::SLCP_FILE)
+        slc_required.insert(feature);
+      unprocessed_features.insert(feature);
+    } else if (child_node["requires"]["features"].is_array())
+      for (const auto &i: child_node["requires"]["features"]) {
+        const auto feature = i.get<std::string>();
+        if (component->type == yakka::component::SLCC_FILE || component->type == yakka::component::SLCP_FILE)
+          slc_required.insert(feature);
+        unprocessed_features.insert(feature);
+      }
     else
       log->error("Node '{}' has invalid 'requires'", child_node["requires"].get<std::string>());
   }
@@ -123,11 +130,18 @@ void project::process_requirements(nlohmann::json &component, nlohmann::json chi
   // Process provided features
   if (child_node.contains("/provides/features"_json_pointer)) {
     auto child_node_provides = child_node["provides"]["features"];
-    if (child_node_provides.is_string())
-      unprocessed_features.insert(child_node_provides.get<std::string>());
-    else if (child_node_provides.is_array())
-      for (const auto &i: child_node_provides)
-        unprocessed_features.insert(i.get<std::string>());
+    if (child_node_provides.is_string()) {
+      const auto feature = child_node_provides.get<std::string>();
+      if (component->type == yakka::component::SLCC_FILE || component->type == yakka::component::SLCP_FILE)
+        slc_provided.insert(feature);
+      unprocessed_features.insert(feature);
+    } else if (child_node_provides.is_array())
+      for (const auto &i: child_node_provides) {
+        const auto feature = i.get<std::string>();
+        if (component->type == yakka::component::SLCC_FILE || component->type == yakka::component::SLCP_FILE)
+          slc_provided.insert(feature);
+        unprocessed_features.insert(feature);
+      }
   }
 
   // Process choices
@@ -135,7 +149,7 @@ void project::process_requirements(nlohmann::json &component, nlohmann::json chi
     if (!project_summary["choices"].contains(choice_name)) {
       unprocessed_choices.insert(choice_name);
       project_summary["choices"][choice_name]           = choice;
-      project_summary["choices"][choice_name]["parent"] = component["name"].get<std::string>();
+      project_summary["choices"][choice_name]["parent"] = component->json["name"].get<std::string>();
     }
   }
 
@@ -143,7 +157,7 @@ void project::process_requirements(nlohmann::json &component, nlohmann::json chi
   if (child_node.contains("/supports/components"_json_pointer)) {
     for (const auto &c: required_components)
       if (child_node["supports"]["components"].contains(c)) {
-        log->info("Processing component '{}' in {}", c, component["name"].get<std::string>());
+        log->info("Processing component '{}' in {}", c, component->json["name"].get<std::string>());
         process_requirements(component, child_node["supports"]["components"][c]);
       }
   }
@@ -152,7 +166,7 @@ void project::process_requirements(nlohmann::json &component, nlohmann::json chi
   if (child_node.contains("/supports/features"_json_pointer)) {
     for (const auto &f: required_features)
       if (child_node["supports"]["features"].contains(f)) {
-        log->info("Processing feature '{}' in {}", f, component["name"].get<std::string>());
+        log->info("Processing feature '{}' in {}", f, component->json["name"].get<std::string>());
         process_requirements(component, child_node["supports"]["features"][f]);
       }
   }
@@ -193,9 +207,6 @@ project::state project::evaluate_dependencies()
 {
   std::unordered_map<std::string, std::string> new_replacements;
   bool project_has_slcc = false;
-  std::unordered_set<std::string> slc_required;
-  std::unordered_set<std::string> slc_provided;
-  std::unordered_set<std::string> slc_recommended;
 
   // Start processing all the required components and features
   while (!unprocessed_components.empty() || !unprocessed_features.empty()) {
@@ -301,7 +312,7 @@ project::state project::evaluate_dependencies()
         for (auto &f: required_features)
           if (new_component->json["supports"]["features"].contains(f)) {
             log->info("Processing required feature '{}' in {}", f, component_id);
-            process_requirements(new_component->json, new_component->json["supports"]["features"][f]);
+            process_requirements(new_component, new_component->json["supports"]["features"][f]);
           }
       }
       if (new_component->json.contains("/supports/components"_json_pointer)) {
@@ -309,7 +320,7 @@ project::state project::evaluate_dependencies()
         for (auto &c: required_components)
           if (new_component->json["supports"]["components"].contains(c)) {
             log->info("Processing required component '{}' in {}", c, component_id);
-            process_requirements(new_component->json, new_component->json["supports"]["components"][c]);
+            process_requirements(new_component, new_component->json["supports"]["components"][c]);
           }
       }
 
@@ -318,7 +329,7 @@ project::state project::evaluate_dependencies()
         if (c->json.contains("/supports/components"_json_pointer / component_id)) {
           // if (c->json.contains("supports") && c->json["supports"].contains("components") && c->json["supports"]["components"].contains(component_id)) {
           log->info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
-          process_requirements(c->json, c->json["supports"]["components"][component_id]);
+          process_requirements(c, c->json["supports"]["components"][component_id]);
         }
     }
 
@@ -335,7 +346,7 @@ project::state project::evaluate_dependencies()
         if (c->json.contains("/supports/features"_json_pointer / f)) {
           // if (c->json.contains("supports") && c->json["supports"].contains("features") && c->json["supports"]["features"].contains(f)) {
           log->info("Processing feature '{}' in {}", f, c->json["name"].get<std::string>());
-          process_requirements(c->json, c->json["supports"]["features"][f]);
+          process_requirements(c, c->json["supports"]["features"][f]);
         }
     }
 
@@ -405,6 +416,9 @@ project::state project::evaluate_dependencies()
     if (unprocessed_components.empty() && unprocessed_features.empty() && project_has_slcc) {
       // Find any features that aren't provided
       for (const auto &r: slc_required) {
+        if (r == "freertos_config") {
+          spdlog::info("Checking freertos_config");
+        }
         if (!slc_provided.contains(r)) {
           // Check the databases
           auto f = workspace.find_feature(r);
@@ -1210,6 +1224,156 @@ void project::validate_schema()
     for (const auto &c: components) {
       err.component_name = c->id;
       validator.validate(c->json, err);
+    }
+  }
+}
+
+bool project::is_disqualified_by_unless(const nlohmann::json &node)
+{
+  if (node.contains("unless"))
+    for (const auto &u: node["unless"])
+      if (required_features.contains(u.get<std::string>()))
+        return true;
+
+  return false;
+}
+
+bool project::condition_is_fulfilled(const nlohmann::json &node)
+{
+  if (node.contains("condition"))
+    for (const auto &condition: node["condition"])
+      if (!required_features.contains(condition.get<std::string>()))
+        return false;
+
+  return true;
+}
+
+void project::process_slc_rules()
+{
+  // Process sources
+  for (const auto &c: components) {
+    if (c->json.contains("source")) {
+      nlohmann::json sources;
+      for (const auto &p: c->json["source"]) {
+        if (!p.contains("path"))
+          continue;
+        if (is_disqualified_by_unless(p))
+          continue;
+        if (!condition_is_fulfilled(p))
+          continue;
+
+        sources.push_back(p["path"]);
+      }
+      c->json["sources"] = sources;
+      c->json.erase("source");
+    }
+  }
+
+  // Process config_file
+  for (const auto &c: components) {
+    if (c->json.contains("config_file")) {
+      for (const auto &config: c->json["config_file"]) {
+        if (!config.contains("path"))
+          continue;
+        if (is_disqualified_by_unless(config))
+          continue;
+        if (!condition_is_fulfilled(config))
+          continue;
+        if (config.contains("override"))
+          continue;
+
+        fs::path source_path = config["path"].get<std::string>();
+        if (c->package.empty())
+          source_path = c->component_path / source_path;
+        else
+          source_path = c->package / source_path;
+        fs::path destination_path = fs::path{ default_output_directory + project_name } / source_path.filename();
+        if (fs::exists(source_path))
+          fs::copy_file(source_path, destination_path, fs::copy_options::update_existing);
+      }
+    }
+  }
+
+  // Go through the template_contributions and filter out any items excluded by the `unless` criteria
+  nlohmann::json new_contributions;
+  for (const auto &i: template_contributions) {
+    // bool include_contribution = true;
+    if (is_disqualified_by_unless(i))
+      continue;
+    if (!condition_is_fulfilled(i))
+      continue;
+    // if (i->contains("unless")) {
+    //   for (const auto &u: (*i)["unless"]) {
+    //     auto a = u.get<std::string>();
+    //     if (required_features.contains(a)) {
+    //       include_contribution = false;
+    //       spdlog::error("Removing template contribution '{}' because of {}", (*i)["name"].get<std::string>(), u.get<std::string>());
+    //       break;
+    //     }
+    //   }
+    // }
+
+    // if (i->contains("condition")) {
+    //   for (const auto &u: (*i)["condition"]) {
+    //     if (!required_features.contains(u.get<std::string>())) {
+    //       spdlog::error("Removing template contribution '{}' because of {}", (*i)["name"].get<std::string>(), u.get<std::string>());
+    //       include_contribution = false;
+    //       break;
+    //     }
+    //   }
+    // }
+
+    new_contributions[i["name"].get<std::string>()].push_back(i["value"]);
+    // if (include_contribution == false)
+    //   i = template_contributions.erase(i);
+    // else
+    //   ++i;
+  }
+
+  // Convert to the right structure
+  // for (const auto &i: template_contributions) {
+  //   new_contributions[i["name"].get<std::string>()].push_back(i["value"]);
+  // }
+  template_contributions = new_contributions;
+
+  // Process toolchain settings
+  project_summary["toolchain_settings"] = nlohmann::json::object();
+  for (const auto &c: components) {
+    if (c->json.contains("toolchain_settings") == false)
+      continue;
+
+    for (const auto &s: c->json["toolchain_settings"]) {
+      if (is_disqualified_by_unless(s))
+        continue;
+      if (!condition_is_fulfilled(s))
+        continue;
+
+      // bool skip = false;
+      // if (s.contains("unless")) {
+      //   for (const auto &u: s["unless"]) {
+      //     if (required_features.contains(u.get<std::string>())) {
+      //       skip = true;
+      //       break;
+      //     }
+      //   }
+      // }
+
+      // if (s.contains("condition")) {
+      //   for (const auto &u: s["condition"]) {
+      //     if (!required_features.contains(u.get<std::string>())) {
+      //       skip = true;
+      //       break;
+      //     }
+      //   }
+      // }
+
+      // if (!skip) {
+      const auto key = s["option"].get<std::string>();
+      if (project_summary["toolchain_settings"].contains(key))
+        project_summary["toolchain_settings"][key].push_back(s["value"]);
+      else
+        project_summary["toolchain_settings"][key] = s["value"];
+      // }
     }
   }
 }
