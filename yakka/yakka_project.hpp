@@ -51,7 +51,7 @@ public:
   void init_project(const std::string build_string);
   void process_build_string(const std::string build_string);
   void parse_project_string(const std::vector<std::string> &project_string);
-  void process_requirements(nlohmann::json &component, nlohmann::json child_node);
+  void process_requirements(std::shared_ptr<yakka::component> component, nlohmann::json child_node);
   state evaluate_dependencies();
   //std::optional<fs::path> find_component(const std::string component_dotname);
   void evaluate_choices();
@@ -73,6 +73,9 @@ public:
   void create_tasks(const std::string target_name, tf::Task &parent);
 
   void validate_schema();
+
+  // void add_required_component(std::shared_ptr<yakka::component> component);
+  // void add_required_feature(const std::string feature, std::shared_ptr<yakka::component> component);
 
   // Logging
   std::shared_ptr<spdlog::logger> log;
@@ -122,6 +125,15 @@ public:
 
   std::map<std::string, blueprint_command> blueprint_commands;
   std::function<void()> task_complete_handler;
+
+  // SLC specific
+  nlohmann::json template_contributions;
+  std::unordered_set<std::string> slc_required;
+  std::unordered_set<std::string> slc_provided;
+  std::unordered_set<std::string> slc_recommended;
+  bool is_disqualified_by_unless(const nlohmann::json &node);
+  bool condition_is_fulfilled(const nlohmann::json &node);
+  void process_slc_rules();
 
 private:
   void init_project();

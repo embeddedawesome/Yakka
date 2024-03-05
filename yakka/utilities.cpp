@@ -17,7 +17,7 @@ std::pair<std::string, int> exec(const std::string &command_text, const std::str
 #if defined(__USING_WINDOWS__)
     auto p = subprocess::Popen(command, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #else
-    auto p      = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
+    auto p = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #endif
 #if defined(__USING_WINDOWS__)
     auto output  = p.communicate().first;
@@ -46,7 +46,7 @@ int exec(const std::string &command_text, const std::string &arg_text, std::func
 #if defined(__USING_WINDOWS__)
     auto p = subprocess::Popen(command, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #else
-    auto p       = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
+    auto p = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #endif
     auto output = p.output();
     std::array<char, 512> buffer;
@@ -520,6 +520,18 @@ std::pair<std::string, int> download_resource(const std::string url, fs::path de
 #else
   return exec("curl", url + " -o " + filename.generic_string());
 #endif
+}
+
+nlohmann::json::json_pointer create_condition_pointer(const nlohmann::json condition)
+{
+  nlohmann::json::json_pointer pointer;
+
+  for (const auto &item: condition) {
+    pointer /= "/supports/features"_json_pointer;
+    pointer /= item.get<std::string>();
+  }
+
+  return pointer;
 }
 
 } // namespace yakka

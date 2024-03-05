@@ -1,8 +1,6 @@
 #pragma once
 
 #include "yakka_blueprint.hpp"
-#include "blueprint_database.hpp"
-#include "yaml-cpp/yaml.h"
 #include "yakka.hpp"
 #include "semver.hpp"
 #include <vector>
@@ -12,46 +10,30 @@
 
 namespace yakka {
 
-struct base_component {
-  void parse_file(fs::path file_path);
+struct component {
+  yakka_status parse_file(fs::path file_path, fs::path package_path = {});
   //std::tuple<component_list_t &, feature_list_t &> apply_feature(std::string feature_name);
   //std::tuple<component_list_t &, feature_list_t &> process_requirements(const nlohmann::json &node);
   component_list_t get_required_components();
   feature_list_t get_required_features();
+  void convert_to_yakka(fs::path package_path);
   // std::vector< blueprint_node > get_blueprints();
 
   // Variables
-  fs::path file_path;
-  semver::version version;
-};
-
-struct component : public base_component {
-  yakka_status parse_file(fs::path file_path, blueprint_database &database);
-  component_list_t get_required_components();
-  feature_list_t get_required_features();
-  // std::vector< blueprint_node > get_blueprints();
-
   std::string id;
+  fs::path file_path;
+  fs::path component_path;
   nlohmann::json json;
-  //YAML::Node yaml;
-};
+  semver::version version;
 
-struct slcc : public base_component {
-  static YAML::Node slcc_database;
+  // Optional path to package
+  fs::path package;
 
-  slcc(){};
-  slcc(fs::path file_path);
-
-  void parse_file(fs::path file_path);
-  // std::tuple<component_list_t&, feature_list_t&> apply_feature( std::string feature_name );
-  // std::tuple<component_list_t&, feature_list_t&> process_requirements(const YAML::Node& node);
-  component_list_t get_required_components();
-  feature_list_t get_required_features();
-  // std::vector< blueprint_node > get_blueprints();
-
-  void convert_to_yakka();
-
-  nlohmann::json json;
+  enum {
+    YAKKA_FILE,
+    SLCC_FILE,
+    SLCP_FILE,
+  } type;
 };
 
 } /* namespace yakka */

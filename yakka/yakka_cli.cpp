@@ -22,7 +22,7 @@ using namespace indicators;
 using namespace std::chrono_literals;
 
 static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::project &project);
-static void evaluate_project_choices(yakka::workspace &workspace, yakka::project &project);
+static void print_project_choice_errors(yakka::project &project);
 static void run_taskflow(yakka::project &project);
 
 tf::Task &create_tasks(yakka::project &project, const std::string &name, std::map<std::string, tf::Task> &tasks, tf::Taskflow &taskflow);
@@ -134,10 +134,11 @@ int main(int argc, char **argv)
   } else if (action == "remove") {
     // Find all the component repos in .yakka
     for (auto &i: result.unmatched()) {
-      auto optional_path = workspace.find_component(i);
-      if (optional_path) {
-        spdlog::info("Removing {}", optional_path.value().string());
-        fs::remove_all(optional_path.value());
+      auto optional_location = workspace.find_component(i);
+      if (optional_location) {
+        auto [path, package] = optional_location.value();
+        spdlog::info("Removing {}", path.string());
+        fs::remove_all(path);
       }
     }
 
@@ -199,7 +200,7 @@ int main(int argc, char **argv)
   if (!cli_set_project_name.empty())
     project_name = cli_set_project_name;
 
-  // Create a project
+  // Create a project and output
   yakka::project project(project_name, workspace, yakkalog);
 
   // Move the CLI parsed data to the project
@@ -215,7 +216,12 @@ int main(int argc, char **argv)
 
   if (!result["no-eval"].as<bool>()) {
     evaluate_project_dependencies(workspace, project);
-    evaluate_project_choices(workspace, project);
+
+    project.evaluate_choices();
+    if (!project.incomplete_choices.empty() || !project.multiple_answer_choices.empty())
+      print_project_choice_errors(project);
+
+    project.process_slc_rules();
   } else {
     spdlog::info("Skipping project evalutaion");
 
@@ -223,8 +229,8 @@ int main(int argc, char **argv)
       // Convert string to id
       const auto component_id = yakka::component_dotname_to_id(i);
       // Find the component in the project component database
-      auto component_path = workspace.find_component(component_id);
-      if (!component_path) {
+      auto component_location = workspace.find_component(component_id);
+      if (!component_location) {
         // log->info("{}: Couldn't find it", c);
         continue;
       }
@@ -234,11 +240,12 @@ int main(int argc, char **argv)
       if (project.required_components.insert(component_id).second == false)
         continue;
 
+      auto [component_path, package_path]             = component_location.value();
       std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
-      if (new_component->parse_file(component_path.value(), project.blueprint_database) == yakka::yakka_status::SUCCESS) {
+      if (new_component->parse_file(component_path, package_path) == yakka::yakka_status::SUCCESS) {
         project.components.push_back(new_component);
       } else {
-        spdlog::error("Failed to parse {}", component_path.value().generic_string());
+        spdlog::error("Failed to parse {}", component_path.generic_string());
         exit(-1);
       }
     }
@@ -405,7 +412,7 @@ static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::pr
 
       // Check if any of our unknown components have been found
       for (auto i = project.unknown_components.cbegin(); i != project.unknown_components.cend();) {
-        if (workspace.local_database[*i] || workspace.shared_database[*i]) {
+        if (!workspace.local_database.get_component(*i).empty() || !workspace.shared_database.get_component(*i).empty()) {
           // Remove component from the unknown list and add it to the unprocessed list
           project.unprocessed_components.insert(*i);
           i = project.unknown_components.erase(i);
@@ -426,43 +433,33 @@ static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::pr
   spdlog::info("{}ms to process components", duration);
 }
 
-static void evaluate_project_choices(yakka::workspace &workspace, yakka::project &project)
+static void print_project_choice_errors(yakka::project &project)
 {
-  project.evaluate_choices();
+  for (auto &i: project.incomplete_choices) {
+    bool valid_options = false;
+    spdlog::error("Component '{}' has a choice '{}' - Must choose from the following", i.first, i.second);
+    if (project.project_summary["choices"][i.second].contains("features")) {
+      valid_options = true;
+      spdlog::error("Features: ");
+      for (auto &b: project.project_summary["choices"][i.second]["features"])
+        spdlog::error("  - {}", b.get<std::string>());
+    }
 
-  // Evaluate default values for empty choices
-  // for (auto& i: project.incomplete_choices)
-  // {
-  // }
+    if (project.project_summary["choices"][i.second].contains("components")) {
+      valid_options = true;
+      spdlog::error("Components: ");
+      for (auto &b: project.project_summary["choices"][i.second]["components"])
+        spdlog::error("  - {}", b.get<std::string>());
+    }
 
-  if (!project.incomplete_choices.empty()) {
-    for (auto &i: project.incomplete_choices) {
-      bool valid_options = false;
-      spdlog::error("Component '{}' has a choice '{}' - Must choose from the following", i.first, i.second);
-      if (project.project_summary["choices"][i.second].contains("features")) {
-        valid_options = true;
-        spdlog::error("Features: ");
-        for (auto &b: project.project_summary["choices"][i.second]["features"])
-          spdlog::error("  - {}", b.get<std::string>());
-      }
-
-      if (project.project_summary["choices"][i.second].contains("components")) {
-        valid_options = true;
-        spdlog::error("Components: ");
-        for (auto &b: project.project_summary["choices"][i.second]["components"])
-          spdlog::error("  - {}", b.get<std::string>());
-      }
-
-      if (!valid_options) {
-        spdlog::error("ERROR: Choice data is invalid");
-      }
+    if (!valid_options) {
+      spdlog::error("ERROR: Choice data is invalid");
     }
     project.current_state = yakka::project::state::PROJECT_HAS_INCOMPLETE_CHOICES;
   }
-  if (!project.multiple_answer_choices.empty()) {
-    for (auto a: project.multiple_answer_choices) {
-      spdlog::error("Choice {} - Has multiple selections", a);
-    }
+
+  for (auto a: project.multiple_answer_choices) {
+    spdlog::error("Choice {} - Has multiple selections", a);
     project.current_state = yakka::project::state::PROJECT_HAS_MULTIPLE_ANSWERS_FOR_CHOICES;
   }
 }

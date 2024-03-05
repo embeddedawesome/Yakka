@@ -18,6 +18,13 @@ workspace::workspace()
 {
 }
 
+workspace::~workspace()
+{
+  // for (auto &db: package_databases) {
+  //   db.clear();
+  // }
+}
+
 void workspace::init(fs::path workspace_path)
 {
   // Load the local configuration
@@ -48,6 +55,14 @@ void workspace::init(fs::path workspace_path)
 
   if (!this->shared_components_path.empty()) {
     shared_database.load(this->shared_components_path);
+  }
+
+  if (!this->packages.empty()) {
+    for (const auto &p: packages) {
+      //component_database db;
+      package_databases.push_back({});
+      package_databases.back().load(p);
+    }
   }
 
   configuration["host_os"]              = host_os_string;
@@ -84,42 +99,32 @@ std::optional<YAML::Node> workspace::find_registry_component(const std::string &
   return {};
 }
 
-std::optional<fs::path> workspace::find_component(const std::string component_dotname)
+std::optional<std::pair<fs::path, fs::path>> workspace::find_component(const std::string component_dotname)
 {
   bool try_update_the_database   = false;
   const std::string component_id = yakka::component_dotname_to_id(component_dotname);
 
-  // Get component from database
-  auto local  = local_database[component_id];
-  auto shared = shared_database[component_id];
+  // Get component from local and shared databases
+  auto local  = local_database.get_component(component_id);
+  auto shared = shared_database.get_component(component_id);
 
   // Check if that component is in the database
-  if (!local && !shared)
+  if (local.empty() && shared.empty()) {
+    // Check the packages
+    for (const auto &db: package_databases) {
+      auto remote = db.get_component(component_id);
+      if (!remote.empty())
+        return std::pair<fs::path, fs::path>{ remote, db.get_path() };
+    }
+
     return {};
-
-  if (local) {
-    if (local.IsScalar()) {
-      if (fs::exists(local.Scalar())) {
-        return local.Scalar();
-      } else {
-        try_update_the_database = true;
-      }
-    }
-    if (local.IsSequence() && local.size() == 1) {
-      if (fs::exists(local[0].Scalar())) {
-        return local[0].Scalar();
-      } else {
-        try_update_the_database = true;
-      }
-    }
   }
 
-  if (shared) {
-    if (shared.IsScalar() && fs::exists(shared.Scalar()))
-      return shared.Scalar();
-    if (shared.IsSequence() && shared.size() == 1 && fs::exists(shared[0].Scalar()))
-      return shared[0].Scalar();
-  }
+  if (!local.empty())
+    return std::pair<fs::path, fs::path>{ local, {} };
+
+  if (!shared.empty())
+    return std::pair<fs::path, fs::path>{ shared, {} };
 
   if (local_database.has_scanned == false && try_update_the_database == true) {
     local_database.clear();
@@ -128,6 +133,24 @@ std::optional<fs::path> workspace::find_component(const std::string component_do
   } else {
     return {};
   }
+}
+
+std::optional<nlohmann::json> workspace::find_feature(const std::string feature) const
+{
+  nlohmann::json node;
+  node = local_database.get_feature_provider(feature);
+  if (!node.is_null())
+    return node;
+  node = shared_database.get_feature_provider(feature);
+  if (!node.is_null())
+    return node;
+  for (const auto &db: package_databases) {
+    node = db.get_feature_provider(feature);
+    if (!node.is_null())
+      return node;
+  }
+
+  return {};
 }
 
 void workspace::load_config_file(const fs::path config_file_path)
@@ -149,6 +172,10 @@ void workspace::load_config_file(const fs::path config_file_path)
 #else
       setenv("PATH", path.c_str(), 1);
 #endif
+    }
+    if (configuration["packages"].IsDefined()) {
+      for (const auto &p: configuration["packages"])
+        packages.push_back(p.as<std::string>());
     }
 
     if (configuration["home"].IsDefined()) {
@@ -189,9 +216,9 @@ yakka_status workspace::update_component(const std::string &name)
 {
   // This function could be async like fetch_component
   std::string git_directory_string;
-  if (local_database[name])
+  if (!local_database.get_component(name).empty())
     git_directory_string = "--git-dir .yakka/repos/" + name + "/.git --work-tree components/" + name + " ";
-  else if (shared_database[name])
+  else if (!shared_database.get_component(name).empty())
     git_directory_string = "-C " + shared_components_path.string() + "/repos/" + name + " ";
   else
     return FAIL;
