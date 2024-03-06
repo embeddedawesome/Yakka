@@ -102,6 +102,7 @@ void component::convert_to_yakka(fs::path package_path)
     this->id     = json["id"].get<std::string>();
   } else {
     this->id     = file_path.stem().string();
+    json["id"]   = this->id;
     json["name"] = this->id;
   }
 
