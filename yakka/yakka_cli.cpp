@@ -220,8 +220,6 @@ int main(int argc, char **argv)
     project.evaluate_choices();
     if (!project.incomplete_choices.empty() || !project.multiple_answer_choices.empty())
       print_project_choice_errors(project);
-
-    project.process_slc_rules();
   } else {
     spdlog::info("Skipping project evalutaion");
 
@@ -250,6 +248,8 @@ int main(int argc, char **argv)
       }
     }
   }
+
+  project.process_slc_rules();
 
   spdlog::info("Required features:");
   for (auto f: project.required_features)
