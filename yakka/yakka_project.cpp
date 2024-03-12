@@ -62,10 +62,14 @@ void project::init_project(std::vector<std::string> components, std::vector<std:
 {
   initial_features = features;
 
-  for (const auto &c: components)
+  for (const auto &c: components) {
     unprocessed_components.insert(c);
-  for (const auto &f: features)
+    initial_components.push_back(c);
+  }
+  for (const auto &f: features) {
     unprocessed_features.insert(f);
+    initial_features.push_back(f);
+  }
   init_project();
 }
 
