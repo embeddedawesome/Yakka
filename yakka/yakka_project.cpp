@@ -419,7 +419,8 @@ project::state project::evaluate_dependencies()
     // Check if we have finished but our project is using SLCC files
     if (unprocessed_components.empty() && unprocessed_features.empty() && project_has_slcc) {
       // Find any features that aren't provided
-      for (const auto &r: slc_required) {
+      std::unordered_set<std::string> temp_require_list = std::move(slc_required);
+      for (const auto &r: temp_require_list) {
         if (!slc_provided.contains(r)) {
           // Check the databases
           auto f = workspace.find_feature(r);
@@ -437,7 +438,8 @@ project::state project::evaluate_dependencies()
                 }
 
               if (!resolved)
-                spdlog::error("Found a possible solution for {} but there are multiple options:\n{}", r, feature_node.dump(2));
+                slc_required.insert(r);
+
             } else
               unprocessed_components.insert(feature_node.front().get<std::string>());
 
@@ -462,13 +464,18 @@ project::state project::evaluate_dependencies()
           }
 
           // Check if any recommendations help
-          log->error("Failed to provide {}", r);
+          slc_required.insert(r);
         }
       }
-      // Find components that provide those features
-
-      // Hopefully there is only one component
     }
+  }
+
+  for (const auto &r: slc_required) {
+    auto f = workspace.find_feature(r);
+    if (f.has_value())
+      spdlog::error("Found a possible provider for feature '{}' but there are multiple options:\n{}", r, f.value().dump(2));
+    else
+      spdlog::error("Failed to find provider for feature '{}'", r);
   }
 
   if (unknown_components.size() != 0)
