@@ -73,6 +73,7 @@ int main(int argc, char **argv)
                        ("o,no-output", "Do not generate output folder", cxxopts::value<bool>()->default_value("false"))
                        ("f,fetch", "Automatically fetch missing components", cxxopts::value<bool>()->default_value("false"))
                        ("p,project-name", "Set the project name", cxxopts::value<std::string>()->default_value(""))
+                       ("w,with", "Additional SLC feature", cxxopts::value<std::vector<std::string>>())
                        ("action", "Select from 'register', 'list', 'update', 'git', 'remove' or a command", cxxopts::value<std::string>());
   // clang-format on
 
@@ -213,6 +214,13 @@ int main(int argc, char **argv)
 
   // Init the project
   project.init_project(components, features);
+
+  // Add SLC features
+  if (result["with"].count() != 0) {
+    const auto slc_features = result["with"].as<std::vector<std::string>>();
+    for (const auto &f: slc_features)
+      project.slc_required.insert(f);
+  }
 
   if (!result["no-eval"].as<bool>()) {
     evaluate_project_dependencies(workspace, project);
