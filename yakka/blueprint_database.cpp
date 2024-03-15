@@ -109,6 +109,19 @@ std::vector<std::shared_ptr<blueprint_match>> blueprint_database::find_match(con
         else
           aggregate.push_back(local_inja_env.render(v.get<std::string>(), project_summary));
       }
+
+      // Check project data
+      if (project_summary["data"].contains(path)) {
+        auto v = project_summary["data"][path];
+        if (v.is_object())
+          for (const auto &[i_key, i_value]: v.items())
+            aggregate[i_key] = i_value;
+        else if (v.is_array())
+          for (const auto &i: v)
+            aggregate.push_back(local_inja_env.render(i.get<std::string>(), project_summary));
+        else
+          aggregate.push_back(local_inja_env.render(v.get<std::string>(), project_summary));
+      }
       return aggregate;
     });
 

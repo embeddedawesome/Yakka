@@ -1,6 +1,7 @@
 #include "yakka.hpp"
 #include "yakka_workspace.hpp"
 #include "yakka_project.hpp"
+#include "utilities.hpp"
 #include "cxxopts.hpp"
 #include "subprocess.hpp"
 #include "spdlog/spdlog.h"
@@ -74,6 +75,7 @@ int main(int argc, char **argv)
                        ("f,fetch", "Automatically fetch missing components", cxxopts::value<bool>()->default_value("false"))
                        ("p,project-name", "Set the project name", cxxopts::value<std::string>()->default_value(""))
                        ("w,with", "Additional SLC feature", cxxopts::value<std::vector<std::string>>())
+                       ("d,data", "Additional data", cxxopts::value<std::vector<std::string>>())
                        ("action", "Select from 'register', 'list', 'update', 'git', 'remove' or a command", cxxopts::value<std::string>());
   // clang-format on
 
@@ -274,6 +276,16 @@ int main(int argc, char **argv)
 
   if (project.current_state != yakka::project::state::PROJECT_VALID)
     exit(-1);
+
+  // Insert additional command line data before processing blueprints
+  if (result["data"].count() != 0) {
+    const auto additional_data = result["data"].as<std::vector<std::string>>();
+    for (const auto &d: additional_data) {
+      YAML::Node yaml_data     = YAML::Load("{" + d + "}");
+      nlohmann::json json_data = yaml_data.as<nlohmann::json>();
+      yakka::json_node_merge(project.project_summary["data"], json_data);
+    }
+  }
 
   t1 = std::chrono::high_resolution_clock::now();
   project.parse_blueprints();

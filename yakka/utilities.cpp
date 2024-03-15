@@ -444,6 +444,19 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
       else if (!v.is_null())
         aggregate.push_back(try_render(inja_env, v.get<std::string>(), project->project_summary));
     }
+
+    // Check project data
+    if (project->project_summary["data"].contains(path)) {
+      auto v = project->project_summary["data"][path];
+      if (v.is_object())
+        for (const auto &[i_key, i_value]: v.items())
+          aggregate[i_key] = i_value;
+      else if (v.is_array())
+        for (const auto &i: v)
+          aggregate.push_back(inja_env.render(i.get<std::string>(), project->project_summary));
+      else
+        aggregate.push_back(inja_env.render(v.get<std::string>(), project->project_summary));
+    }
     return aggregate;
   });
 
