@@ -43,6 +43,7 @@ template <class CharContainer> static size_t get_file_contents(const std::string
   if (size) {
     ::rewind(file);
     size_t ret = ::fread(&(*container)[0], 1, container->size(), file);
+    (void)ret;
     //C4_CHECK(ret == (size_t)size);
   }
   ::fclose(file);
