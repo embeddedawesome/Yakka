@@ -2,6 +2,9 @@
 #include "yakka_component.hpp"
 #include "spdlog/spdlog.h"
 #include "glob/glob.h"
+#include "ryml.hpp"
+#include <ryml_std.hpp>
+//#include <c4/format.hpp>
 #include <iostream>
 #include <fstream>
 #include <filesystem>
@@ -84,7 +87,7 @@ void component_database::add_component(std::string component_id, fs::path path)
 
 void component_database::scan_for_components(fs::path search_start_path)
 {
-  std::vector<std::future<yakka::component>> parsed_slcc_files;
+  // std::vector<std::future<ryml::Tree>> parsed_slcc_files;
 
   if (search_start_path.empty())
     search_start_path = this->workspace_path;
@@ -103,20 +106,7 @@ void component_database::scan_for_components(fs::path search_start_path)
       add_component(component_id, p);
     } else if (p.filename().extension() == slcc_component_extension) {
       spdlog::info("Found {}", p.string());
-      parsed_slcc_files.push_back(std::async(
-        std::launch::async,
-        [](fs::path path, fs::path workspace_path) -> yakka::component {
-          try {
-            yakka::component temp;
-            temp.parse_file(path, workspace_path);
-            return temp;
-          } catch (std::exception &e) {
-            spdlog::error("Failed to parse {}: {}", path.string(), e.what());
-            return {};
-          }
-        },
-        p,
-        workspace_path));
+      parse_slcc_file(p);
     }
   };
 
@@ -164,19 +154,6 @@ void component_database::scan_for_components(fs::path search_start_path)
     return;
   }
 
-  // Process slcc files
-  for (auto &file: parsed_slcc_files) {
-    file.wait();
-    const yakka::component slcc = file.get();
-    add_component(slcc.json["id"], slcc.file_path);
-    if (slcc.json.contains("/provides/features"_json_pointer))
-      for (const auto &p: slcc.json["provides"]["features"]) {
-        database["features"][p.get<std::string>()].push_back(slcc.json["id"].get<std::string>());
-      }
-    else
-      spdlog::info("{} provides no features", slcc.json["id"].get<std::string>());
-  }
-
   this->has_scanned = true;
 }
 
@@ -212,6 +189,47 @@ nlohmann::json component_database::get_feature_provider(const std::string featur
     return this->database["features"][feature];
 
   return {};
+}
+
+void component_database::parse_slcc_file(std::filesystem::path path)
+{
+  std::vector<char> contents = yakka::get_file_contents<std::vector<char>>(path.string());
+  ryml::Tree tree            = ryml::parse_in_place(ryml::to_substr(contents));
+  auto root                  = tree.crootref();
+
+  c4::yml::ConstNodeRef id_node;
+  c4::yml::ConstNodeRef provides_node;
+
+  // Check if the slcc is an omap
+  if (root.is_seq()) {
+    for (const auto &c: root.children()) {
+      if (c.has_child("id"))
+        id_node = c["id"];
+      if (c.has_child("provides"))
+        provides_node = c["provides"];
+    }
+  } else {
+    if (root.has_child("id"))
+      id_node = root["id"];
+    if (root.has_child("provides"))
+      provides_node = root["provides"];
+  }
+
+  if (!id_node.valid())
+    return;
+
+  std::string id_string = std::string(id_node.val().str, id_node.val().len);
+
+  add_component(id_string, path);
+  if (provides_node.valid()) {
+    for (const auto &f: provides_node.children()) {
+      if (!f.has_child("name"))
+        continue;
+      auto feature_node        = f["name"].val();
+      std::string feature_name = std::string(feature_node.str, feature_node.len);
+      database["features"][feature_name].push_back(id_string);
+    }
+  }
 }
 
 } /* namespace yakka */

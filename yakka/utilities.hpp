@@ -30,4 +30,30 @@ std::string try_render(inja::Environment &env, const std::string &input, const n
 std::string try_render_file(inja::Environment &env, const std::string &filename, const nlohmann::json &data);
 std::pair<std::string, int> download_resource(const std::string url, fs::path destination);
 nlohmann::json::json_pointer create_condition_pointer(const nlohmann::json condition);
+
+template <class CharContainer> static size_t get_file_contents(const std::string &filename, CharContainer *container)
+{
+  ::FILE *file = ::fopen(filename.c_str(), "rb");
+  if (file == nullptr) {
+    return 0;
+  }
+  ::fseek(file, 0, SEEK_END);
+  long size = ::ftell(file);
+  container->resize(static_cast<typename CharContainer::size_type>(size));
+  if (size) {
+    ::rewind(file);
+    size_t ret = ::fread(&(*container)[0], 1, container->size(), file);
+    //C4_CHECK(ret == (size_t)size);
+  }
+  ::fclose(file);
+  return container->size();
+}
+
+template <class CharContainer> CharContainer get_file_contents(const std::string &filename)
+{
+  CharContainer cc;
+  get_file_contents(filename, &cc);
+  return cc;
+}
+
 } // namespace yakka

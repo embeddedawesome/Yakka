@@ -23,6 +23,7 @@ public:
   nlohmann::json get_feature_provider(const std::string feature) const;
 
   void process_slc_sdk(fs::path slcs_path);
+  void parse_slcc_file(std::filesystem::path path);
 
   bool has_scanned;
 
