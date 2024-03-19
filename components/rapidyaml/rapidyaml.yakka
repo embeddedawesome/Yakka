@@ -7,7 +7,6 @@ includes:
     - master/ext/c4core/src
 
 sources:
-  - rapidyaml_helper.cpp
   - master/src/c4/yml/common.cpp
   - master/src/c4/yml/node.cpp
   - master/src/c4/yml/parse.cpp
