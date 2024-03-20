@@ -439,9 +439,17 @@ project::state project::evaluate_dependencies()
 
               if (!resolved)
                 slc_required.insert(r);
-
-            } else
-              unprocessed_components.insert(feature_node.front().get<std::string>());
+            } else {
+              const auto &n = feature_node.front();
+              if (n.is_object()) {
+                if (condition_is_fulfilled(n) && !is_disqualified_by_unless(n))
+                  unprocessed_components.insert(n["name"].get<std::string>());
+                else
+                  slc_required.insert(r);
+              } else {
+                unprocessed_components.insert(n.get<std::string>());
+              }
+            }
 
             // This item is now resolved
             continue;

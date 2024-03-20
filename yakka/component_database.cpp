@@ -223,11 +223,19 @@ void component_database::parse_slcc_file(std::filesystem::path path)
   add_component(id_string, path);
   if (provides_node.valid()) {
     for (const auto &f: provides_node.children()) {
-      if (!f.has_child("name") || f.has_child("condition"))
+      if (!f.has_child("name"))
         continue;
       auto feature_node        = f["name"].val();
       std::string feature_name = std::string(feature_node.str, feature_node.len);
-      database["features"][feature_name].push_back(id_string);
+      if (f.has_child("condition")) {
+        nlohmann::json node({ { "name", id_string }, { "condition", {} } });
+        for (const auto &c: f["condition"].children()) {
+          std::string condition_string = std::string(c.val().str, c.val().len);
+          node["condition"].push_back(condition_string);
+        }
+        database["features"][feature_name].push_back(node);
+      } else
+        database["features"][feature_name].push_back(id_string);
     }
   }
 }
