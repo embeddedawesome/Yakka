@@ -1409,7 +1409,10 @@ void project::process_slc_rules()
 
       const auto key = s["option"].get<std::string>();
       if (project_summary["toolchain_settings"].contains(key))
-        project_summary["toolchain_settings"][key].push_back(s["value"]);
+        if (project_summary["toolchain_settings"][key].is_array())
+          project_summary["toolchain_settings"][key].push_back(s["value"]);
+        else
+          project_summary["toolchain_settings"][key] = nlohmann::json::array({ project_summary["toolchain_settings"][key], s["value"] });
       else
         project_summary["toolchain_settings"][key] = s["value"];
     }
