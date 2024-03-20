@@ -87,6 +87,7 @@ int main(int argc, char **argv)
   }
   if (result["refresh"].as<bool>()) {
     workspace.local_database.erase();
+    workspace.local_database.clear();
 
     std::cout << "Scanning '.' for components\n";
     workspace.local_database.scan_for_components();
