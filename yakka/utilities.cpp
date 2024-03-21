@@ -4,6 +4,7 @@
 #include "spdlog/spdlog.h"
 #include "glob/glob.h"
 #include <fstream>
+#include <iomanip>
 
 namespace yakka {
 
@@ -458,6 +459,11 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
         aggregate.push_back(inja_env.render(v.get<std::string>(), project->project_summary));
     }
     return aggregate;
+  });
+  inja_env.add_callback("quote", 1, [&](const inja::Arguments &args) {
+    std::stringstream ss;
+    ss << std::quoted(args[0]->get<std::string>());
+    return ss.str();
   });
 
   std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
