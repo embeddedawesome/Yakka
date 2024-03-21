@@ -229,16 +229,17 @@ int main(int argc, char **argv)
   if (!result["no-eval"].as<bool>()) {
     evaluate_project_dependencies(workspace, project);
 
-    if (!project.unknown_components.empty())
-      if (result["fetch"].as<bool>())
+    if (!project.unknown_components.empty()) {
+      if (result["fetch"].as<bool>()) {
         download_unknown_components(workspace, project);
-      else {
+      } else {
         for (const auto &i: project.unknown_components)
           spdlog::error("Missing component '{}'", i);
         spdlog::error("Try adding the '-f' command line option to automatically fetch components");
         spdlog::shutdown();
         exit(0);
       }
+    }
 
     project.evaluate_choices();
     if (!project.incomplete_choices.empty() || !project.multiple_answer_choices.empty())
