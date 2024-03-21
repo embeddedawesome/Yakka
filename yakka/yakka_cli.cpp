@@ -23,6 +23,7 @@ using namespace indicators;
 using namespace std::chrono_literals;
 
 static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::project &project);
+static void download_unknown_components(yakka::workspace &workspace, yakka::project &project);
 static void print_project_choice_errors(yakka::project &project);
 static void run_taskflow(yakka::project &project);
 
@@ -228,6 +229,17 @@ int main(int argc, char **argv)
   if (!result["no-eval"].as<bool>()) {
     evaluate_project_dependencies(workspace, project);
 
+    if (!project.unknown_components.empty())
+      if (result["fetch"].as<bool>())
+        download_unknown_components(workspace, project);
+      else {
+        for (const auto &i: project.unknown_components)
+          spdlog::error("Missing component '{}'", i);
+        spdlog::error("Try adding the '-f' command line option to automatically fetch components");
+        spdlog::shutdown();
+        exit(0);
+      }
+
     project.evaluate_choices();
     if (!project.incomplete_choices.empty() || !project.multiple_answer_choices.empty())
       print_project_choice_errors(project);
@@ -343,21 +355,9 @@ void run_taskflow(yakka::project &project)
   building_bar.set_progress(project.work_task_count);
 }
 
-static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::project &project)
+static void download_unknown_components(yakka::workspace &workspace, yakka::project &project)
 {
   auto t1 = std::chrono::high_resolution_clock::now();
-
-  if (project.evaluate_dependencies() == yakka::project::state::PROJECT_HAS_INVALID_COMPONENT)
-    exit(1);
-
-  // If we're missing a component, update the component database and try again
-  if (!project.unknown_components.empty()) {
-    spdlog::info("Scanning workspace to find missing components");
-    workspace.local_database.scan_for_components();
-    workspace.shared_database.scan_for_components();
-    project.unprocessed_components.swap(project.unknown_components);
-    project.evaluate_dependencies();
-  }
 
   // If there are still missing components, try and download them
   if (!project.unknown_components.empty()) {
@@ -447,6 +447,27 @@ static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::pr
       // Re-evaluate the project dependencies
       project.evaluate_dependencies();
     } while (!project.unprocessed_components.empty() || !project.unknown_components.empty() || !fetch_list.empty());
+  }
+
+  auto t2       = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+  spdlog::info("{}ms to download missing components", duration);
+}
+
+static void evaluate_project_dependencies(yakka::workspace &workspace, yakka::project &project)
+{
+  auto t1 = std::chrono::high_resolution_clock::now();
+
+  if (project.evaluate_dependencies() == yakka::project::state::PROJECT_HAS_INVALID_COMPONENT)
+    exit(1);
+
+  // If we're missing a component, update the component database and try again
+  if (!project.unknown_components.empty()) {
+    spdlog::info("Scanning workspace to find missing components");
+    workspace.local_database.scan_for_components();
+    workspace.shared_database.scan_for_components();
+    project.unprocessed_components.swap(project.unknown_components);
+    project.evaluate_dependencies();
   }
 
   auto t2       = std::chrono::high_resolution_clock::now();
