@@ -530,7 +530,7 @@ void project::generate_project_summary()
     for (auto &[key, value]: c->json["tools"].items()) {
       inja::Environment inja_env = inja::Environment();
       inja_env.add_callback("curdir", 0, [&c](const inja::Arguments &args) {
-        return c->json["directory"].get<std::string>();
+        return std::filesystem::absolute(c->component_path).string();
       });
 
       project_summary["tools"][key] = try_render(inja_env, value.get<std::string>(), project_summary);
