@@ -42,7 +42,7 @@ public:
   enum class state { PROJECT_HAS_UNKNOWN_COMPONENTS, PROJECT_HAS_REMOTE_COMPONENTS, PROJECT_HAS_INVALID_COMPONENT, PROJECT_HAS_MULTIPLE_REPLACEMENTS, PROJECT_HAS_INCOMPLETE_CHOICES, PROJECT_HAS_MULTIPLE_ANSWERS_FOR_CHOICES, PROJECT_VALID };
 
 public:
-  project(const std::string project_name, yakka::workspace &workspace, std::shared_ptr<spdlog::logger> log);
+  project(const std::string project_name, yakka::workspace &workspace);
 
   virtual ~project();
 
@@ -76,9 +76,6 @@ public:
 
   // void add_required_component(std::shared_ptr<yakka::component> component);
   // void add_required_feature(const std::string feature, std::shared_ptr<yakka::component> component);
-
-  // Logging
-  std::shared_ptr<spdlog::logger> log;
 
   // Basic project data
   std::string project_name;

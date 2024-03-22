@@ -13,9 +13,8 @@
 namespace yakka {
 using namespace std::chrono_literals;
 
-project::project(const std::string project_name, yakka::workspace &workspace, std::shared_ptr<spdlog::logger> log) : project_name(project_name), yakka_home_directory("/.yakka"), project_directory("."), workspace(workspace)
+project::project(const std::string project_name, yakka::workspace &workspace) : project_name(project_name), yakka_home_directory("/.yakka"), project_directory("."), workspace(workspace)
 {
-  this->log           = log;
   this->abort_build   = false;
   this->current_state = yakka::project::state::PROJECT_VALID;
 }
@@ -109,7 +108,7 @@ void project::process_requirements(std::shared_ptr<yakka::component> component, 
       for (const auto &i: child_node["requires"]["components"])
         unprocessed_components.insert(i.get<std::string>());
     else
-      log->error("Node '{}' has invalid 'requires'", child_node["requires"].get<std::string>());
+      spdlog::error("Node '{}' has invalid 'requires'", child_node["requires"].get<std::string>());
   }
 
   // Process required features
@@ -128,7 +127,7 @@ void project::process_requirements(std::shared_ptr<yakka::component> component, 
         unprocessed_features.insert(feature);
       }
     else
-      log->error("Node '{}' has invalid 'requires'", child_node["requires"].get<std::string>());
+      spdlog::error("Node '{}' has invalid 'requires'", child_node["requires"].get<std::string>());
   }
 
   // Process provided features
@@ -161,7 +160,7 @@ void project::process_requirements(std::shared_ptr<yakka::component> component, 
   if (child_node.contains("/supports/components"_json_pointer)) {
     for (const auto &c: required_components)
       if (child_node["supports"]["components"].contains(c)) {
-        log->info("Processing component '{}' in {}", c, component->json["name"].get<std::string>());
+        spdlog::info("Processing component '{}' in {}", c, component->json["name"].get<std::string>());
         process_requirements(component, child_node["supports"]["components"][c]);
       }
   }
@@ -170,7 +169,7 @@ void project::process_requirements(std::shared_ptr<yakka::component> component, 
   if (child_node.contains("/supports/features"_json_pointer)) {
     for (const auto &f: required_features)
       if (child_node["supports"]["features"].contains(f)) {
-        log->info("Processing feature '{}' in {}", f, component->json["name"].get<std::string>());
+        spdlog::info("Processing feature '{}' in {}", f, component->json["name"].get<std::string>());
         process_requirements(component, child_node["supports"]["features"][f]);
       }
   }
@@ -182,7 +181,7 @@ void project::update_summary()
   for (const auto &[c_key, c_value]: project_summary["components"].items()) {
     const auto name = c_key;
     if (!c_value.contains("yakka_file")) {
-      log->error("Project summary for component '{}' is missing 'yakka_file' entry", name);
+      spdlog::error("Project summary for component '{}' is missing 'yakka_file' entry", name);
       project_summary["components"].erase(name);
       unprocessed_components.insert(name);
       continue;
@@ -223,7 +222,7 @@ project::state project::evaluate_dependencies()
 
       // Check if component has been replaced
       if (replacements.contains(component_id)) {
-        log->info("Skipping {}. Being replaced by {}", component_id, replacements[component_id]);
+        spdlog::info("Skipping {}. Being replaced by {}", component_id, replacements[component_id]);
         unprocessed_components.insert(replacements[component_id]);
         continue;
       }
@@ -231,7 +230,7 @@ project::state project::evaluate_dependencies()
       // Find the component in the project component database
       auto component_location = workspace.find_component(component_id);
       if (!component_location) {
-        // log->info("{}: Couldn't find it", c);
+        // spdlog::info("{}: Couldn't find it", c);
         unknown_components.insert(component_id);
         continue;
       }
@@ -259,7 +258,7 @@ project::state project::evaluate_dependencies()
         for (const auto &r: new_component->json["recommends"])
           slc_recommended.insert(r["id"].get<std::string>());
         for (const auto &t: new_component->json["template_contribution"]) {
-          template_contributions.push_back(t); //template_contributions[t["name"].get<std::string>()].push_back(t["value"]);
+          template_contributions.push_back(t);
         }
       } else if (new_component->type == yakka::component::SLCP_FILE) {
         unprocessed_components.insert("jinja");
@@ -302,11 +301,11 @@ project::state project::evaluate_dependencies()
 
         if (replacements.contains(replaced)) {
           if (replacements[replaced] != component_id) {
-            log->error("Multiple components replacing {}", replaced);
+            spdlog::error("Multiple components replacing {}", replaced);
             return project::state::PROJECT_HAS_MULTIPLE_REPLACEMENTS;
           }
         } else {
-          log->info("{} replaces {}", component_id, replaced);
+          spdlog::info("{} replaces {}", component_id, replaced);
           new_replacements.insert({ replaced, component_id });
         }
       }
@@ -315,7 +314,7 @@ project::state project::evaluate_dependencies()
       if (new_component->json.contains("/supports/features"_json_pointer)) {
         for (auto &f: required_features)
           if (new_component->json["supports"]["features"].contains(f)) {
-            log->info("Processing required feature '{}' in {}", f, component_id);
+            spdlog::info("Processing required feature '{}' in {}", f, component_id);
             process_requirements(new_component, new_component->json["supports"]["features"][f]);
           }
       }
@@ -323,7 +322,7 @@ project::state project::evaluate_dependencies()
         // Process the new components support for all the currently required components
         for (auto &c: required_components)
           if (new_component->json["supports"]["components"].contains(c)) {
-            log->info("Processing required component '{}' in {}", c, component_id);
+            spdlog::info("Processing required component '{}' in {}", c, component_id);
             process_requirements(new_component, new_component->json["supports"]["components"][c]);
           }
       }
@@ -332,7 +331,7 @@ project::state project::evaluate_dependencies()
       for (auto &c: components)
         if (c->json.contains("/supports/components"_json_pointer / component_id)) {
           // if (c->json.contains("supports") && c->json["supports"].contains("components") && c->json["supports"]["components"].contains(component_id)) {
-          log->info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
+          spdlog::info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
           process_requirements(c, c->json["supports"]["components"][component_id]);
         }
     }
@@ -349,7 +348,7 @@ project::state project::evaluate_dependencies()
       for (auto &c: components)
         if (c->json.contains("/supports/features"_json_pointer / f)) {
           // if (c->json.contains("supports") && c->json["supports"].contains("features") && c->json["supports"]["features"].contains(f)) {
-          log->info("Processing feature '{}' in {}", f, c->json["name"].get<std::string>());
+          spdlog::info("Processing feature '{}' in {}", f, c->json["name"].get<std::string>());
           process_requirements(c, c->json["supports"]["features"][f]);
         }
     }
@@ -368,11 +367,11 @@ project::state project::evaluate_dependencies()
             return required_components.contains(j.get<std::string>());
           });
         else {
-          log->error("Invalid choice {}", c);
+          spdlog::error("Invalid choice {}", c);
           return project::state::PROJECT_HAS_INVALID_COMPONENT;
         }
         if (matches == 0 && choice.contains("default")) {
-          log->info("Selecting default choice for {}", c);
+          spdlog::info("Selecting default choice for {}", c);
           if (choice["default"].contains("feature")) {
             unprocessed_features.insert(choice["default"]["feature"].get<std::string>());
             unprocessed_choices.erase(c);
@@ -380,7 +379,7 @@ project::state project::evaluate_dependencies()
             unprocessed_components.insert(choice["default"]["component"].get<std::string>());
             unprocessed_choices.erase(c);
           } else {
-            log->error("Invalid default choice in {}", c);
+            spdlog::error("Invalid default choice in {}", c);
             return project::state::PROJECT_HAS_INVALID_COMPONENT;
           }
           break;
@@ -392,7 +391,7 @@ project::state project::evaluate_dependencies()
     if (unprocessed_components.empty() && unprocessed_features.empty() && new_replacements.size() != 0) {
       // move new replacements
       for (const auto &[replacement, id]: new_replacements) {
-        log->info("Adding {} to replaced_components", replacement);
+        spdlog::info("Adding {} to replaced_components", replacement);
         // replaced_components.insert(replacement);
         replacements.insert({ replacement, id });
       }
@@ -413,7 +412,7 @@ project::state project::evaluate_dependencies()
       for (const auto &f: initial_features)
         unprocessed_features.insert(f);
 
-      log->info("Start project processing again...");
+      spdlog::info("Start project processing again...");
     }
 
     // Check if we have finished but our project is using SLCC files
@@ -465,7 +464,7 @@ project::state project::evaluate_dependencies()
             auto node = temp.json["/provides/features"_json_pointer];
             if (std::find(node.begin(), node.end(), r) != node.end()) {
               // Add component to the component list
-              log->info("Adding {} to satisfy {}", path.string(), r);
+              spdlog::info("Adding {} to satisfy {}", path.string(), r);
               unprocessed_components.insert(r);
               continue;
             }
@@ -561,7 +560,7 @@ void project::parse_blueprints()
     if (c_value.contains("blueprints"))
       for (const auto &[b_key, b_value]: c_value["blueprints"].items()) {
         std::string blueprint_string = try_render(inja_environment, b_value.contains("regex") ? b_value["regex"].get<std::string>() : b_key, project_summary);
-        log->info("Blueprint: {}", blueprint_string);
+        spdlog::info("Blueprint: {}", blueprint_string);
         //blueprint_database.blueprints[blueprint_string].push_back(b_value);
         //b_value["parent_path"] = c_value["directory"];
         blueprint_database.blueprints.insert({ blueprint_string, std::make_shared<blueprint>(blueprint_string, b_value, c_value["directory"].get<std::string>()) });
@@ -621,7 +620,7 @@ bool project::has_data_dependency_changed(std::string data_path, const nlohmann:
     // Check for wildcard or component name
     if (data_path[2] == data_wildcard_identifier) {
       if (data_path[3] != '/') {
-        log->error("Data dependency malformed: {}", data_path);
+        spdlog::error("Data dependency malformed: {}", data_path);
         return false;
       }
 
@@ -651,7 +650,7 @@ bool project::has_data_dependency_changed(std::string data_path, const nlohmann:
     }
     return false;
   } catch (const std::exception &e) {
-    log->error("Failed to determine data dependency: {}", e.what());
+    spdlog::error("Failed to determine data dependency: {}", e.what());
     return false;
   }
 }
@@ -1032,7 +1031,7 @@ void project::load_common_commands()
 
   blueprint_commands["new_project"] = [this](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
     const auto project_string = command.get<std::string>();
-    yakka::project new_project(project_string, workspace, this->log);
+    yakka::project new_project(project_string, workspace);
     new_project.init_project(project_string);
     return { "", 0 };
   };
@@ -1055,7 +1054,7 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
   // XXX: Start time should be determined at the start of the executable and not here
   auto start_time = fs::file_time_type::clock::now();
 
-  //log->info("Create tasks for: {}", target_name);
+  //spdlog::info("Create tasks for: {}", target_name);
 
   // Check if this target has already been processed
   const auto &existing_todo = todo_list.equal_range(target_name);
@@ -1073,18 +1072,18 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
 
   // If there is no targets then it must be a leaf node (source file, data dependency, etc)
   if (targets.first == targets.second) {
-    //log->info("{}: leaf node", target_name);
+    //spdlog::info("{}: leaf node", target_name);
     auto new_todo = todo_list.insert(std::make_pair(target_name, construction_task()));
     auto task     = taskflow.placeholder();
 
     // Check if target is a data dependency
     if (target_name.front() == data_dependency_identifier) {
       task.data(&new_todo->second).work([=, this]() {
-        // log->info("{}: data", target_name);
+        // spdlog::info("{}: data", target_name);
         auto *d          = static_cast<construction_task *>(task.data());
         d->last_modified = has_data_dependency_changed(target_name, previous_summary, project_summary) ? fs::file_time_type::max() : fs::file_time_type::min();
         if (d->last_modified > start_time)
-          log->info("{} has been updated", target_name);
+          spdlog::info("{} has been updated", target_name);
         return;
       });
     }
@@ -1094,11 +1093,11 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
       task.data(&new_todo->second).work([=]() {
         auto *d          = static_cast<construction_task *>(task.data());
         d->last_modified = fs::last_write_time(target_name);
-        //log->info("{}: timestamp {}", target_name, (uint)d->last_modified.time_since_epoch().count());
+        //spdlog::info("{}: timestamp {}", target_name, (uint)d->last_modified.time_since_epoch().count());
         return;
       });
     } else {
-      log->info("Target {} has no action", target_name);
+      spdlog::info("Target {} has no action", target_name);
     }
     new_todo->second.task = task;
     new_todo->second.task.precede(parent);
@@ -1106,7 +1105,7 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
   }
 
   for (auto i = targets.first; i != targets.second; ++i) {
-    // log->info("{}: Not a leaf node", target_name);
+    // spdlog::info("{}: Not a leaf node", target_name);
     ++work_task_count;
     auto new_todo          = todo_list.insert(std::make_pair(target_name, construction_task()));
     new_todo->second.match = i->second;
@@ -1114,16 +1113,16 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
     task.data(&new_todo->second).work([=, this]() {
       if (abort_build)
         return;
-      // log->info("{}: process --- {}", target_name, task.hash_value());
+      // spdlog::info("{}: process --- {}", target_name, task.hash_value());
       auto *d = static_cast<construction_task *>(task.data());
       if (d->last_modified != fs::file_time_type::min()) {
         // I don't think this event happens. This check can probably be removed
-        log->info("{} already done", target_name);
+        spdlog::info("{} already done", target_name);
         return;
       }
       if (fs::exists(target_name)) {
         d->last_modified = fs::last_write_time(target_name);
-        // log->info("{}: timestamp {}", target_name, (uint)d->last_modified.time_since_epoch().count());
+        // spdlog::info("{}: timestamp {}", target_name, (uint)d->last_modified.time_since_epoch().count());
       }
       if (d->match) {
         // Check if there are no dependencies
@@ -1133,7 +1132,7 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
             auto result      = yakka::run_command(i->first, d, this);
             d->last_modified = fs::file_time_type::clock::now();
             if (result.second != 0) {
-              log->info("Aborting: {} returned {}", target_name, result.second);
+              spdlog::info("Aborting: {} returned {}", target_name, result.second);
               abort_build = true;
               return;
             }
@@ -1145,28 +1144,28 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
             auto temp_element = std::max_element(temp.first, temp.second, [](auto const &i, auto const &j) {
               return i.second.last_modified < j.second.last_modified;
             });
-            //log->info("{}: Check max element {}: {} vs {}", target_name, temp_element->first, (int64_t)temp_element->second.last_modified.time_since_epoch().count(), (int64_t)max_element->second.last_modified.time_since_epoch().count());
+            //spdlog::info("{}: Check max element {}: {} vs {}", target_name, temp_element->first, (int64_t)temp_element->second.last_modified.time_since_epoch().count(), (int64_t)max_element->second.last_modified.time_since_epoch().count());
             if (max_element == todo_list.end() || temp_element->second.last_modified > max_element->second.last_modified) {
               max_element = temp_element;
             }
           }
-          //log->info("{}: Max element is {}", target_name, max_element->first);
+          //spdlog::info("{}: Max element is {}", target_name, max_element->first);
           if (!fs::exists(target_name) || max_element->second.last_modified.time_since_epoch() > d->last_modified.time_since_epoch()) {
-            log->info("{}: Updating because of {}", target_name, max_element->first);
+            spdlog::info("{}: Updating because of {}", target_name, max_element->first);
             auto [output, retcode] = yakka::run_command(i->first, d, this);
             d->last_modified       = fs::file_time_type::clock::now();
             if (retcode < 0) {
-              log->info("Aborting: {} returned {}", target_name, retcode);
+              spdlog::info("Aborting: {} returned {}", target_name, retcode);
               abort_build = true;
               return;
             }
           }
         } else {
-          //log->info("{} has no process", target_name);
+          //spdlog::info("{} has no process", target_name);
         }
       }
       if (task_complete_handler) {
-        // log->info("{} complete", target_name);
+        // spdlog::info("{} complete", target_name);
         task_complete_handler();
       }
 
@@ -1181,7 +1180,7 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
       for (auto &dep_target: i->second->dependencies)
         create_tasks(dep_target.starts_with("./") ? dep_target.substr(2) : dep_target, new_todo->second.task);
     // else
-    //     log->info("{} does not have blueprint match", i->first);
+    //     spdlog::info("{} does not have blueprint match", i->first);
   }
 }
 

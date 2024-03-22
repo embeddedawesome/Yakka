@@ -206,7 +206,7 @@ int main(int argc, char **argv)
     project_name = cli_set_project_name;
 
   // Create a project and output
-  yakka::project project(project_name, workspace, yakkalog);
+  yakka::project project(project_name, workspace);
 
   // Move the CLI parsed data to the project
   // project.unprocessed_components = std::move(components);
