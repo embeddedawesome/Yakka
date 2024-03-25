@@ -178,34 +178,33 @@ void project::process_requirements(std::shared_ptr<yakka::component> component, 
 void project::update_summary()
 {
   // Check if any component files have been modified
-  for (const auto &[c_key, c_value]: project_summary["components"].items()) {
-    const auto name = c_key;
-    if (!c_value.contains("yakka_file")) {
+  for (const auto &[name, value]: project_summary["components"].items()) {
+    if (!value.contains("yakka_file")) {
       spdlog::error("Project summary for component '{}' is missing 'yakka_file' entry", name);
       project_summary["components"].erase(name);
       unprocessed_components.insert(name);
       continue;
     }
 
-    auto yakka_file = c_value["yakka_file"].get<std::string>();
+    auto yakka_file = value["yakka_file"].get<std::string>();
 
-    if (!fs::exists(yakka_file) || fs::last_write_time(yakka_file) > project_summary_last_modified) {
+    if (!std::filesystem::exists(yakka_file) || std::filesystem::last_write_time(yakka_file) > project_summary_last_modified) {
       // If so, move existing data to previous summary
-      previous_summary["components"][name] = c_value; // TODO: Verify this is correct way to do this efficiently
+      previous_summary["components"][name] = value; // TODO: Verify this is correct way to do this efficiently
       project_summary["components"][name]  = {};
       unprocessed_components.insert(name);
     } else {
       // Previous summary should point to the same object
-      previous_summary["components"][name] = c_value;
+      previous_summary["components"][name] = value;
     }
   }
 }
 
 /**
-     * @brief Processes all the @ref unprocessed_components and @ref unprocessed_features, adding items to @ref unknown_components if they are not in the component database
-     *        It is assumed the caller will process the @ref unknown_components before adding them back to @ref unprocessed_component and calling this again.
-     * @return project::state
-     */
+ * @brief Processes all the @ref unprocessed_components and @ref unprocessed_features, adding items to @ref unknown_components if they are not in the component database
+ *        It is assumed the caller will process the @ref unknown_components before adding them back to @ref unprocessed_component and calling this again.
+ * @return project::state
+ */
 project::state project::evaluate_dependencies()
 {
   std::unordered_map<std::string, std::string> new_replacements;
@@ -429,12 +428,20 @@ project::state project::evaluate_dependencies()
             spdlog::info("Found a component that provides '{}'", r);
             if (feature_node.size() > 1) {
               // Check if any of the options is recommended
-              for (const auto &option: feature_node)
-                if (slc_recommended.contains(option.get<std::string>())) {
+              for (const auto &option: feature_node) {
+                if (option.is_object()) {
+                  const auto name = option["name"].get<std::string>();
+                  if (slc_recommended.contains(name) && condition_is_fulfilled(name) && !is_disqualified_by_unless(name)) {
+                    unprocessed_components.insert(name);
+                    resolved = true;
+                    break;
+                  }
+                } else if (slc_recommended.contains(option.get<std::string>())) {
                   unprocessed_components.insert(option.get<std::string>());
                   resolved = true;
                   break;
                 }
+              }
 
               if (!resolved)
                 slc_required.insert(r);
@@ -494,23 +501,26 @@ project::state project::evaluate_dependencies()
 void project::evaluate_choices()
 {
   // For each component, check each choice has exactly one match in required features
-  for (auto c: components)
-    for (auto &[choice_name, value]: c->json["choices"].items()) {
-
+  for (const auto &c: components) {
+    for (const auto &[choice_name, value]: c->json["choices"].items()) {
       int matches = 0;
-      if (value.contains("features"))
-        matches = std::count_if(value["features"].begin(), value["features"].end(), [&](auto j) {
-          return required_features.contains(j.template get<std::string>());
+      if (value.contains("features")) {
+        matches = std::count_if(value["features"].begin(), value["features"].end(), [&](const auto &j) {
+          return required_features.contains(j.get<std::string>());
         });
-      if (value.contains("components"))
-        matches = std::count_if(value["components"].begin(), value["components"].end(), [&](auto j) {
-          return required_components.contains(j.template get<std::string>());
+      }
+      if (value.contains("components")) {
+        matches = std::count_if(value["components"].begin(), value["components"].end(), [&](const auto &j) {
+          return required_components.contains(j.get<std::string>());
         });
-      if (matches == 0)
+      }
+      if (matches == 0) {
         incomplete_choices.push_back({ c->id, choice_name });
-      else if (matches > 1)
+      } else if (matches > 1) {
         multiple_answer_choices.push_back(choice_name);
+      }
     }
+  }
 }
 
 void project::generate_project_summary()

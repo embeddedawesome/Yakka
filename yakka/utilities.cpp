@@ -4,10 +4,21 @@
 #include "spdlog/spdlog.h"
 #include "glob/glob.h"
 #include <fstream>
+#include <string>
+#include <vector>
+#include <ranges>
+#include <algorithm>
 #include <iomanip>
 
 namespace yakka {
 
+/*
+// Execute with admin
+if(0 == CreateProcess(argv[2], params, NULL, NULL, false, 0, NULL, NULL, &si, &pi)) {
+        //runas word is a hack to require UAC elevation
+        ShellExecute(NULL, "runas", argv[2], params, NULL, SW_SHOWNORMAL);
+}
+*/
 std::pair<std::string, int> exec(const std::string &command_text, const std::string &arg_text)
 {
   spdlog::info("{} {}", command_text, arg_text);
@@ -18,7 +29,7 @@ std::pair<std::string, int> exec(const std::string &command_text, const std::str
 #if defined(__USING_WINDOWS__)
     auto p = subprocess::Popen(command, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #else
-    auto p = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
+    auto p      = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #endif
 #if defined(__USING_WINDOWS__)
     auto output  = p.communicate().first;
@@ -47,7 +58,7 @@ int exec(const std::string &command_text, const std::string &arg_text, std::func
 #if defined(__USING_WINDOWS__)
     auto p = subprocess::Popen(command, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #else
-    auto p = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
+    auto p       = subprocess::Popen(command, subprocess::shell{ true }, subprocess::output{ subprocess::PIPE }, subprocess::error{ subprocess::STDOUT });
 #endif
     auto output = p.output();
     std::array<char, 512> buffer;
@@ -207,7 +218,7 @@ std::string generate_project_name(const component_list_t &components, const feat
  * @param filename  Name of the dependency file. Typically ending in '.d'
  * @return std::vector<std::string>  Vector of files specified as dependencies
  */
-std::vector<std::string> parse_gcc_dependency_file(const std::string filename)
+std::vector<std::string> parse_gcc_dependency_file(const std::string &filename)
 {
   std::vector<std::string> dependencies;
   std::ifstream infile(filename);
@@ -235,106 +246,30 @@ std::vector<std::string> parse_gcc_dependency_file(const std::string filename)
   return dependencies;
 }
 
-void yaml_node_merge(YAML::Node &merge_target, const YAML::Node &node)
-{
-  if (!node.IsMap()) {
-    spdlog::error("Invalid feature node {}", node.as<std::string>());
-    return;
-  }
-
-  for (const auto &i: node) {
-    const std::string item_name = i.first.as<std::string>();
-    YAML::Node item_node        = i.second;
-
-    if (!merge_target[item_name]) {
-      merge_target[item_name] = item_node;
-    } else {
-      if (item_node.IsScalar()) {
-        if (merge_target[item_name].IsScalar()) {
-          YAML::Node new_node;
-          new_node.push_back(merge_target[item_name]);
-          new_node.push_back(item_node.Scalar());
-          merge_target[item_name].reset(new_node);
-        } else if (merge_target[item_name].IsSequence()) {
-          merge_target[item_name].push_back(item_node.Scalar());
-        } else {
-          spdlog::error("Cannot merge scalar and map\nScalar: {}\nMap: {}", i.first.as<std::string>(), merge_target[item_name].as<std::string>());
-          return;
-        }
-      } else if (item_node.IsSequence()) {
-        if (merge_target[item_name].IsMap()) {
-          spdlog::error("Cannot merge sequence and map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
-          return;
-        }
-        if (merge_target[item_name].IsScalar()) {
-          // Convert merge_target from a scalar to a sequence
-          YAML::Node new_node;
-          new_node.push_back(merge_target[item_name].Scalar());
-          merge_target[item_name] = new_node;
-        }
-        for (auto a: item_node) {
-          merge_target[item_name].push_back(a);
-        }
-      } else if (item_node.IsMap()) {
-        if (!merge_target[item_name].IsMap()) {
-          spdlog::error("Cannot merge map and non-map\n{}\n{}", merge_target.as<std::string>(), node.as<std::string>());
-          return;
-        }
-        auto new_merge = merge_target[item_name];
-        yaml_node_merge(new_merge, item_node);
-      }
-    }
-  }
-}
-
 void json_node_merge(nlohmann::json &merge_target, const nlohmann::json &node)
 {
-  switch (node.type()) {
-    case nlohmann::detail::value_t::object:
-      if (merge_target.type() != nlohmann::detail::value_t::object) {
-        spdlog::error("Currently not supported");
-        return;
+  if (node.is_object() && merge_target.is_object()) {
+    for (const auto &[key, value]: node.items()) {
+      if (merge_target.contains(key)) {
+        json_node_merge(merge_target[key], value);
+      } else {
+        merge_target[key] = value;
       }
-      // Iterate through child nodes
-      for (auto it = node.begin(); it != node.end(); ++it) {
-        // Check if the key is already in merge_target
-        auto it2 = merge_target.find(it.key());
-        if (it2 != merge_target.end()) {
-          json_node_merge(it2.value(), it.value());
-          // it2->second.update(it.value(), true);
-          continue;
-        } else {
-          merge_target[it.key()] = it.value();
-        }
-      }
-      break;
-
-    case nlohmann::detail::value_t::array:
-      switch (merge_target.type()) {
-        case nlohmann::detail::value_t::object:
-          spdlog::error("Cannot merge array into an object");
-          break;
-        case nlohmann::detail::value_t::array:
-        case nlohmann::detail::value_t::null:
-          for (auto &i: node)
-            merge_target.push_back(i);
-          break;
-        default:
-          merge_target.push_back(node);
-          break;
-      }
-      break;
-    default:
-      switch (merge_target.type()) {
-        case nlohmann::detail::value_t::object:
-          spdlog::error("Cannot merge scalar into an object");
-          break;
-        case nlohmann::detail::value_t::array:
-        default:
-          merge_target.push_back(node);
-          break;
-      }
-      break;
+    }
+  } else if (node.is_array()) {
+    if (merge_target.is_object()) {
+      spdlog::error("Cannot merge array into an object");
+    } else if (merge_target.is_array() || merge_target.is_null()) {
+      merge_target.insert(merge_target.end(), node.begin(), node.end());
+    } else {
+      merge_target.push_back(node);
+    }
+  } else {
+    if (merge_target.is_object()) {
+      spdlog::error("Cannot merge scalar into an object");
+    } else {
+      merge_target.push_back(node);
+    }
   }
 }
 
