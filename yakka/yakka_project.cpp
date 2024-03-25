@@ -506,12 +506,12 @@ void project::evaluate_choices()
       int matches = 0;
       if (value.contains("features")) {
         matches = std::count_if(value["features"].begin(), value["features"].end(), [&](const auto &j) {
-          return required_features.contains(j.get<std::string>());
+          return required_features.contains(j.template get<std::string>());
         });
       }
       if (value.contains("components")) {
         matches = std::count_if(value["components"].begin(), value["components"].end(), [&](const auto &j) {
-          return required_components.contains(j.get<std::string>());
+          return required_components.contains(j.template get<std::string>());
         });
       }
       if (matches == 0) {
