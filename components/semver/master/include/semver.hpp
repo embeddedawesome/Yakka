@@ -244,7 +244,7 @@ constexpr char* to_chars(char* str, prerelease t) noexcept {
   return str;
 }
 
-constexpr char* to_chars(char* str, std::string metadata) noexcept {
+constexpr char* to_chars(char* str, const std::string &metadata) noexcept {
   if (metadata.size() > 0) {
     for (auto it = metadata.rbegin(); it != metadata.rend(); ++it) {
       *(--str) = *it;
