@@ -244,17 +244,6 @@ constexpr char* to_chars(char* str, prerelease t) noexcept {
   return str;
 }
 
-constexpr char* to_chars(char* str, const std::string &metadata) noexcept {
-  if (metadata.size() > 0) {
-    for (auto it = metadata.rbegin(); it != metadata.rend(); ++it) {
-      *(--str) = *it;
-    }
-    *(--str) = '+';
-  }
-
-  return str;
-}
-
 constexpr const char* from_chars(const char* first, const char* last, std::uint16_t& d) noexcept {
   if (first != last && is_digit(*first)) {
     std::int32_t t = 0;
@@ -417,9 +406,6 @@ struct version {
     }
 
     auto next = first + length;
-    if (build_metadata.has_value()) {
-      next = detail::to_chars(next, build_metadata.value());
-    }
     if (prerelease_type != prerelease::none) {
       if (prerelease_number.has_value()) {
         next = detail::to_chars(next, prerelease_number.value());
