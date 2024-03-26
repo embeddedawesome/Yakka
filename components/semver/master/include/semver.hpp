@@ -11,11 +11,11 @@
 //    \  /  __/ |  \__ \ | (_) | | | | | | | | (_| | | |____|_|   |_|
 //     \/ \___|_|  |___/_|\___/|_| |_|_|_| |_|\__, |  \_____|
 // https://github.com/Neargye/semver           __/ |
-// version 0.3.0                              |___/
+// version 0.3.1                              |___/
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2018 - 2021 Daniil Goncharov <neargye@gmail.com>.
+// Copyright (c) 2018 - 2024 Daniil Goncharov <neargye@gmail.com>.
 // Copyright (c) 2020 - 2021 Alexander Gorbunov <naratzul@gmail.com>.
 //
 // Permission is hereby  granted, free of charge, to any  person obtaining a copy
@@ -41,7 +41,7 @@
 
 #define SEMVER_VERSION_MAJOR 0
 #define SEMVER_VERSION_MINOR 3
-#define SEMVER_VERSION_PATCH 0
+#define SEMVER_VERSION_PATCH 1
 
 #include <cstddef>
 #include <cstdint>
@@ -75,6 +75,11 @@
 #  pragma clang diagnostic push
 #  pragma clang diagnostic ignored "-Wmissing-braces" // Ignore warning: suggest braces around initialization of subobject 'return {first, std::errc::invalid_argument};'.
 #endif
+
+#if __cpp_impl_three_way_comparison >= 201907L
+#include <compare>
+#endif
+
 
 namespace semver {
 
@@ -119,8 +124,8 @@ namespace detail {
 inline constexpr auto alpha = std::string_view{"alpha", 5};
 inline constexpr auto beta  = std::string_view{"beta", 4};
 inline constexpr auto rc    = std::string_view{"rc", 2};
-inline constexpr auto dev   = std::string_view{"dev", 2};
-inline constexpr auto ifc   = std::string_view{"ifc", 2};
+inline constexpr auto dev   = std::string_view{"dev", 3};
+inline constexpr auto ifc   = std::string_view{"ifc", 3};
 
 // Min version string length = 1(<major>) + 1(.) + 1(<minor>) + 1(.) + 1(<patch>) = 5.
 inline constexpr auto min_version_string_length = 5;
@@ -239,6 +244,17 @@ constexpr char* to_chars(char* str, prerelease t) noexcept {
   return str;
 }
 
+constexpr char* to_chars(char* str, std::string metadata) noexcept {
+  if (metadata.size() > 0) {
+    for (auto it = metadata.rbegin(); it != metadata.rend(); ++it) {
+      *(--str) = *it;
+    }
+    *(--str) = '+';
+  }
+
+  return str;
+}
+
 constexpr const char* from_chars(const char* first, const char* last, std::uint16_t& d) noexcept {
   if (first != last && is_digit(*first)) {
     std::int32_t t = 0;
@@ -320,32 +336,37 @@ struct version {
   std::uint16_t patch             = 0;
   prerelease prerelease_type      = prerelease::none;
   std::optional<std::uint16_t> prerelease_number = std::nullopt;
+  std::optional<std::string> build_metadata = std::nullopt;
 
   constexpr version(std::uint16_t mj,
                     std::uint16_t mn,
                     std::uint16_t pt,
                     prerelease prt = prerelease::none,
-                    std::optional<std::uint16_t> prn = std::nullopt) noexcept
+                    std::optional<std::uint16_t> prn = std::nullopt, 
+                    std::optional<std::string> build = std::nullopt) noexcept
       : major{mj},
         minor{mn},
         patch{pt},
         prerelease_type{prt},
-        prerelease_number{prt == prerelease::none ? std::nullopt : prn} {
+        prerelease_number{prt == prerelease::none ? std::nullopt : prn},
+        build_metadata{build} {
   }
 
     constexpr version(std::uint16_t mj,
                     std::uint16_t mn,
                     std::uint16_t pt,
                     prerelease prt,
-                    std::uint16_t prn) noexcept
+                    std::uint16_t prn,
+                    std::optional<std::string> build = std::nullopt) noexcept
       : major{mj},
         minor{mn},
         patch{pt},
         prerelease_type{prt},
-        prerelease_number{prt == prerelease::none ? std::nullopt : std::make_optional<std::uint16_t>(prn)} {
+        prerelease_number{prt == prerelease::none ? std::nullopt : std::make_optional<std::uint16_t>(prn)},
+        build_metadata{build} {
   }
 
-  explicit constexpr version(std::string_view str) : version(0, 0, 0, prerelease::none, std::nullopt) {
+  explicit constexpr version(std::string_view str) : version(0, 0, 0, prerelease::none, std::nullopt, std::nullopt) {
     from_string(str);
   }
 
@@ -396,6 +417,9 @@ struct version {
     }
 
     auto next = first + length;
+    if (build_metadata.has_value()) {
+      next = detail::to_chars(next, build_metadata.value());
+    }
     if (prerelease_type != prerelease::none) {
       if (prerelease_number.has_value()) {
         next = detail::to_chars(next, prerelease_number.value());
@@ -499,6 +523,17 @@ struct version {
 [[nodiscard]] constexpr bool operator<=(const version& lhs, const version& rhs) noexcept {
   return lhs.compare(rhs) <= 0;
 }
+
+#if __cpp_impl_three_way_comparison >= 201907L
+[[nodiscard]] constexpr std::strong_ordering operator<=>(const version& lhs, const version& rhs) {
+  int compare = lhs.compare(rhs);
+  if ( compare == 0 )
+    return std::strong_ordering::equal;
+  if ( compare > 0 )
+    return std::strong_ordering::greater;
+  return std::strong_ordering::less;
+}
+#endif
 
 [[nodiscard]] constexpr version operator""_version(const char* str, std::size_t length) {
   return version{std::string_view{str, length}};

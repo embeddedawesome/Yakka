@@ -1,6 +1,6 @@
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2018 - 2021 Daniil Goncharov <neargye@gmail.com>.
+// Copyright (c) 2018 - 2024 Daniil Goncharov <neargye@gmail.com>.
 // Copyright (c) 2020 - 2021 Alexander Gorbunov <naratzul@gmail.com>.
 //
 // Permission is hereby  granted, free of charge, to any  person obtaining a copy
@@ -405,6 +405,33 @@ TEST_CASE("operators") {
       }
     }
   }
+
+#if __cpp_impl_three_way_comparison >= 201907L
+  SECTION("operator <=>") {
+    constexpr version v1{1, 2, 3, prerelease::rc, 4};
+    constexpr version v2{1, 2, 3};
+    constexpr version v3{1, 2, 3};
+    REQUIRE(v1 <=> v1 == std::strong_ordering::equal);
+    REQUIRE(v2 <=> v3 == std::strong_ordering::equal);
+
+    auto validate_threeway_compare = [] (auto v1, auto v2) {
+      if (v1 < v2)
+        REQUIRE(v1 <=> v2 == std::strong_ordering::less);
+      else if (v1 > v2)
+        REQUIRE(v1 <=> v2 == std::strong_ordering::greater);
+      else if (v1 == v2)
+        REQUIRE(v1 <=> v2 == std::strong_ordering::equal);
+    };
+
+    for (std::size_t i = 1; i < versions.size(); ++i) {
+      for (std::size_t j = 1; j < i; ++j) {
+        version v = versions[i - j];
+        validate_threeway_compare(versions[i - j], versions[i]);
+        validate_threeway_compare(v, versions[i - j]);
+      }
+    }
+  }
+#endif
 
   SECTION("operator _version") {
     constexpr version v = "1.2.3-rc.4"_version;
