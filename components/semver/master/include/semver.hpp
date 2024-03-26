@@ -352,7 +352,7 @@ struct version {
         prerelease_number{prt == prerelease::none ? std::nullopt : std::make_optional<std::uint16_t>(prn)} {
   }
 
-  explicit constexpr version(std::string_view str) : version(0, 0, 0, prerelease::none, std::nullopt, std::nullopt) {
+  explicit constexpr version(std::string_view str) : version(0, 0, 0, prerelease::none, std::nullopt) {
     from_string(str);
   }
 
