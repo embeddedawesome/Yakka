@@ -330,8 +330,7 @@ struct version {
                     std::uint16_t mn,
                     std::uint16_t pt,
                     prerelease prt = prerelease::none,
-                    std::optional<std::uint16_t> prn = std::nullopt, 
-                    std::optional<std::string> build = std::nullopt) noexcept
+                    std::optional<std::uint16_t> prn = std::nullopt) noexcept
       : major{mj},
         minor{mn},
         patch{pt},
@@ -343,8 +342,7 @@ struct version {
                     std::uint16_t mn,
                     std::uint16_t pt,
                     prerelease prt,
-                    std::uint16_t prn,
-                    std::optional<std::string> build = std::nullopt) noexcept
+                    std::uint16_t prn) noexcept
       : major{mj},
         minor{mn},
         patch{pt},
