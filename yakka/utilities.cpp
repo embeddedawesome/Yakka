@@ -248,28 +248,51 @@ std::vector<std::string> parse_gcc_dependency_file(const std::string &filename)
 
 void json_node_merge(nlohmann::json &merge_target, const nlohmann::json &node)
 {
-  if (node.is_object() && merge_target.is_object()) {
-    for (const auto &[key, value]: node.items()) {
-      if (merge_target.contains(key)) {
-        json_node_merge(merge_target[key], value);
-      } else {
-        merge_target[key] = value;
+  switch (node.type()) {
+    case nlohmann::detail::value_t::object:
+      if (merge_target.type() != nlohmann::detail::value_t::object) {
+        spdlog::error("Currently not supported");
+        return;
       }
-    }
-  } else if (node.is_array()) {
-    if (merge_target.is_object()) {
-      spdlog::error("Cannot merge array into an object");
-    } else if (merge_target.is_array() || merge_target.is_null()) {
-      merge_target.insert(merge_target.end(), node.begin(), node.end());
-    } else {
-      merge_target.push_back(node);
-    }
-  } else {
-    if (merge_target.is_object()) {
-      spdlog::error("Cannot merge scalar into an object");
-    } else {
-      merge_target.push_back(node);
-    }
+      // Iterate through child nodes
+      for (auto it = node.begin(); it != node.end(); ++it) {
+        // Check if the key is already in merge_target
+        auto it2 = merge_target.find(it.key());
+        if (it2 != merge_target.end()) {
+          json_node_merge(it2.value(), it.value());
+          continue;
+        } else {
+          merge_target[it.key()] = it.value();
+        }
+      }
+      break;
+
+    case nlohmann::detail::value_t::array:
+      switch (merge_target.type()) {
+        case nlohmann::detail::value_t::object:
+          spdlog::error("Cannot merge array into an object");
+          break;
+        case nlohmann::detail::value_t::array:
+        case nlohmann::detail::value_t::null:
+          for (auto &i: node)
+            merge_target.push_back(i);
+          break;
+        default:
+          merge_target.push_back(node);
+          break;
+      }
+      break;
+    default:
+      switch (merge_target.type()) {
+        case nlohmann::detail::value_t::object:
+          spdlog::error("Cannot merge scalar into an object");
+          break;
+        case nlohmann::detail::value_t::array:
+        default:
+          merge_target.push_back(node);
+          break;
+      }
+      break;
   }
 }
 
