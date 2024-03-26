@@ -325,7 +325,6 @@ struct version {
   std::uint16_t patch             = 0;
   prerelease prerelease_type      = prerelease::none;
   std::optional<std::uint16_t> prerelease_number = std::nullopt;
-  std::optional<std::string> build_metadata = std::nullopt;
 
   constexpr version(std::uint16_t mj,
                     std::uint16_t mn,
@@ -337,8 +336,7 @@ struct version {
         minor{mn},
         patch{pt},
         prerelease_type{prt},
-        prerelease_number{prt == prerelease::none ? std::nullopt : prn},
-        build_metadata{build} {
+        prerelease_number{prt == prerelease::none ? std::nullopt : prn} {
   }
 
     constexpr version(std::uint16_t mj,
@@ -351,8 +349,7 @@ struct version {
         minor{mn},
         patch{pt},
         prerelease_type{prt},
-        prerelease_number{prt == prerelease::none ? std::nullopt : std::make_optional<std::uint16_t>(prn)},
-        build_metadata{build} {
+        prerelease_number{prt == prerelease::none ? std::nullopt : std::make_optional<std::uint16_t>(prn)} {
   }
 
   explicit constexpr version(std::string_view str) : version(0, 0, 0, prerelease::none, std::nullopt, std::nullopt) {
