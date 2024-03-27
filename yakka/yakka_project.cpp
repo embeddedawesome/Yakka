@@ -425,22 +425,36 @@ project::state project::evaluate_dependencies()
           if (f.has_value()) {
             auto feature_node = f.value();
             bool resolved     = false;
+            std::vector<std::string> possible_options;
             spdlog::info("Found a component that provides '{}'", r);
             if (feature_node.size() > 1) {
               // Check if any of the options is recommended
               for (const auto &option: feature_node) {
                 if (option.is_object()) {
                   const auto name = option["name"].get<std::string>();
-                  if (slc_recommended.contains(name) && condition_is_fulfilled(name) && !is_disqualified_by_unless(name)) {
+                  if (!condition_is_fulfilled(name) || is_disqualified_by_unless(name))
+                    continue;
+
+                  if (slc_recommended.contains(name)) {
                     unprocessed_components.insert(name);
                     resolved = true;
                     break;
+                  } else {
+                    possible_options.push_back(name);
                   }
+
                 } else if (slc_recommended.contains(option.get<std::string>())) {
                   unprocessed_components.insert(option.get<std::string>());
                   resolved = true;
                   break;
+                } else {
+                  possible_options.push_back(option.get<std::string>());
                 }
+              }
+
+              if (possible_options.size() == 1) {
+                unprocessed_components.insert(possible_options.front());
+                resolved = true;
               }
 
               if (!resolved)
