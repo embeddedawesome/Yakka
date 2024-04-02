@@ -433,7 +433,7 @@ project::state project::evaluate_dependencies()
               for (const auto &option: feature_node) {
                 if (option.is_object()) {
                   const auto name = option["name"].get<std::string>();
-                  if (!condition_is_fulfilled(name) || is_disqualified_by_unless(name))
+                  if (!condition_is_fulfilled(option) || is_disqualified_by_unless(option))
                     continue;
 
                   if (slc_recommended.contains(name)) {
