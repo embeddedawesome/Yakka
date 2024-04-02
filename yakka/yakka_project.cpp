@@ -15,8 +15,9 @@ using namespace std::chrono_literals;
 
 project::project(const std::string project_name, yakka::workspace &workspace) : project_name(project_name), yakka_home_directory("/.yakka"), project_directory("."), workspace(workspace)
 {
-  this->abort_build   = false;
-  this->current_state = yakka::project::state::PROJECT_VALID;
+  this->abort_build     = false;
+  this->current_state   = yakka::project::state::PROJECT_VALID;
+  this->component_flags = component_database::flag::ALL_COMPONENTS;
 }
 
 project::~project()
@@ -227,7 +228,7 @@ project::state project::evaluate_dependencies()
       }
 
       // Find the component in the project component database
-      auto component_location = workspace.find_component(component_id);
+      auto component_location = workspace.find_component(component_id, component_flags);
       if (!component_location) {
         // spdlog::info("{}: Couldn't find it", c);
         unknown_components.insert(component_id);
@@ -476,7 +477,7 @@ project::state project::evaluate_dependencies()
           }
 
           // Check if there is a component with the same name
-          auto component_location = workspace.find_component(r);
+          auto component_location = workspace.find_component(r, component_flags);
           if (component_location.has_value()) {
             // See if it provides the feature we need
             auto [path, package] = component_location.value();
@@ -626,56 +627,6 @@ void project::generate_target_database()
 
     unprocessed_targets.clear();
     unprocessed_targets.swap(new_targets);
-  }
-}
-
-bool project::has_data_dependency_changed(std::string data_path, const nlohmann::json left, const nlohmann::json right)
-{
-  if (data_path[0] != data_dependency_identifier)
-    return false;
-
-  assert(data_path[1] == '/');
-
-  // std::lock_guard<std::mutex> lock(project_lock);
-  try {
-    if (left.is_null() || left["components"].is_null())
-      return true;
-
-    // Check for wildcard or component name
-    if (data_path[2] == data_wildcard_identifier) {
-      if (data_path[3] != '/') {
-        spdlog::error("Data dependency malformed: {}", data_path);
-        return false;
-      }
-
-      data_path = data_path.substr(3);
-      nlohmann::json::json_pointer pointer{ data_path };
-      for (const auto &[c_key, c_value]: right["components"].items()) {
-        std::string component_name = c_key;
-        if (!left["components"].contains(component_name))
-          return true;
-        auto a = left["components"][component_name].contains(pointer) ? left["components"][component_name][pointer] : nlohmann::json{};
-        auto b = right["components"][component_name].contains(pointer) ? right["components"][component_name][pointer] : nlohmann::json{};
-        if (a != b) {
-          return true;
-        }
-      }
-    } else {
-      std::string component_name = data_path.substr(2, data_path.find_first_of('/', 2) - 2);
-      data_path                  = data_path.substr(data_path.find_first_of('/', 2));
-      nlohmann::json::json_pointer pointer{ data_path };
-      if (!left["components"].contains(component_name))
-        return true;
-      auto a = left["components"][component_name].contains(pointer) ? left["components"][component_name][pointer] : nlohmann::json{};
-      auto b = right["components"][component_name].contains(pointer) ? right["components"][component_name][pointer] : nlohmann::json{};
-      if (a != b) {
-        return true;
-      }
-    }
-    return false;
-  } catch (const std::exception &e) {
-    spdlog::error("Failed to determine data dependency: {}", e.what());
-    return false;
   }
 }
 

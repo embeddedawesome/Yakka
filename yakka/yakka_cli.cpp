@@ -77,6 +77,7 @@ int main(int argc, char **argv)
                        ("p,project-name", "Set the project name", cxxopts::value<std::string>()->default_value(""))
                        ("w,with", "Additional SLC feature", cxxopts::value<std::vector<std::string>>())
                        ("d,data", "Additional data", cxxopts::value<std::vector<std::string>>())
+                       ("no-slcc", "Ignore SLC files", cxxopts::value<bool>()->default_value("false"))
                        ("action", "Select from 'register', 'list', 'update', 'git', 'remove' or a command", cxxopts::value<std::string>());
   // clang-format on
 
@@ -219,11 +220,16 @@ int main(int argc, char **argv)
   // Init the project
   project.init_project(components, features);
 
-  // Add SLC features
-  if (result["with"].count() != 0) {
-    const auto slc_features = result["with"].as<std::vector<std::string>>();
-    for (const auto &f: slc_features)
-      project.slc_required.insert(f);
+  // Check if SLC needs to be supported
+  if (result["no-slcc"].count() != 0) {
+    project.component_flags = yakka::component_database::flag::IGNORE_SLCC;
+  } else {
+    // Add SLC features
+    if (result["with"].count() != 0) {
+      const auto slc_features = result["with"].as<std::vector<std::string>>();
+      for (const auto &f: slc_features)
+        project.slc_required.insert(f);
+    }
   }
 
   if (!result["no-eval"].as<bool>()) {
@@ -251,7 +257,7 @@ int main(int argc, char **argv)
       // Convert string to id
       const auto component_id = yakka::component_dotname_to_id(i);
       // Find the component in the project component database
-      auto component_location = workspace.find_component(component_id);
+      auto component_location = workspace.find_component(component_id, project.component_flags);
       if (!component_location) {
         // log->info("{}: Couldn't find it", c);
         continue;
@@ -273,7 +279,8 @@ int main(int argc, char **argv)
     }
   }
 
-  project.process_slc_rules();
+  if (result["no-slcc"].count() == 0)
+    project.process_slc_rules();
 
   spdlog::info("Required features:");
   for (auto f: project.required_features)
@@ -434,7 +441,7 @@ static void download_unknown_components(yakka::workspace &workspace, yakka::proj
 
       // Check if any of our unknown components have been found
       for (auto i = project.unknown_components.cbegin(); i != project.unknown_components.cend();) {
-        if (!workspace.local_database.get_component(*i).empty() || !workspace.shared_database.get_component(*i).empty()) {
+        if (!workspace.local_database.get_component(*i, project.component_flags).empty() || !workspace.shared_database.get_component(*i, project.component_flags).empty()) {
           // Remove component from the unknown list and add it to the unprocessed list
           project.unprocessed_components.insert(*i);
           i = project.unknown_components.erase(i);

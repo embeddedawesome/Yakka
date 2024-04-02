@@ -78,11 +78,16 @@ void component_database::add_component(std::string component_id, fs::path path)
   if (!fs::exists(path))
     return;
 
-  // Check if it doesn't exist. In theory we could support multiple locations which is why it is stored in an arrary
-  if (!database["components"].contains(component_id)) {
-    database["components"][component_id].push_back(path.generic_string());
-    database_is_dirty = true;
+  const auto path_string = path.generic_string();
+
+  // Check this entry already exists
+  if (database["components"].contains(component_id)) {
+    for (const auto &i: database["components"][component_id])
+      if (i.get<std::string>() == path_string)
+        return;
   }
+  database["components"][component_id].push_back(path_string);
+  database_is_dirty = true;
 }
 
 void component_database::scan_for_components(fs::path search_start_path)
@@ -162,7 +167,7 @@ fs::path component_database::get_path() const
   return this->workspace_path;
 }
 
-fs::path component_database::get_component(const std::string id) const
+fs::path component_database::get_component(const std::string id, flag flags) const
 {
   if (!this->database["components"].contains(id))
     return {};
@@ -170,13 +175,21 @@ fs::path component_database::get_component(const std::string id) const
   auto &node = this->database["components"][id];
 
   if (node.is_string()) {
-    if (fs::exists(node.get<std::string>())) {
-      return node.get<std::string>();
+    const auto path = std::filesystem::path{ node.get<std::string>() };
+
+    if (flags == flag::IGNORE_SLCC && path.extension() == slcc_component_extension)
+      return {};
+
+    if (fs::exists(path)) {
+      return path;
     }
-  }
-  if (node.is_array() && node.size() == 1) {
-    if (fs::exists(node[0].get<std::string>())) {
-      return node[0].get<std::string>();
+  } else if (node.is_array()) {
+    for (const auto &n: node) {
+      const auto path = std::filesystem::path{ n.get<std::string>() };
+      if (flags == flag::IGNORE_SLCC && path.extension() == slcc_component_extension)
+        continue;
+      if (fs::exists(path))
+        return path;
     }
   }
 

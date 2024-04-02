@@ -69,7 +69,6 @@ public:
   void process_construction(indicators::ProgressBar &bar);
   void save_summary();
   void save_blueprints();
-  bool has_data_dependency_changed(std::string data_path, const nlohmann::json left, const nlohmann::json right);
   void create_tasks(const std::string target_name, tf::Task &parent);
 
   void validate_schema();
@@ -97,6 +96,7 @@ public:
   std::unordered_set<std::string> unknown_components;
   std::vector<std::pair<std::string, std::string>> incomplete_choices;
   std::vector<std::string> multiple_answer_choices;
+  component_database::flag component_flags;
 
   YAML::Node project_summary_yaml;
   std::string project_directory;

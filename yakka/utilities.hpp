@@ -29,6 +29,7 @@ std::string try_render(inja::Environment &env, const std::string &input, const n
 std::string try_render_file(inja::Environment &env, const std::string &filename, const nlohmann::json &data);
 std::pair<std::string, int> download_resource(const std::string url, fs::path destination);
 nlohmann::json::json_pointer create_condition_pointer(const nlohmann::json condition);
+bool has_data_dependency_changed(std::string data_path, const nlohmann::json left, const nlohmann::json right);
 
 template <class CharContainer> static size_t get_file_contents(const std::string &filename, CharContainer *container)
 {

@@ -511,4 +511,54 @@ nlohmann::json::json_pointer create_condition_pointer(const nlohmann::json condi
   return pointer;
 }
 
+bool has_data_dependency_changed(std::string data_path, const nlohmann::json left, const nlohmann::json right)
+{
+  if (data_path[0] != data_dependency_identifier)
+    return false;
+
+  assert(data_path[1] == '/');
+
+  // std::lock_guard<std::mutex> lock(project_lock);
+  try {
+    if (left.is_null() || left["components"].is_null())
+      return true;
+
+    // Check for wildcard or component name
+    if (data_path[2] == data_wildcard_identifier) {
+      if (data_path[3] != '/') {
+        spdlog::error("Data dependency malformed: {}", data_path);
+        return false;
+      }
+
+      data_path = data_path.substr(3);
+      nlohmann::json::json_pointer pointer{ data_path };
+      for (const auto &[c_key, c_value]: right["components"].items()) {
+        std::string component_name = c_key;
+        if (!left["components"].contains(component_name))
+          return true;
+        auto a = left["components"][component_name].contains(pointer) ? left["components"][component_name][pointer] : nlohmann::json{};
+        auto b = right["components"][component_name].contains(pointer) ? right["components"][component_name][pointer] : nlohmann::json{};
+        if (a != b) {
+          return true;
+        }
+      }
+    } else {
+      std::string component_name = data_path.substr(2, data_path.find_first_of('/', 2) - 2);
+      data_path                  = data_path.substr(data_path.find_first_of('/', 2));
+      nlohmann::json::json_pointer pointer{ data_path };
+      if (!left["components"].contains(component_name))
+        return true;
+      auto a = left["components"][component_name].contains(pointer) ? left["components"][component_name][pointer] : nlohmann::json{};
+      auto b = right["components"][component_name].contains(pointer) ? right["components"][component_name][pointer] : nlohmann::json{};
+      if (a != b) {
+        return true;
+      }
+    }
+    return false;
+  } catch (const std::exception &e) {
+    spdlog::error("Failed to determine data dependency: {}", e.what());
+    return false;
+  }
+}
+
 } // namespace yakka

@@ -3,6 +3,7 @@
  */
 #include "yakka.hpp"
 #include "yakka_workspace.hpp"
+#include "component_database.hpp"
 #include "utilities.hpp"
 #include "spdlog/sinks/basic_file_sink.h"
 #include <filesystem>
@@ -99,20 +100,20 @@ std::optional<YAML::Node> workspace::find_registry_component(const std::string &
   return {};
 }
 
-std::optional<std::pair<fs::path, fs::path>> workspace::find_component(const std::string component_dotname)
+std::optional<std::pair<fs::path, fs::path>> workspace::find_component(const std::string component_dotname, component_database::flag flags)
 {
   bool try_update_the_database   = false;
   const std::string component_id = yakka::component_dotname_to_id(component_dotname);
 
   // Get component from local and shared databases
-  auto local  = local_database.get_component(component_id);
-  auto shared = shared_database.get_component(component_id);
+  auto local  = local_database.get_component(component_id, flags);
+  auto shared = shared_database.get_component(component_id, flags);
 
   // Check if that component is in the database
   if (local.empty() && shared.empty()) {
     // Check the packages
     for (const auto &db: package_databases) {
-      auto remote = db.get_component(component_id);
+      auto remote = db.get_component(component_id, flags);
       if (!remote.empty())
         return std::pair<fs::path, fs::path>{ remote, db.get_path() };
     }
@@ -129,7 +130,7 @@ std::optional<std::pair<fs::path, fs::path>> workspace::find_component(const std
   if (local_database.has_scanned == false && try_update_the_database == true) {
     local_database.clear();
     local_database.scan_for_components();
-    return find_component(component_dotname);
+    return find_component(component_dotname, flags);
   } else {
     return {};
   }
