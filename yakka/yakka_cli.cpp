@@ -76,7 +76,7 @@ int main(int argc, char **argv)
                        ("f,fetch", "Automatically fetch missing components", cxxopts::value<bool>()->default_value("false"))
                        ("p,project-name", "Set the project name", cxxopts::value<std::string>()->default_value(""))
                        ("w,with", "Additional SLC feature", cxxopts::value<std::vector<std::string>>())
-                       ("d,data", "Additional data", cxxopts::value<std::vector<std::string>>())
+                       ("d,data", "Additional data", cxxopts::value<std::string>())
                        ("no-slcc", "Ignore SLC files", cxxopts::value<bool>()->default_value("false"))
                        ("action", "Select from 'register', 'list', 'update', 'git', 'remove' or a command", cxxopts::value<std::string>());
   // clang-format on
@@ -300,12 +300,10 @@ int main(int argc, char **argv)
 
   // Insert additional command line data before processing blueprints
   if (result["data"].count() != 0) {
-    const auto additional_data = result["data"].as<std::vector<std::string>>();
-    for (const auto &d: additional_data) {
-      YAML::Node yaml_data     = YAML::Load("{" + d + "}");
-      nlohmann::json json_data = yaml_data.as<nlohmann::json>();
-      yakka::json_node_merge(project.project_summary["data"], json_data);
-    }
+    const auto additional_data = "{" + result["data"].as<std::string>() + "}";
+    YAML::Node yaml_data       = YAML::Load(additional_data);
+    nlohmann::json json_data   = yaml_data.as<nlohmann::json>();
+    yakka::json_node_merge(project.project_summary["data"], json_data);
   }
 
   t1 = std::chrono::high_resolution_clock::now();
