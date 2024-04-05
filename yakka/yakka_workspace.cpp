@@ -177,13 +177,15 @@ void workspace::load_config_file(const fs::path config_file_path)
     if (configuration["packages"].IsDefined()) {
       for (const auto &p: configuration["packages"]) {
         auto path = p.as<std::string>();
-#if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
         if (path[0] == '~') {
+#if defined(_WIN64) || defined(_WIN32) || defined(__CYGWIN__)
           std::string homepath = std::getenv("HOMEPATH");
           std::replace(homepath.begin(), homepath.end(), '\\', '/');
+#else
+          std::string homepath = std::getenv("HOME");
+#endif
           path = homepath + path.substr(1);
         }
-#endif
         packages.push_back(path);
       }
     }
