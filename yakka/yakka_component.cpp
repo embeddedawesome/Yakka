@@ -118,7 +118,7 @@ void component::convert_to_yakka(fs::path package_path)
     component_path = temp_path + json["root_path"].get<std::string>();
   } else {
     if (package_path.empty())
-      if (this->type == SLCP_FILE)
+      if (this->type == SLCP_FILE || file_path.is_absolute())
         component_path = file_path.parent_path();
       else
         component_path = "./";
