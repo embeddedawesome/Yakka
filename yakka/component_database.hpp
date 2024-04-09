@@ -11,7 +11,7 @@ public:
   component_database();
   virtual ~component_database();
 
-  enum class flag { ALL_COMPONENTS, IGNORE_SLCC, IGNORE_SLCP };
+  enum class flag { ALL_COMPONENTS, IGNORE_SLCC, IGNORE_SLCP, IGNORE_YAKKA };
 
   void insert(const std::string id, fs::path config_file);
   void load(const fs::path workspace_path);

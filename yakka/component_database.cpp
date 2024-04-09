@@ -180,6 +180,9 @@ fs::path component_database::get_component(const std::string id, flag flags) con
     if (flags == flag::IGNORE_SLCC && path.extension() == slcc_component_extension)
       return {};
 
+    if (flags == flag::IGNORE_YAKKA && path.extension() == yakka_component_extension)
+      return {};
+
     if (fs::exists(path)) {
       return path;
     }
@@ -187,6 +190,8 @@ fs::path component_database::get_component(const std::string id, flag flags) con
     for (const auto &n: node) {
       const auto path = std::filesystem::path{ n.get<std::string>() };
       if (flags == flag::IGNORE_SLCC && path.extension() == slcc_component_extension)
+        continue;
+      if (flags == flag::IGNORE_YAKKA && path.extension() == yakka_component_extension)
         continue;
       if (fs::exists(path))
         return path;

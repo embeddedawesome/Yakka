@@ -78,6 +78,7 @@ int main(int argc, char **argv)
                        ("w,with", "Additional SLC feature", cxxopts::value<std::vector<std::string>>())
                        ("d,data", "Additional data", cxxopts::value<std::string>())
                        ("no-slcc", "Ignore SLC files", cxxopts::value<bool>()->default_value("false"))
+                       ("no-yakka", "Ignore Yakka files", cxxopts::value<bool>()->default_value("false"))
                        ("action", "Select from 'register', 'list', 'update', 'git', 'remove' or a command", cxxopts::value<std::string>());
   // clang-format on
 
@@ -219,6 +220,11 @@ int main(int argc, char **argv)
 
   // Init the project
   project.init_project(components, features);
+
+  // Check if we don't want Yakka files
+  if (result["no-yakka"].count() != 0) {
+    project.component_flags = yakka::component_database::flag::IGNORE_YAKKA;
+  }
 
   // Check if SLC needs to be supported
   if (result["no-slcc"].count() != 0) {
