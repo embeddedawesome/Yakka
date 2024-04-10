@@ -7,6 +7,7 @@ namespace yakka {
 yakka_status component::parse_file(fs::path file_path, fs::path package_path)
 {
   this->file_path         = file_path;
+  this->package_path      = package_path;
   std::string path_string = file_path.generic_string();
   spdlog::info("Parsing '{}'", path_string);
 
@@ -20,10 +21,10 @@ yakka_status component::parse_file(fs::path file_path, fs::path package_path)
 
   if (file_path.filename().extension() == slcc_component_extension) {
     this->type = SLCC_FILE;
-    convert_to_yakka(package_path);
+    convert_to_yakka();
   } else if (file_path.filename().extension() == slcp_component_extension) {
     this->type = SLCP_FILE;
-    convert_to_yakka(package_path);
+    convert_to_yakka();
   } else {
     this->type = YAKKA_FILE;
     // Validate basic Yakka data
@@ -85,7 +86,7 @@ yakka_status component::parse_file(fs::path file_path, fs::path package_path)
   return yakka_status::SUCCESS;
 }
 
-void component::convert_to_yakka(fs::path package_path)
+void component::convert_to_yakka()
 {
   // Check if SLCC file is an omap. Convert it to a map
   if (json.is_array()) {
