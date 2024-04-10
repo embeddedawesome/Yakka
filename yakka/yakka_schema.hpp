@@ -24,11 +24,13 @@ class schema_validator {
         features:
           type: [array, null]
           description: Collection of features
+          uniqueItems: true
           items:
             type: string
         components:
           type: [array, null]
           description: Collection of components
+          uniqueItems: true
           items:
             type: string
 
