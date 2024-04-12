@@ -12,6 +12,7 @@ namespace yakka {
 const std::string yakka_component_extension     = ".yakka";
 const std::string yakka_component_old_extension = ".bob";
 const std::string slcc_component_extension      = ".slcc";
+const std::string slce_component_extension      = ".slce";
 const std::string slcp_component_extension      = ".slcp";
 const std::string slcs_extension                = ".slcs";
 const char data_dependency_identifier           = ':';

@@ -33,6 +33,7 @@ struct component {
     YAKKA_FILE,
     SLCC_FILE,
     SLCP_FILE,
+    SLCE_FILE,
   } type;
 };
 

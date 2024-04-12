@@ -19,7 +19,10 @@ yakka_status component::parse_file(fs::path file_path, fs::path package_path)
     return yakka_status::FAIL;
   }
 
-  if (file_path.filename().extension() == slcc_component_extension) {
+  if (file_path.filename().extension() == slce_component_extension) {
+    this->type = SLCE_FILE;
+    convert_to_yakka();
+  } else if (file_path.filename().extension() == slcc_component_extension) {
     this->type = SLCC_FILE;
     convert_to_yakka();
   } else if (file_path.filename().extension() == slcp_component_extension) {
