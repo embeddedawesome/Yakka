@@ -171,7 +171,262 @@ properties:
                 uniqueItems: true
                 items:
                   type: string
-
+  define:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+        condition:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        unless:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+      required: [ name ]
+  template_contribution:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: [string, number, object, array]
+        priority:
+          type: number
+        condition:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        unless:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+      required: [ name, value ]
+  template_file:
+    type: array
+    items:
+      type: object
+      properties:
+        path:
+          type: string
+        condition:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        unless:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        export:
+          type: boolean
+      required: [ path ]
+  toolchain_settings:
+    type: array
+    items:
+      type: object
+      properties:
+        option:
+          type: string
+        value:
+          type: [string, number, boolean, array]
+        condition:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        unless:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+      required: [ option, value ]
+  other_file:
+    type: array
+    items:
+      type: object
+      properties:
+        path:
+          type: string
+        project:
+          type: object
+          properties:
+            transfer_ownership:
+              type: boolean
+            directory:
+              type: string
+        condition:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        unless:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+      required: [ path ]
+  requires:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        condition:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+      required: [ name ]
+  provides:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        condition:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        allow_multiple:
+          type: boolean
+      required: [ name ]
+  conflicts:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        condition:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+      required: [ name ]
+  validation_helper:
+    type: array
+    items:
+      type: object
+      properties:
+        path:
+          type: string
+        condition:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        unless:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+      required: [ path ]
+  validation_library:
+    type: array
+    items:
+      type: object
+      properties:
+        path:
+          type: string
+        name:
+          type: string
+        condition:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        unless:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+      required: [ path, name ]
+  recommends:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        instance:
+          type: array
+          items:
+            type: string
+        condition:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+      required: [ id ]
+  documentation:
+    anyOf:
+      - type: object
+        properties:
+          docset:
+            type: string
+          document:
+            anyOf:
+              - type: string
+              - type: array
+                items:
+                  type: object
+                  properties:
+                    page:
+                      type: string
+                    condition:
+                      type: array
+                      uniqueItems: true
+                      items:
+                        type: string
+                    unless:
+                      type: array
+                      uniqueItems: true
+                      items:
+                        type: string
+                  required: [ page ]
+        required: [ path, document ]
+      - type: object
+        properties:
+          page:
+            type: string
+        required: [ page ]
+      - type: object
+        properties:
+          url:
+            type: string
+        required: [ url ]
+  ui_hints:
+    type: object
+    properties:
+      visibility:
+        type: string
+        pattern: "never|basic|advanced"
+  clone:
+    type: object
+    properties:
+      component:
+        type: string
+      sdk:
+        type: object
+      date:
+        type: string
+    required: [component, sdk, date]
 
 required: 
   - id
