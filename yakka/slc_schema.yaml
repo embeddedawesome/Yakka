@@ -1,4 +1,4 @@
-title: SLC file
+title: SLCC file
 type: object
 properties:
   id:
@@ -19,12 +19,12 @@ properties:
     description: The quality level of the component.
     type: string
     propertyNames:
-      pattern: "production|evaluation|experimental|deprecated|internal"
+      pattern: "^production|evaluation|experimental|deprecated|internal$"
   tag:
     description: List of tags that can be used to group and classify components.
     type: array
-      items:
-        type: string
+    items:
+      type: string
   label:
     description: Display name for the component in user interfaces.
     type: string
@@ -47,7 +47,7 @@ properties:
     type: array
     items:
       type: object
-      properties
+      properties:
         path:
           type: string
         directory:
@@ -179,7 +179,7 @@ properties:
         name:
           type: string
         value:
-          type: string
+          type: [string, number]
         condition:
           type: array
           uniqueItems: true
@@ -192,14 +192,14 @@ properties:
             type: string
       required: [ name ]
   template_contribution:
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
         name:
           type: string
         value:
-          type: [string, number, object, array]
+          type: [string, number, object, array, boolean]
         priority:
           type: number
         condition:
@@ -279,7 +279,7 @@ properties:
             type: string
       required: [ path ]
   requires:
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
@@ -292,7 +292,7 @@ properties:
             type: string
       required: [ name ]
   provides:
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
@@ -358,7 +358,7 @@ properties:
             type: string
       required: [ path, name ]
   recommends:
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
@@ -400,7 +400,7 @@ properties:
                       items:
                         type: string
                   required: [ page ]
-        required: [ path, document ]
+        required: [ docset, document ]
       - type: object
         properties:
           page:

@@ -1,15 +1,18 @@
 #include "yaml-cpp/yaml.h"
 #include <nlohmann/json-schema.hpp>
 #include "spdlog.h"
+#include "slcc_schema.hpp"
 
 namespace yakka {
 
 class schema_validator {
-  nlohmann::json schema;
-  nlohmann::json_schema::json_validator validator;
+  nlohmann::json yakka_schema;
+  nlohmann::json slcc_schema;
+  nlohmann::json_schema::json_validator yakka_validator;
+  nlohmann::json_schema::json_validator slcc_validator;
 
   // clang-format off
-  const std::string component_schema_yaml = R"(
+  const std::string yakka_component_schema_yaml = R"(
   title: Yakka file
   type: object
   properties:
@@ -130,11 +133,13 @@ public:
   }
 
 private:
-  schema_validator() : validator(nullptr, nlohmann::json_schema::default_string_format_check)
+  schema_validator() : yakka_validator(nullptr, nlohmann::json_schema::default_string_format_check), slcc_validator(nullptr, nlohmann::json_schema::default_string_format_check)
   {
     // This should be straight JSON without conversion
-    schema = YAML::Load(component_schema_yaml).as<nlohmann::json>();
-    validator.set_root_schema(schema);
+    yakka_schema = YAML::Load(yakka_component_schema_yaml).as<nlohmann::json>();
+    slcc_schema  = YAML::Load(slcc_schema_yaml).as<nlohmann::json>();
+    yakka_validator.set_root_schema(yakka_schema);
+    slcc_validator.set_root_schema(slcc_schema);
   }
 
 public:
@@ -145,7 +150,10 @@ public:
   {
     custom_error_handler err;
     err.component = component;
-    auto patch    = validator.validate(component->json, err);
+    if (component->type == component::YAKKA_FILE)
+      auto patch = yakka_validator.validate(component->json, err);
+    else if (component->type == component::SLCC_FILE)
+      auto patch = slcc_validator.validate(component->json, err);
     if (err) {
       return false;
     } else {

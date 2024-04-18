@@ -19,11 +19,26 @@ yakka_status component::parse_file(fs::path file_path, fs::path package_path)
     return yakka_status::FAIL;
   }
 
+  // Check if file is an omap. Convert it to a map
+  if (json.is_array()) {
+    nlohmann::json new_format;
+    for (const auto &item: json.items())
+      for (const auto &[key, value]: item.value().items())
+        new_format[key] = value;
+    json = new_format;
+  }
+
   if (file_path.filename().extension() == slce_component_extension) {
     this->type = SLCE_FILE;
     convert_to_yakka();
   } else if (file_path.filename().extension() == slcc_component_extension) {
     this->type = SLCC_FILE;
+
+    bool result = yakka::schema_validator::get().validate(this);
+    if (!result) {
+      return yakka_status::FAIL;
+    }
+
     convert_to_yakka();
   } else if (file_path.filename().extension() == slcp_component_extension) {
     this->type = SLCP_FILE;
@@ -91,15 +106,6 @@ yakka_status component::parse_file(fs::path file_path, fs::path package_path)
 
 void component::convert_to_yakka()
 {
-  // Check if SLCC file is an omap. Convert it to a map
-  if (json.is_array()) {
-    nlohmann::json new_format;
-    for (const auto &item: json.items())
-      for (const auto &[key, value]: item.value().items())
-        new_format[key] = value;
-    json = new_format;
-  }
-
   // Set basic data such as directory and name
   if (json.contains("id")) {
     json["name"] = json["id"];

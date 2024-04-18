@@ -30,9 +30,7 @@ public:
   bool has_scanned;
 
 private:
-  // YAML::Node database;
   nlohmann::json database;
-  // YAML::Node feature_database;
   fs::path workspace_path;
   fs::path database_filename;
   bool database_is_dirty;
