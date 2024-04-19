@@ -154,7 +154,7 @@ void component::convert_to_yakka()
     nlohmann::json temp;
     for (const auto &p: json["requires"]) {
       if (p.contains("condition"))
-        json[create_condition_pointer(p["condition"])]["requires"]["features"] = p["name"];
+        json[create_condition_pointer(p["condition"])]["requires"]["features"].push_back(p["name"]);
       else
         temp["features"].push_back(p["name"]);
     }
