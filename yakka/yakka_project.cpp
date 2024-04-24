@@ -1289,13 +1289,15 @@ void project::process_slc_rules()
           continue;
 
         fs::path source_path = config["path"].get<std::string>();
-        if (c->package_path.empty())
+        if (c->package_path.empty() || c->json.contains("component_root_path"))
           source_path = c->component_path / source_path;
         else
           source_path = c->package_path / source_path;
         fs::path destination_path = fs::path{ default_output_directory + project_name } / source_path.filename();
         if (fs::exists(source_path))
           fs::copy_file(source_path, destination_path, fs::copy_options::update_existing);
+        else
+          spdlog::error("Failed to find config_file: {}", source_path.string());
       }
     }
 
