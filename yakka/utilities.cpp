@@ -272,13 +272,14 @@ void json_node_merge(nlohmann::json &merge_target, const nlohmann::json &node)
         case nlohmann::detail::value_t::object:
           spdlog::error("Cannot merge array into an object");
           break;
+        default:
+          // Convert scalar into an array
+          merge_target = nlohmann::json::array({ merge_target });
+          [[fallthrough]];
         case nlohmann::detail::value_t::array:
         case nlohmann::detail::value_t::null:
           for (auto &i: node)
             merge_target.push_back(i);
-          break;
-        default:
-          merge_target.push_back(node);
           break;
       }
       break;
@@ -287,8 +288,11 @@ void json_node_merge(nlohmann::json &merge_target, const nlohmann::json &node)
         case nlohmann::detail::value_t::object:
           spdlog::error("Cannot merge scalar into an object");
           break;
-        case nlohmann::detail::value_t::array:
         default:
+          // Convert scalar into an array
+          merge_target = nlohmann::json::array({ merge_target });
+          [[fallthrough]];
+        case nlohmann::detail::value_t::array:
           merge_target.push_back(node);
           break;
       }
