@@ -437,6 +437,7 @@ project::state project::evaluate_dependencies()
                     continue;
 
                   if (slc_recommended.contains(name)) {
+                    spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
                     unprocessed_components.insert(name);
                     resolved = true;
                     break;
@@ -445,6 +446,7 @@ project::state project::evaluate_dependencies()
                   }
 
                 } else if (slc_recommended.contains(option.get<std::string>())) {
+                  spdlog::info("Adding recommended component '{}' to satisfy '{}'", option.get<std::string>(), r);
                   unprocessed_components.insert(option.get<std::string>());
                   resolved = true;
                   break;
@@ -453,7 +455,8 @@ project::state project::evaluate_dependencies()
                 }
               }
 
-              if (possible_options.size() == 1) {
+              if (resolved == false && possible_options.size() == 1) {
+                spdlog::info("Adding component '{}' to satisfy '{}'", possible_options.front(), r);
                 unprocessed_components.insert(possible_options.front());
                 resolved = true;
               }
@@ -463,11 +466,13 @@ project::state project::evaluate_dependencies()
             } else {
               const auto &n = feature_node.front();
               if (n.is_object()) {
-                if (condition_is_fulfilled(n) && !is_disqualified_by_unless(n))
+                if (condition_is_fulfilled(n) && !is_disqualified_by_unless(n)) {
+                  spdlog::info("Adding component '{}' to satisfy '{}'", n["name"].get<std::string>(), r);
                   unprocessed_components.insert(n["name"].get<std::string>());
-                else
+                } else
                   slc_required.insert(r);
               } else {
+                spdlog::info("Adding component '{}' to satisfy '{}'", n.get<std::string>(), r);
                 unprocessed_components.insert(n.get<std::string>());
               }
             }
@@ -486,7 +491,7 @@ project::state project::evaluate_dependencies()
             auto node = temp.json["/provides/features"_json_pointer];
             if (std::find(node.begin(), node.end(), r) != node.end()) {
               // Add component to the component list
-              spdlog::info("Adding {} to satisfy {}", path.string(), r);
+              spdlog::info("Adding '{}' to satisfy '{}'", path.string(), r);
               unprocessed_components.insert(r);
               continue;
             }
