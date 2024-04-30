@@ -72,6 +72,7 @@ int main(int argc, char **argv)
   // clang-format off
   options.add_options()("h,help", "Print usage")("r,refresh", "Refresh component database", cxxopts::value<bool>()->default_value("false"))
                        ("n,no-eval", "Skip the dependency and choice evaluation", cxxopts::value<bool>()->default_value("false"))
+                       ("i,ignore-eval", "Ignore dependency and choice evaluation errors", cxxopts::value<bool>()->default_value("false"))
                        ("o,no-output", "Do not generate output folder", cxxopts::value<bool>()->default_value("false"))
                        ("f,fetch", "Automatically fetch missing components", cxxopts::value<bool>()->default_value("false"))
                        ("p,project-name", "Set the project name", cxxopts::value<std::string>()->default_value(""))
@@ -254,7 +255,7 @@ int main(int argc, char **argv)
     }
 
     project.evaluate_choices();
-    if (!project.incomplete_choices.empty() || !project.multiple_answer_choices.empty())
+    if (!result["ignore-eval"].as<bool>() && (!project.incomplete_choices.empty() || !project.multiple_answer_choices.empty()))
       print_project_choice_errors(project);
   } else {
     spdlog::info("Skipping project evalutaion");
@@ -279,8 +280,10 @@ int main(int argc, char **argv)
       if (new_component->parse_file(component_path, package_path) == yakka::yakka_status::SUCCESS) {
         project.components.push_back(new_component);
       } else {
-        spdlog::error("Failed to parse {}", component_path.generic_string());
-        exit(-1);
+        if (!result["ignore-eval"].as<bool>()) {
+          spdlog::error("Failed to parse {}", component_path.generic_string());
+          exit(-1);
+        }
       }
     }
   }
