@@ -255,8 +255,14 @@ project::state project::evaluate_dependencies()
           slc_required.insert(f.get<std::string>());
         for (const auto &f: new_component->json["provides"]["features"])
           slc_provided.insert(f.get<std::string>());
-        for (const auto &r: new_component->json["recommends"])
-          slc_recommended.insert(r["id"].get<std::string>());
+        for (const auto &r: new_component->json["recommends"]) {
+          auto id        = r["id"].get<std::string>();
+          auto start_pos = id.find('%');
+          auto end_pos   = id.rfind('%');
+          if (start_pos != std::string::npos && end_pos != std::string::npos && start_pos < end_pos)
+            id.erase(start_pos, end_pos - start_pos + 1);
+          slc_recommended.insert(id);
+        }
         for (const auto &t: new_component->json["template_contribution"]) {
           template_contributions.push_back(t);
         }
@@ -264,8 +270,14 @@ project::state project::evaluate_dependencies()
         unprocessed_components.insert("jinja");
         for (const auto &f: new_component->json["requires"]["features"])
           slc_required.insert(f.get<std::string>());
-        for (const auto &r: new_component->json["recommends"])
-          slc_recommended.insert(r["id"].get<std::string>());
+        for (const auto &r: new_component->json["recommends"]) {
+          auto id        = r["id"].get<std::string>();
+          auto start_pos = id.find('%');
+          auto end_pos   = id.rfind('%');
+          if (start_pos != std::string::npos && end_pos != std::string::npos && start_pos < end_pos)
+            id.erase(start_pos, end_pos - start_pos + 1);
+          slc_recommended.insert(id);
+        }
         for (const auto &t: new_component->json["template_contribution"])
           template_contributions.push_back(t);
       }
