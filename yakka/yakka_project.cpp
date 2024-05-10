@@ -264,7 +264,7 @@ project::state project::evaluate_dependencies()
           slc_recommended.insert(id);
         }
         for (const auto &t: new_component->json["template_contribution"]) {
-          template_contributions.push_back(t);
+          template_contributions[t["name"].get<std::string>()].push_back(t);
         }
       } else if (new_component->type == yakka::component::SLCP_FILE) {
         unprocessed_components.insert("jinja");
@@ -279,7 +279,7 @@ project::state project::evaluate_dependencies()
           slc_recommended.insert(id);
         }
         for (const auto &t: new_component->json["template_contribution"])
-          template_contributions.push_back(t);
+          template_contributions[t["name"].get<std::string>()].push_back(t);
       }
 
       // Add all the required components into the unprocessed list
@@ -1376,14 +1376,29 @@ void project::process_slc_rules()
 
   // Go through the template_contributions and filter out any items excluded by the `unless` criteria
   nlohmann::json new_contributions;
-  for (const auto &i: template_contributions) {
-    // bool include_contribution = true;
-    if (is_disqualified_by_unless(i))
-      continue;
-    if (!condition_is_fulfilled(i))
-      continue;
+  for (auto &item: template_contributions) {
+    while (!item.is_null() && item.size() > 0) {
+      // Remove the item with the lowest priority
+      int lowest_priority       = INT_MAX;
+      int lowest_priority_index = 0;
+      for (int i = 0; i < item.size(); ++i) {
+        int priority = item[i].contains("priority") ? item[i]["priority"].get<int>() : 0;
+        if (priority < lowest_priority) {
+          lowest_priority       = priority;
+          lowest_priority_index = i;
+        }
+      }
+      nlohmann::json entry = item[lowest_priority_index];
 
-    new_contributions[i["name"].get<std::string>()].push_back(i["value"]);
+      // bool include_contribution = true;
+      if (entry.is_null() || is_disqualified_by_unless(entry) || !condition_is_fulfilled(entry)) {
+        item.erase(lowest_priority_index);
+        continue;
+      }
+
+      new_contributions[entry["name"].get<std::string>()].push_back(entry["value"]);
+      item.erase(lowest_priority_index);
+    }
   }
 
   template_contributions = new_contributions;
