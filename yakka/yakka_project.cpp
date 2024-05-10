@@ -444,7 +444,9 @@ project::state project::evaluate_dependencies()
               // Check if any of the options is recommended
               for (const auto &option: feature_node) {
                 if (option.is_object()) {
-                  const auto name = option["name"].get<std::string>();
+                  const auto name     = option["name"].get<std::string>();
+                  const auto instance = option.contains("instance") ? option["instance"].get<std::string>() : "";
+
                   if (!condition_is_fulfilled(option) || is_disqualified_by_unless(option))
                     continue;
 
@@ -1262,6 +1264,8 @@ void project::process_slc_rules()
     if (c->type == component::YAKKA_FILE)
       continue;
 
+    const bool instantiable = c->json.contains("instantiable");
+
     // Process sources
     if (c->json.contains("source")) {
       for (const auto &p: c->json["source"]) {
@@ -1291,9 +1295,17 @@ void project::process_slc_rules()
           continue;
 
         nlohmann::json temp = p.contains("value") ? p : p["name"];
-        c->json["defines"]["global"].push_back(temp);
+        if (instantiable) {
+          // Might be a template
+        } else {
+          c->json["defines"]["global"].push_back(temp);
+        }
       }
     }
+
+    // Process instatiations
+    // '{{instance}}' is used in 'config_file', 'define', and 'template_contribution'
+    // Need to identify instatiable.prefix
 
     // Process config_file
     if (c->json.contains("config_file")) {
