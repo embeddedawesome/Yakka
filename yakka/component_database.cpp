@@ -105,11 +105,16 @@ void component_database::scan_for_components(fs::path search_start_path)
 
   // Define lambda that will process a path item
   auto process_path_item = [&](const fs::path &p) {
-    if (p.filename().extension() == yakka_component_extension || p.filename().extension() == yakka_component_old_extension || p.filename().extension() == slcp_component_extension || p.filename().extension() == slce_component_extension) {
+    const auto extension = p.filename().extension();
+    if (extension == yakka_component_extension || extension == yakka_component_old_extension) {
       spdlog::info("Found {}", p.string());
       const auto component_id = p.filename().replace_extension().generic_string();
       add_component(component_id, p);
-    } else if (p.filename().extension() == slcc_component_extension) {
+    } else if (extension == slcp_component_extension || extension == slce_component_extension) {
+      spdlog::info("Found project '{}'", p.string());
+      const auto component_id = p.filename().replace_extension().generic_string();
+      add_component(component_id, p);
+    } else if (extension == slcc_component_extension) {
       spdlog::info("Found {}", p.string());
       parse_slcc_file(p);
     }

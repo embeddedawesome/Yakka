@@ -127,10 +127,13 @@ public:
   nlohmann::json template_contributions;
   std::unordered_set<std::string> slc_required;
   std::unordered_set<std::string> slc_provided;
-  std::unordered_set<std::string> slc_recommended;
+  std::map<std::string, const nlohmann::json> slc_recommended;
+  std::multimap<std::string, std::string> instances;
+  std::map<std::string, const std::shared_ptr<yakka::component>> slc_overrides;
   bool is_disqualified_by_unless(const nlohmann::json &node);
   bool condition_is_fulfilled(const nlohmann::json &node);
   void process_slc_rules();
+  void create_config_file(const std::shared_ptr<yakka::component> component, const nlohmann::json &config, const std::string &prefix, std::string instance_name);
 
 private:
   void init_project();

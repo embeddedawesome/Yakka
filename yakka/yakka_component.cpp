@@ -165,6 +165,9 @@ void component::convert_to_yakka()
   if (json.contains("component")) {
     for (const auto &p: json["component"]) {
       json["requires"]["components"].push_back(p["id"]);
+      if (p.contains("instance"))
+        for (const auto &i: p["instance"])
+          json["instances"][p["id"].get<std::string>()].push_back(i);
     }
   }
 }

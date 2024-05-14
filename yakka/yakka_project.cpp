@@ -261,11 +261,17 @@ project::state project::evaluate_dependencies()
           auto end_pos   = id.rfind('%');
           if (start_pos != std::string::npos && end_pos != std::string::npos && start_pos < end_pos)
             id.erase(start_pos, end_pos - start_pos + 1);
-          slc_recommended.insert(id);
+          slc_recommended.insert({ id, r });
         }
-        for (const auto &t: new_component->json["template_contribution"]) {
-          template_contributions[t["name"].get<std::string>()].push_back(t);
-        }
+        for (const auto &[key, instance_list]: new_component->json["instances"].items())
+          for (const auto &i: instance_list)
+            this->instances.insert({ key, i.get<std::string>() });
+        // Extract config overrides
+        for (const auto &c: new_component->json["config_file"])
+          if (c.contains("override")) {
+            slc_overrides.insert({ c["override"]["file_id"].get<std::string>(), new_component });
+          }
+
       } else if (new_component->type == yakka::component::SLCP_FILE) {
         unprocessed_components.insert("jinja");
         for (const auto &f: new_component->json["requires"]["features"])
@@ -276,16 +282,22 @@ project::state project::evaluate_dependencies()
           auto end_pos   = id.rfind('%');
           if (start_pos != std::string::npos && end_pos != std::string::npos && start_pos < end_pos)
             id.erase(start_pos, end_pos - start_pos + 1);
-          slc_recommended.insert(id);
+          slc_recommended.insert({ id, r });
         }
-        for (const auto &t: new_component->json["template_contribution"])
-          template_contributions[t["name"].get<std::string>()].push_back(t);
+        for (const auto &[key, instance_list]: new_component->json["instances"].items())
+          for (const auto &i: instance_list)
+            this->instances.insert({ key, i.get<std::string>() });
       }
 
       // Add all the required components into the unprocessed list
       if (new_component->json.contains("/requires/components"_json_pointer))
-        for (const auto &r: new_component->json["requires"]["components"])
+        for (const auto &r: new_component->json["requires"]["components"]) {
           unprocessed_components.insert(r.get<std::string>());
+          if (r.contains("instance")) {
+            for (const auto &i: r["instance"])
+              instances.insert({ r.get<std::string>(), i.get<std::string>() });
+          }
+        }
 
       // Add all the required features into the unprocessed list
       if (new_component->json.contains("/requires/features"_json_pointer))
@@ -444,14 +456,18 @@ project::state project::evaluate_dependencies()
               // Check if any of the options is recommended
               for (const auto &option: feature_node) {
                 if (option.is_object()) {
-                  const auto name     = option["name"].get<std::string>();
-                  const auto instance = option.contains("instance") ? option["instance"].get<std::string>() : "";
+                  const auto name = option["name"].get<std::string>();
 
                   if (!condition_is_fulfilled(option) || is_disqualified_by_unless(option))
                     continue;
 
                   if (slc_recommended.contains(name)) {
                     spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
+                    const auto recommend_node = slc_recommended[name];
+                    if (recommend_node.contains("instance")) {
+                      for (const auto &i: recommend_node["instance"])
+                        instances.insert({ name, i.get<std::string>() });
+                    }
                     unprocessed_components.insert(name);
                     resolved = true;
                     break;
@@ -460,8 +476,14 @@ project::state project::evaluate_dependencies()
                   }
 
                 } else if (slc_recommended.contains(option.get<std::string>())) {
-                  spdlog::info("Adding recommended component '{}' to satisfy '{}'", option.get<std::string>(), r);
-                  unprocessed_components.insert(option.get<std::string>());
+                  const auto name = option.get<std::string>();
+                  spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
+                  const auto recommend_node = slc_recommended[name];
+                  if (recommend_node.contains("instance")) {
+                    for (const auto &i: recommend_node["instance"])
+                      instances.insert({ name, i.get<std::string>() });
+                  }
+                  unprocessed_components.insert(name);
                   resolved = true;
                   break;
                 } else {
@@ -470,8 +492,9 @@ project::state project::evaluate_dependencies()
               }
 
               if (resolved == false && possible_options.size() == 1) {
-                spdlog::info("Adding component '{}' to satisfy '{}'", possible_options.front(), r);
-                unprocessed_components.insert(possible_options.front());
+                const auto name = possible_options.front();
+                spdlog::info("Adding component '{}' to satisfy '{}'", name, r);
+                unprocessed_components.insert(name);
                 resolved = true;
               }
 
@@ -1257,6 +1280,64 @@ bool project::condition_is_fulfilled(const nlohmann::json &node)
   return true;
 }
 
+void project::create_config_file(const std::shared_ptr<yakka::component> component, const nlohmann::json &config, const std::string &prefix, std::string instance_name)
+{
+  std::string config_filename = config["path"].get<std::string>();
+  fs::path config_file_path   = component->component_path / config_filename;
+
+  // Check for overrides
+  if (config.contains("file_id")) {
+    const auto file_id = config["file_id"].get<std::string>();
+    if (slc_overrides.contains(file_id)) {
+      const auto overriding_component = slc_overrides[file_id];
+      // Find the matching config, check conditions, and matching instance.
+      for (const auto &i: overriding_component->json["config_file"])
+        if (i.contains("override") && i["override"]["file_id"].get<std::string>() == file_id && !is_disqualified_by_unless(i) && condition_is_fulfilled(i)) {
+          if (i["override"].contains("instance") && i["override"]["instance"].get<std::string>() == instance_name) {
+            config_file_path = overriding_component->component_path / i["path"].get<std::string>();
+            break;
+          } else if (!i["override"].contains("instance")) {
+            config_file_path = overriding_component->component_path / i["path"].get<std::string>();
+            break;
+          }
+        }
+    }
+  }
+
+  config_file_path          = this->inja_environment.render(config_file_path.generic_string(), { { "instance", prefix } });
+  fs::path destination_path = fs::path{ default_output_directory + project_name + "/config" } / this->inja_environment.render(fs::path(config_filename).filename().string(), { { "instance", instance_name } });
+
+  if (!fs::exists(config_file_path)) {
+    spdlog::error("Failed to find config_file: {}", config_file_path.string());
+    return;
+  }
+
+  spdlog::info("Creating config file '{}' from '{}'", destination_path.string(), config_file_path.string());
+
+  // Read the content of the source file
+  std::ifstream config_file(config_file_path);
+  std::string content((std::istreambuf_iterator<char>(config_file)), std::istreambuf_iterator<char>());
+  config_file.close();
+
+  // Replace 'INSTANCE' with uppercase instance name
+  if (!instance_name.empty()) {
+    std::transform(instance_name.begin(), instance_name.end(), instance_name.begin(), ::toupper);
+    std::string search_str     = "INSTANCE";
+    std::string replace_str    = instance_name;
+    std::string::size_type pos = 0;
+    while ((pos = content.find(search_str, pos)) != std::string::npos) {
+      content.replace(pos, search_str.length(), replace_str);
+      pos += replace_str.length();
+    }
+  }
+
+  // Write modified content to the destination file
+  fs::create_directories(destination_path.parent_path());
+  std::ofstream modified_config_file(destination_path);
+  modified_config_file << content;
+  modified_config_file.close();
+}
+
 void project::process_slc_rules()
 {
   // Go through each SLC based component
@@ -1264,7 +1345,9 @@ void project::process_slc_rules()
     if (c->type == component::YAKKA_FILE)
       continue;
 
-    const bool instantiable = c->json.contains("instantiable");
+    auto instance_names               = instances.equal_range(c->id);
+    const bool instantiable           = c->json.contains("instantiable");
+    const std::string instance_prefix = (instantiable) ? c->json["instantiable"]["prefix"].get<std::string>() : "";
 
     // Process sources
     if (c->json.contains("source")) {
@@ -1296,16 +1379,41 @@ void project::process_slc_rules()
 
         nlohmann::json temp = p.contains("value") ? p : p["name"];
         if (instantiable) {
-          // Might be a template
+          c->json["defines"]["global"].push_back(this->inja_environment.render(temp, { "instance", instance_prefix }));
         } else {
           c->json["defines"]["global"].push_back(temp);
         }
       }
     }
 
-    // Process instatiations
-    // '{{instance}}' is used in 'config_file', 'define', and 'template_contribution'
-    // Need to identify instatiable.prefix
+    // Process template_contributions
+    for (const auto &t: c->json["template_contribution"]) {
+      if (is_disqualified_by_unless(t) || !condition_is_fulfilled(t))
+        continue;
+
+      const auto name = t["name"].get<std::string>();
+      if (instantiable && t.contains("value")) {
+        if (t["value"].is_string()) {
+          const auto value = t["value"].get<std::string>();
+          for (auto i = instance_names.first; i != instance_names.second; ++i) {
+            template_contributions[name].push_back(t);
+            template_contributions[name].back()["value"] = this->inja_environment.render(value, { { "instance", i->second } });
+          }
+        } else if (t["value"].is_object()) {
+          for (auto i = instance_names.first; i != instance_names.second; ++i) {
+            template_contributions[name].push_back(t);
+            for (auto &[key, value]: template_contributions[name].back()["value"].items()) {
+              if (value.is_string())
+                template_contributions[name].back()["value"][key] = this->inja_environment.render(value.get<std::string>(), { { "instance", i->second } });
+            }
+          }
+        } else {
+          template_contributions[name].push_back(t);
+        }
+      } else {
+        template_contributions[name].push_back(t);
+      }
+    }
 
     // Process config_file
     if (c->json.contains("config_file")) {
@@ -1314,79 +1422,90 @@ void project::process_slc_rules()
           continue;
         if (is_disqualified_by_unless(config) || !condition_is_fulfilled(config))
           continue;
+        if (instantiable && instance_names.first == instance_names.second)
+          continue;
         if (config.contains("override"))
           continue;
 
-        fs::path source_path = config["path"].get<std::string>();
-        if (c->package_path.empty() || c->json.contains("component_root_path"))
-          source_path = c->component_path / source_path;
+        // Check if this component is instantiable and there are instances
+        if (instantiable)
+          for (auto i = instance_names.first; i != instance_names.second; ++i)
+            create_config_file(c, config, instance_prefix, i->second);
         else
-          source_path = c->package_path / source_path;
-        fs::path destination_path = fs::path{ default_output_directory + project_name } / source_path.filename();
-        if (fs::exists(source_path))
-          fs::copy_file(source_path, destination_path, fs::copy_options::update_existing);
-        else
-          spdlog::error("Failed to find config_file: {}", source_path.string());
+          create_config_file(c, config, instance_prefix, instance_prefix);
+      }
+
+      // Process 'template_file'
+      if (c->json.contains("template_file")) {
+        for (const auto &t: c->json["template_file"]) {
+          if (is_disqualified_by_unless(t) || !condition_is_fulfilled(t))
+            continue;
+
+          fs::path template_file = t["path"].get<std::string>();
+          fs::path target_file   = template_file.filename();
+          target_file.replace_extension();
+
+          const auto target = "{{project_output}}/generated/" + target_file.string();
+
+          auto add_generated_item = [&](nlohmann::json &node) {
+            // Create generated items
+            if (target_file.extension() == ".c" || target_file.extension() == ".cpp")
+              node["generated"]["sources"].push_back(target);
+            else if (target_file.extension() == ".h" || target_file.extension() == ".hpp")
+              node["generated"]["includes"].push_back(target);
+            else if (target_file.extension() == ".ld")
+              node["generated"]["linker_script"].push_back(target);
+            else
+              node["generated"]["files"].push_back(target);
+          };
+
+          add_generated_item(c->json);
+
+          // Create blueprints
+          nlohmann::json blueprint = { { "process", nullptr } };
+          blueprint["process"].push_back({ { "jinja", "-t " + c->json["directory"].get<std::string>() + "/" + template_file.string() + " -d {{project_output}}/template_contributions.json" } });
+          blueprint["process"].push_back({ { "save", nullptr } });
+
+          c->json["blueprints"][target] = blueprint;
+        }
+      }
+
+      // Process special toolchain settings
+      if (c->json.contains("toolchain_settings")) {
+        for (const auto &s: c->json["toolchain_settings"]) {
+          if (s["option"] == "linkerfile") {
+            if (is_disqualified_by_unless(s) || !condition_is_fulfilled(s))
+              continue;
+
+            c->json["generated"]["linker_script"] = "{{project_output}}/generated/" + fs::path{ s["value"].get<std::string>() }.filename().string();
+          }
+        }
       }
     }
 
-    // Process 'template_file'
-    if (c->json.contains("template_file")) {
-      for (const auto &t: c->json["template_file"]) {
-        if (is_disqualified_by_unless(t) || !condition_is_fulfilled(t))
+    // Process toolchain settings
+    project_summary["toolchain_settings"] = nlohmann::json::object();
+    for (const auto &c: components) {
+      if (c->json.contains("toolchain_settings") == false)
+        continue;
+
+      for (const auto &s: c->json["toolchain_settings"]) {
+        if (is_disqualified_by_unless(s) || !condition_is_fulfilled(s))
           continue;
 
-        fs::path template_file = t["path"].get<std::string>();
-        fs::path target_file   = template_file.filename();
-        target_file.replace_extension();
-
-        const auto target = "{{project_output}}/generated/" + target_file.string();
-
-        auto add_generated_item = [&](nlohmann::json &node) {
-          // Create generated items
-          if (target_file.extension() == ".c" || target_file.extension() == ".cpp")
-            node["generated"]["sources"].push_back(target);
-          else if (target_file.extension() == ".h" || target_file.extension() == ".hpp")
-            node["generated"]["includes"].push_back(target);
-          else if (target_file.extension() == ".ld")
-            node["generated"]["linker_script"].push_back(target);
+        const auto key = s["option"].get<std::string>();
+        if (project_summary["toolchain_settings"].contains(key))
+          if (project_summary["toolchain_settings"][key].is_array())
+            project_summary["toolchain_settings"][key].push_back(s["value"]);
           else
-            node["generated"]["files"].push_back(target);
-        };
-
-        // if (t.contains("condition")) {
-        //   auto pointer = create_condition_pointer(t["condition"]);
-        //   if (!c->json.contains(pointer))
-        //     c->json[pointer] = {};
-
-        //   add_generated_item(c->json[pointer]);
-        // } else
-        add_generated_item(c->json);
-
-        // Create blueprints
-        nlohmann::json blueprint = { { "process", nullptr } };
-        blueprint["process"].push_back({ { "jinja", "-t " + c->json["directory"].get<std::string>() + "/" + template_file.string() + " -d {{project_output}}/template_contributions.json" } });
-        blueprint["process"].push_back({ { "save", nullptr } });
-
-        c->json["blueprints"][target] = blueprint;
-      }
-    }
-
-    // Process special toolchain settings
-    if (c->json.contains("toolchain_settings")) {
-      for (const auto &s: c->json["toolchain_settings"]) {
-        if (s["option"] == "linkerfile") {
-          if (is_disqualified_by_unless(s))
-            continue;
-          if (!condition_is_fulfilled(s))
-            continue;
-          c->json["generated"]["linker_script"] = "{{project_output}}/generated/" + fs::path{ s["value"].get<std::string>() }.filename().string();
-        }
+            project_summary["toolchain_settings"][key] = nlohmann::json::array({ project_summary["toolchain_settings"][key], s["value"] });
+        else
+          project_summary["toolchain_settings"][key] = s["value"];
       }
     }
   }
 
-  // Go through the template_contributions and filter out any items excluded by the `unless` criteria
+  // Go through the template_contributions and sort via priorities
   nlohmann::json new_contributions;
   for (auto &item: template_contributions) {
     while (!item.is_null() && item.size() > 0) {
@@ -1401,42 +1520,14 @@ void project::process_slc_rules()
         }
       }
       nlohmann::json entry = item[lowest_priority_index];
+      spdlog::info("Ordering '{}' at priority {}", entry["name"].get<std::string>(), lowest_priority);
 
-      // bool include_contribution = true;
-      if (entry.is_null() || is_disqualified_by_unless(entry) || !condition_is_fulfilled(entry)) {
-        item.erase(lowest_priority_index);
-        continue;
-      }
-
+      //const std::string value = entry["value"].get<std::string>();
       new_contributions[entry["name"].get<std::string>()].push_back(entry["value"]);
       item.erase(lowest_priority_index);
     }
   }
-
   template_contributions = new_contributions;
-
-  // Process toolchain settings
-  project_summary["toolchain_settings"] = nlohmann::json::object();
-  for (const auto &c: components) {
-    if (c->json.contains("toolchain_settings") == false)
-      continue;
-
-    for (const auto &s: c->json["toolchain_settings"]) {
-      if (is_disqualified_by_unless(s))
-        continue;
-      if (!condition_is_fulfilled(s))
-        continue;
-
-      const auto key = s["option"].get<std::string>();
-      if (project_summary["toolchain_settings"].contains(key))
-        if (project_summary["toolchain_settings"][key].is_array())
-          project_summary["toolchain_settings"][key].push_back(s["value"]);
-        else
-          project_summary["toolchain_settings"][key] = nlohmann::json::array({ project_summary["toolchain_settings"][key], s["value"] });
-      else
-        project_summary["toolchain_settings"][key] = s["value"];
-    }
-  }
 }
 
 } /* namespace yakka */
