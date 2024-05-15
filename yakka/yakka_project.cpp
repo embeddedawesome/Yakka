@@ -1379,7 +1379,7 @@ void project::process_slc_rules()
 
         nlohmann::json temp = p.contains("value") ? p : p["name"];
         if (instantiable) {
-          c->json["defines"]["global"].push_back(this->inja_environment.render(temp, { "instance", instance_prefix }));
+          c->json["defines"]["global"].push_back(this->inja_environment.render(temp.get<std::string>(), { { "instance", instance_prefix } }));
         } else {
           c->json["defines"]["global"].push_back(temp);
         }
