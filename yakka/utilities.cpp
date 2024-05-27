@@ -366,6 +366,9 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
   inja_env.add_callback("filesize", 1, [&](const inja::Arguments &args) {
     return fs::file_size(args[0]->get<std::string>());
   });
+  inja_env.add_callback("hex2dec", 1, [&](const inja::Arguments &args) {
+    return std::stoul(args[0]->get<std::string>(), nullptr, 16);
+  });
   inja_env.add_callback("render", 1, [&](const inja::Arguments &args) {
     return try_render(inja_env, args[0]->get<std::string>(), project->project_summary);
   });
