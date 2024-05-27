@@ -1068,7 +1068,7 @@ void project::load_common_commands()
     return { "", 0 };
   };
 
-  blueprint_commands["as_json"] = [this](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
+  blueprint_commands["as_json"] = [](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
     const auto temp_json = nlohmann::json::parse(captured_output);
     return { temp_json.dump(2), 0 };
   };
