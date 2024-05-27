@@ -1053,16 +1053,14 @@ void project::load_common_commands()
     return { "", 0 };
   };
 
+  blueprint_commands["as_json"] = [this](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
+    const auto temp_json = nlohmann::json::parse(captured_output);
+    return { temp_json.dump(2), 0 };
+  };
+
   blueprint_commands["as_yaml"] = [](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
-    command.dump();
-    std::string filename = try_render(inja_env, command.get<std::string>(), generated_json);
-    std::ifstream datafile;
-    datafile.open(filename, std::ios_base::in | std::ios_base::binary);
-    std::string line;
-    while (std::getline(datafile, line))
-      captured_output.append(line);
-    datafile.close();
-    return { captured_output, 0 };
+    const auto temp_yaml = YAML::Load(captured_output);
+    return { YAML::Dump(temp_yaml), 0 };
   };
 }
 
