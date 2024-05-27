@@ -776,7 +776,22 @@ void project::load_common_commands()
     } else if (command.contains("replace")) {
       captured_output = std::regex_replace(captured_output, regex_search, command["replace"].get<std::string>());
     } else if (command.contains("match")) {
-      captured_output = std::regex_replace(captured_output, regex_search, command["match"].get<std::string>(), std::regex_constants::format_no_copy);
+      std::smatch sm;
+      std::string new_output      = command.contains("prefix") ? command["prefix"].get<std::string>() : "";
+      inja::Environment local_env = inja_env; // Create copy and override `$()` function
+      const auto match_string     = command["match"].get<std::string>();
+      local_env.add_callback("reg", 1, [&](const inja::Arguments &args) {
+        return sm[args[0]->get<int>()].str();
+      });
+      for (; std::regex_search(captured_output, sm, regex_search);) {
+        // Render the match template
+        new_output += try_render(local_env, match_string, generated_json);
+        captured_output = sm.suffix();
+      }
+      if (command.contains("suffix"))
+        new_output += command["suffix"].get<std::string>();
+      captured_output = new_output;
+      //captured_output = std::regex_replace(captured_output, regex_search, command["match"].get<std::string>(), std::regex_constants::format_no_copy);
     } else {
       spdlog::error("'regex' command does not have enough information");
       return { "", -1 };
