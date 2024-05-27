@@ -309,9 +309,11 @@ int main(int argc, char **argv)
 
   // Insert additional command line data before processing blueprints
   if (result["data"].count() != 0) {
+    spdlog::info("Processing additional data: {}", result["data"].as<std::string>());
     const auto additional_data = "{" + result["data"].as<std::string>() + "}";
     YAML::Node yaml_data       = YAML::Load(additional_data);
     nlohmann::json json_data   = yaml_data.as<nlohmann::json>();
+    spdlog::info("Additional data: {}", json_data.dump());
     yakka::json_node_merge(project.project_summary["data"], json_data);
   }
 
