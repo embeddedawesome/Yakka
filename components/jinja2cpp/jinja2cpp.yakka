@@ -1,0 +1,29 @@
+name: Jinja2Cpp
+
+requires:
+  components:
+    - fmt
+
+includes:
+  global:
+    - include
+
+sources:
+  - master/src/binding/boost_json_serializer.cpp
+  - master/src/binding/rapid_json_serializer.cpp
+  - master/src/error_info.cpp
+  - master/src/expression_evaluator.cpp
+  - master/src/expression_parser.cpp
+  - master/src/filesystem_handler.cpp
+  - master/src/filters.cpp
+  - master/src/generic_list.cpp
+  - master/src/internal_value.cpp
+  - master/src/lexer.cpp
+  - master/src/serialize_filters.cpp
+  - master/src/statements.cpp
+  - master/src/string_converter_filter.cpp
+  - master/src/template.cpp
+  - master/src/template_env.cpp
+  - master/src/template_parser.cpp
+  - master/src/testers.cpp
+  - master/src/value.cpp
