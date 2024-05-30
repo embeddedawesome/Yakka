@@ -180,12 +180,12 @@ fs::path component_database::get_component(const std::string id, flag flags) con
   auto &node = this->database["components"][id];
 
   if (node.is_string()) {
-    const auto path = std::filesystem::path{ node.get<std::string>() };
-
-    if (flags == flag::IGNORE_SLCC && path.extension() == slcc_component_extension)
+    const auto path      = std::filesystem::path{ node.get<std::string>() };
+    const auto extension = path.extension();
+    if (flags == flag::IGNORE_SLCC && ((extension == slcc_component_extension) || (extension == slce_component_extension)))
       return {};
 
-    if (flags == flag::IGNORE_YAKKA && path.extension() == yakka_component_extension)
+    if (flags == flag::IGNORE_YAKKA && extension == yakka_component_extension)
       return {};
 
     if (fs::exists(path)) {
@@ -193,10 +193,11 @@ fs::path component_database::get_component(const std::string id, flag flags) con
     }
   } else if (node.is_array()) {
     for (const auto &n: node) {
-      const auto path = std::filesystem::path{ n.get<std::string>() };
-      if (flags == flag::IGNORE_SLCC && path.extension() == slcc_component_extension)
+      const auto path      = std::filesystem::path{ n.get<std::string>() };
+      const auto extension = path.extension();
+      if (flags == flag::IGNORE_SLCC && ((extension == slcc_component_extension) || (extension == slce_component_extension)))
         continue;
-      if (flags == flag::IGNORE_YAKKA && path.extension() == yakka_component_extension)
+      if (flags == flag::IGNORE_YAKKA && extension == yakka_component_extension)
         continue;
       if (fs::exists(path))
         return path;
