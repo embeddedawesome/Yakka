@@ -449,7 +449,6 @@ project::state project::evaluate_dependencies()
           auto f = workspace.find_feature(r);
           if (f.has_value()) {
             auto feature_node = f.value();
-            bool resolved     = false;
             std::vector<std::string> possible_options;
             if (feature_node.size() == 1) {
               spdlog::info("Found a component that provides '{}'", r);
@@ -1550,7 +1549,7 @@ void project::process_slc_rules()
       // Remove the item with the lowest priority
       int lowest_priority       = INT_MAX;
       int lowest_priority_index = 0;
-      for (int i = 0; i < item.size(); ++i) {
+      for (size_t i = 0; i < item.size(); ++i) {
         int priority = item[i].contains("priority") ? item[i]["priority"].get<int>() : 0;
         if (priority < lowest_priority) {
           lowest_priority       = priority;
