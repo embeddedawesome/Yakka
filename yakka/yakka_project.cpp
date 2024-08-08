@@ -451,71 +451,23 @@ project::state project::evaluate_dependencies()
             auto feature_node = f.value();
             bool resolved     = false;
             std::vector<std::string> possible_options;
-            spdlog::info("Found a component that provides '{}'", r);
-            if (feature_node.size() > 1) {
-              // Check if any of the options is recommended
-              for (const auto &option: feature_node) {
-                if (option.is_object()) {
-                  const auto name = option["name"].get<std::string>();
-
-                  if (!condition_is_fulfilled(option) || is_disqualified_by_unless(option))
-                    continue;
-
-                  if (slc_recommended.contains(name)) {
-                    spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
-                    const auto recommend_node = slc_recommended[name];
-                    if (recommend_node.contains("instance")) {
-                      for (const auto &i: recommend_node["instance"])
-                        instances.insert({ name, i.get<std::string>() });
-                    }
-                    unprocessed_components.insert(name);
-                    resolved = true;
-                    break;
-                  } else {
-                    possible_options.push_back(name);
-                  }
-
-                } else if (slc_recommended.contains(option.get<std::string>())) {
-                  const auto name = option.get<std::string>();
-                  spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
-                  const auto recommend_node = slc_recommended[name];
-                  if (recommend_node.contains("instance")) {
-                    for (const auto &i: recommend_node["instance"])
-                      instances.insert({ name, i.get<std::string>() });
-                  }
-                  unprocessed_components.insert(name);
-                  resolved = true;
-                  break;
-                } else {
-                  possible_options.push_back(option.get<std::string>());
-                }
-              }
-
-              if (resolved == false && possible_options.size() == 1) {
-                const auto name = possible_options.front();
-                spdlog::info("Adding component '{}' to satisfy '{}'", name, r);
-                unprocessed_components.insert(name);
-                resolved = true;
-              }
-
-              if (!resolved)
-                slc_required.insert(r);
-            } else {
+            if (feature_node.size() == 1) {
+              spdlog::info("Found a component that provides '{}'", r);
               const auto &n = feature_node.front();
               if (n.is_object()) {
                 if (condition_is_fulfilled(n) && !is_disqualified_by_unless(n)) {
                   spdlog::info("Adding component '{}' to satisfy '{}'", n["name"].get<std::string>(), r);
                   unprocessed_components.insert(n["name"].get<std::string>());
-                } else
+                } else {
                   slc_required.insert(r);
+                }
               } else {
                 spdlog::info("Adding component '{}' to satisfy '{}'", n.get<std::string>(), r);
                 unprocessed_components.insert(n.get<std::string>());
               }
+              // This item is now resolved
+              continue;
             }
-
-            // This item is now resolved
-            continue;
           }
 
           // Check if there is a component with the same name
@@ -528,7 +480,7 @@ project::state project::evaluate_dependencies()
             auto node = temp.json["/provides/features"_json_pointer];
             if (std::find(node.begin(), node.end(), r) != node.end()) {
               // Add component to the component list
-              spdlog::info("Adding '{}' to satisfy '{}'", path.string(), r);
+              spdlog::info("Adding component '{}' to satisfy '{}'", path.string(), r);
               unprocessed_components.insert(r);
               continue;
             }
@@ -536,6 +488,70 @@ project::state project::evaluate_dependencies()
 
           // Check if any recommendations help
           slc_required.insert(r);
+        }
+      }
+    }
+
+    // If there are no resolutions found for missing features or components, look at any recommendations
+    if (unprocessed_components.empty() && unprocessed_features.empty() && project_has_slcc) {
+      // Find any features that aren't provided
+      std::unordered_set<std::string> temp_require_list = std::move(slc_required);
+      for (const auto &r: temp_require_list) {
+        auto f = workspace.find_feature(r);
+        if (!f.has_value())
+          continue;
+
+        auto feature_node = f.value();
+        bool resolved     = false;
+        std::vector<std::string> possible_options;
+        if (feature_node.size() > 1) {
+          // Check if any of the options is recommended
+          for (const auto &option: feature_node) {
+            if (option.is_object()) {
+              const auto name = option["name"].get<std::string>();
+
+              if (!condition_is_fulfilled(option) || is_disqualified_by_unless(option))
+                continue;
+
+              if (slc_recommended.contains(name)) {
+                spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
+                const auto recommend_node = slc_recommended[name];
+                if (recommend_node.contains("instance")) {
+                  for (const auto &i: recommend_node["instance"])
+                    instances.insert({ name, i.get<std::string>() });
+                }
+                unprocessed_components.insert(name);
+                resolved = true;
+                break;
+              } else {
+                possible_options.push_back(name);
+              }
+
+            } else if (slc_recommended.contains(option.get<std::string>())) {
+              const auto name = option.get<std::string>();
+              spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
+              const auto recommend_node = slc_recommended[name];
+              if (recommend_node.contains("instance")) {
+                for (const auto &i: recommend_node["instance"])
+                  instances.insert({ name, i.get<std::string>() });
+              }
+              unprocessed_components.insert(name);
+              resolved = true;
+              break;
+            } else {
+              possible_options.push_back(option.get<std::string>());
+            }
+          }
+
+          if (resolved == false && possible_options.size() == 1) {
+            const auto name = possible_options.front();
+            spdlog::info("Adding component '{}' to satisfy '{}'", name, r);
+            unprocessed_components.insert(name);
+            resolved = true;
+          }
+
+          if (!resolved)
+            slc_required.insert(r);
         }
       }
     }
@@ -621,6 +637,15 @@ void project::generate_project_summary()
   project_summary["host"]["name"] = host_os_string;
 }
 
+/**
+ * @brief Parses the blueprints of the project.
+ * 
+ * This function iterates over the components of the project, as specified in the project_summary.
+ * For each component, it checks if it contains blueprints. If it does, it iterates over these blueprints.
+ * For each blueprint, it renders a string using the inja_environment, based on whether the blueprint contains a regex or not.
+ * It then logs this blueprint string, and adds a new blueprint to the blueprint_database, using the blueprint string as the key.
+ * The new blueprint is created using the blueprint string, the blueprint value, and the directory of the component.
+ */
 void project::parse_blueprints()
 {
   for (const auto &[c_key, c_value]: project_summary["components"].items())
