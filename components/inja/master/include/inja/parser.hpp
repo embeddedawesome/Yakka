@@ -63,16 +63,16 @@ class Parser {
     }
   }
 
-  inline void add_literal(Arguments &arguments, const char* content_ptr) {
+  inline void add_literal(Arguments& arguments, const char* content_ptr) {
     std::string_view data_text(literal_start.data(), tok.text.data() - literal_start.data() + tok.text.size());
     arguments.emplace_back(std::make_shared<LiteralNode>(data_text, data_text.data() - content_ptr));
   }
 
-  inline void add_operator(Arguments &arguments, OperatorStack &operator_stack) {
+  inline void add_operator(Arguments& arguments, OperatorStack& operator_stack) {
     auto function = operator_stack.top();
     operator_stack.pop();
 
-    if (arguments.size() < function->number_args) {
+    if (arguments.size() < (size_t)function->number_args) {
       throw_parser_error("malformed expression");
     }
 
@@ -339,7 +339,7 @@ class Parser {
         get_next_token();
         auto expr = parse_expression(tmpl);
         if (tok.kind != Token::Kind::RightParen) {
-            throw_parser_error("expected right parenthesis, got '" + tok.describe() + "'");
+          throw_parser_error("expected right parenthesis, got '" + tok.describe() + "'");
         }
         if (!expr) {
           throw_parser_error("empty expression in parentheses");
