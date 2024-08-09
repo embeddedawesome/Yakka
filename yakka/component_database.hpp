@@ -18,7 +18,7 @@ public:
   void save();
   void erase();
   void clear();
-  void add_component(std::string component_id, fs::path path);
+  bool add_component(std::string component_id, fs::path path);
   void scan_for_components(fs::path search_start_path = "");
   fs::path get_path() const;
   fs::path get_component(const std::string id, flag flags = flag::ALL_COMPONENTS) const;

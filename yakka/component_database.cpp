@@ -73,10 +73,10 @@ void component_database::clear()
   database_is_dirty = true;
 }
 
-void component_database::add_component(std::string component_id, fs::path path)
+bool component_database::add_component(std::string component_id, fs::path path)
 {
   if (!fs::exists(path))
-    return;
+    return false;
 
   const auto path_string = path.generic_string();
 
@@ -84,10 +84,11 @@ void component_database::add_component(std::string component_id, fs::path path)
   if (database["components"].contains(component_id)) {
     for (const auto &i: database["components"][component_id])
       if (i.get<std::string>() == path_string)
-        return;
+        return false;
   }
   database["components"][component_id].push_back(path_string);
   database_is_dirty = true;
+  return true;
 }
 
 void component_database::scan_for_components(fs::path search_start_path)
@@ -244,8 +245,7 @@ void component_database::parse_slcc_file(std::filesystem::path path)
 
   std::string id_string = std::string(id_node.val().str, id_node.val().len);
 
-  add_component(id_string, path);
-  if (provides_node.valid()) {
+  if (add_component(id_string, path) && provides_node.valid()) {
     for (const auto &f: provides_node.children()) {
       if (!f.has_child("name"))
         continue;
