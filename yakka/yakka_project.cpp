@@ -1394,7 +1394,9 @@ void project::process_slc_rules()
         if (is_disqualified_by_unless(p) || !condition_is_fulfilled(p))
           continue;
 
-        c->json["sources"].push_back(p["path"]);
+        fs::path source_path{ p["path"].get<std::string>() };
+        if (source_path.extension() != ".h")
+          c->json["sources"].push_back(p["path"]);
       }
     }
 
