@@ -398,35 +398,31 @@ struct convert<nlohmann::json> {
   }
 
   static bool decode(const Node& node, nlohmann::json& rhs) {
-    if (node.IsMap())
-    {
-        for (const_iterator it = node.begin(); it != node.end(); ++it)
-        {
-            nlohmann::json n;
-            if (it->second.IsNull() == false)
-                convert<nlohmann::json>::decode(it->second, n);
-            rhs[it->first.as<std::string>()] = n;
-        }
-    }
-    else if (node.IsSequence())
-    {
-    	for (const_iterator it = node.begin(); it != node.end(); ++it)
-    	{
-    		nlohmann::json n;
-    		convert<nlohmann::json>::decode(*it, n);
-    		rhs.push_back(n);
-    	}
-    }
-    else
-    {
-      try {
-        rhs = nlohmann::json(node.as<bool>());
-      } catch(...) {
-        try {
-          rhs = nlohmann::json(node.as<int>());
-        } catch(...) {
-    	    rhs = nlohmann::json(node.as<std::string>());
-        }
+    if (node.IsMap()) {
+      for (const_iterator it = node.begin(); it != node.end(); ++it) {
+        nlohmann::json n;
+        if (it->second.IsNull() == false)
+          convert<nlohmann::json>::decode(it->second, n);
+        rhs[it->first.as<std::string>()] = n;
+      }
+    } else if (node.IsSequence()) {
+      for (const_iterator it = node.begin(); it != node.end(); ++it) {
+        nlohmann::json n;
+        convert<nlohmann::json>::decode(*it, n);
+        rhs.push_back(n);
+      }
+    } else {
+      if (node.Tag().compare("?") != 0) {
+        rhs = nlohmann::json(node.as<std::string>());
+      } else {
+        bool bool_rhs;
+        int int_rhs;
+        if (convert<bool>::decode(node, bool_rhs))
+          rhs = nlohmann::json(bool_rhs);
+        else if (convert<int>::decode(node, int_rhs))
+          rhs = nlohmann::json(int_rhs);
+        else
+          rhs = nlohmann::json(node.as<std::string>());
       }
     }
     return true;
