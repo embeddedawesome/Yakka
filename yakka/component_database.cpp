@@ -123,6 +123,7 @@ void component_database::scan_for_components(fs::path search_start_path)
 
   // Check if path has an slcs
   fs::path slcs_file;
+#ifdef SUPPORT_SLCS_FILE
   auto di = fs::directory_iterator(search_start_path);
   for (auto p = fs::begin(di); p != fs::end(di); ++p) {
     if (p->path().filename().extension() == slcs_extension) {
@@ -130,6 +131,7 @@ void component_database::scan_for_components(fs::path search_start_path)
       break;
     }
   }
+#endif
 
   try {
     // Check if slcs file was not found
