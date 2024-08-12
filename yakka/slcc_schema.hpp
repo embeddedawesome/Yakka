@@ -76,7 +76,7 @@ properties:
           items:
             type: string
         unless:
-          type: array
+          type: [array, null]
           uniqueItems: true
           items:
             type: string
@@ -104,7 +104,7 @@ properties:
           items:
             type: string
         unless:
-          type: array
+          type: [array, null]
           uniqueItems: true
           items:
             type: string
@@ -129,7 +129,7 @@ properties:
                 items:
                   type: string
               unless:
-                type: array
+                type: [array, null]
                 uniqueItems: true
                 items:
                   type: string
@@ -140,7 +140,7 @@ properties:
           items:
             type: string
         unless:
-          type: array
+          type: [array, null]
           uniqueItems: true
           items:
             type: string
@@ -159,7 +159,7 @@ properties:
               items:
                 type: string
             unless:
-              type: array
+              type: [array, null]
               uniqueItems: true
               items:
                 type: string
@@ -173,7 +173,7 @@ properties:
                 items:
                   type: string
               unless:
-                type: array
+                type: [array, null]
                 uniqueItems: true
                 items:
                   type: string
@@ -192,7 +192,7 @@ properties:
           items:
             type: string
         unless:
-          type: array
+          type: [array, null]
           uniqueItems: true
           items:
             type: string
@@ -214,7 +214,7 @@ properties:
           items:
             type: string
         unless:
-          type: array
+          type: [array, null]
           uniqueItems: true
           items:
             type: string
@@ -232,7 +232,7 @@ properties:
           items:
             type: string
         unless:
-          type: array
+          type: [array, null]
           uniqueItems: true
           items:
             type: string
@@ -254,7 +254,7 @@ properties:
           items:
             type: string
         unless:
-          type: array
+          type: [array, null]
           uniqueItems: true
           items:
             type: string
@@ -279,7 +279,7 @@ properties:
           items:
             type: string
         unless:
-          type: array
+          type: [array, null]
           uniqueItems: true
           items:
             type: string
@@ -338,7 +338,7 @@ properties:
           items:
             type: string
         unless:
-          type: array
+          type: [array, null]
           uniqueItems: true
           items:
             type: string
@@ -358,7 +358,7 @@ properties:
           items:
             type: string
         unless:
-          type: array
+          type: [array, null]
           uniqueItems: true
           items:
             type: string
@@ -401,7 +401,7 @@ properties:
                       items:
                         type: string
                     unless:
-                      type: array
+                      type: [array, null]
                       uniqueItems: true
                       items:
                         type: string
