@@ -122,45 +122,32 @@ void component_database::scan_for_components(fs::path search_start_path)
   };
 
   // Check if path has an slcs
-  fs::path slcs_file;
-#ifdef SUPPORT_SLCS_FILE
+  bool workspace_is_sdk = false;
+  // fs::path slcs_file;
   auto di = fs::directory_iterator(search_start_path);
   for (auto p = fs::begin(di); p != fs::end(di); ++p) {
     if (p->path().filename().extension() == slcs_extension) {
-      slcs_file = p->path();
+      workspace_is_sdk = true;
+      // slcs_file = p->path();
       break;
     }
   }
-#endif
 
   try {
-    // Check if slcs file was not found
-    if (slcs_file.empty()) {
-      auto rdi = fs::recursive_directory_iterator(search_start_path);
-      for (auto p = fs::begin(rdi); p != fs::end(rdi); ++p) {
-        // Skip any directories that start with '.'
-        if (p->is_directory() && p->path().filename().string().front() == '.') {
-          p.disable_recursion_pending();
-          continue;
-        }
-
-        process_path_item(p->path());
+    auto rdi = fs::recursive_directory_iterator(search_start_path);
+    for (auto p = fs::begin(rdi); p != fs::end(rdi); ++p) {
+      // Skip any directories that start with '.'
+      if (p->is_directory() && p->path().filename().string().front() == '.') {
+        p.disable_recursion_pending();
+        continue;
       }
-    } else {
-      // Load .slcs file
-      auto slcs = YAML::LoadFile(slcs_file.string());
-
-      // Iterate through directories
-      for (const auto &c: slcs["component_path"]) {
-        auto component_path = c["path"].as<std::string>();
-        auto search_path    = search_start_path / component_path;
-        if (!fs::exists(search_path))
-          continue;
-
-        auto di = fs::directory_iterator(search_path);
-        for (auto p = fs::begin(di); p != fs::end(di); ++p)
-          process_path_item(p->path());
+      // If scanning an SDK, skip 'extension'
+      if (workspace_is_sdk && p->path().filename() == slsdk_extensions_directory) {
+        p.disable_recursion_pending();
+        continue;
       }
+
+      process_path_item(p->path());
     }
   } catch (std::exception &e) {
     spdlog::error("Error scanning for components: {}", e.what());
