@@ -3,6 +3,8 @@
 #include "spdlog/spdlog.h"
 #include "semver/semver.hpp"
 
+using namespace semver::literals;
+
 namespace yakka {
 yakka_status component::parse_file(fs::path file_path, fs::path package_path)
 {
@@ -60,9 +62,9 @@ yakka_status component::parse_file(fs::path file_path, fs::path package_path)
 
     // Set version
     if (json.contains("version")) {
-      this->version = semver::parse(json["version"].get<std::string>()).value();
+      this->version = semver::version::parse(json["version"].get<std::string>());
     } else {
-      this->version = { 0, 0, 0 };
+      this->version = "0.0.0"_v;
     }
 
     // Ensure certain nodes are sequences
