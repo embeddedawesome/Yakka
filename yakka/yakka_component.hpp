@@ -2,7 +2,7 @@
 
 #include "yakka_blueprint.hpp"
 #include "yakka.hpp"
-#include "semver.hpp"
+#include "semver/semver.hpp"
 #include <vector>
 #include <string>
 #include <iostream>

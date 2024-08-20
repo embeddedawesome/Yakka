@@ -7,7 +7,7 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/basic_file_sink.h"
-#include "semver.hpp"
+#include "semver/semver.hpp"
 #include <indicators/dynamic_progress.hpp>
 #include <indicators/progress_bar.hpp>
 #include <indicators/cursor_control.hpp>
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
   yakka::workspace workspace;
   workspace.init(".");
 
-  cxxopts::Options options("yakka", "Yakka the embedded builder. Ver " + yakka_version.to_string());
+  cxxopts::Options options("yakka", "Yakka the embedded builder. Ver " + yakka_version.str());
   options.allow_unrecognised_options();
   options.positional_help("<action> [optional args]");
   // clang-format off

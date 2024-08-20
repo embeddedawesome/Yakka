@@ -15,7 +15,7 @@ requires:
     - cpp-subprocess
     - inja
     - json
-    - semver
+    - cpp-semver
     - indicators
     - cxxopts
     - spdlog

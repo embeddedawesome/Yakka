@@ -20,7 +20,7 @@ $(NAME)_REQUIRED_COMPONENTS := yaml-cpp \
                                cpp-subprocess \
                                inja \
                                json \
-                               semver \
+                               cpp-semver \
                                indicators \
                                cxxopts \
 							   spdlog \
