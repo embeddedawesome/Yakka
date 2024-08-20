@@ -1,0 +1,30 @@
+name: CPP Semver Sanitize
+on: [push, pull_request]
+
+jobs:
+  sanitize:
+    runs-on: ${{matrix.os}}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        compiler: [ clang++-15 ]
+        flags:
+          - "-fsanitize=leak -g -O1 -fno-omit-frame-pointer"           #LSAN
+          - "-fsanitize=address -g -O1 -fno-omit-frame-pointer"        #ASAN
+          - "-fsanitize=thread -g -O1 -fno-omit-frame-pointer"         #TSAN
+          - "-fsanitize=undefined -fno-omit-frame-pointer"             #UBSAN
+    name: ${{matrix.os}} ${{matrix.compiler}} ${{matrix.build}} ${{matrix.flags}}
+    env:
+      CXX: ${{ matrix.compiler }}
+      CXXFLAGS: ${{ matrix.flags }}
+      CTEST_OUTPUT_ON_FAILURE: 1
+    steps:
+    - uses: actions/checkout@v3
+    - name: cmake
+      run: cmake -S . -B build
+    - name: build
+      run: cmake --build build --parallel 4
+    - name: test
+      working-directory: build
+      run: ctest -j4

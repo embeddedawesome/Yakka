@@ -1,0 +1,93 @@
+name: CPP Semver CI
+on: [push, pull_request]
+
+jobs:
+  macos:
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        os: [ macos-latest ]
+        build: [ Debug, Release ]
+        compiler: [ clang++ ]
+    name: ${{matrix.os}} ${{matrix.compiler}} ${{matrix.build}}
+    env:
+      CXX: ${{matrix.compiler}}
+      CTEST_OUTPUT_ON_FAILURE: 1
+    steps:
+    - uses: actions/checkout@v3
+    - name: cmake
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{matrix.build}}
+    - name: build
+      run: cmake --build build --config ${{matrix.build}} --parallel 4
+    - name: test
+      working-directory: build
+      run: ctest -C ${{matrix.build}} -j4
+
+  linux:
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        build: [ Debug, Release ]
+        compiler: [ g++-11, g++-12, g++-13, clang++-15 ]
+    name: ${{matrix.os}} ${{matrix.compiler}} ${{matrix.build}}
+    env:
+      CXX: ${{matrix.compiler}}
+      CTEST_OUTPUT_ON_FAILURE: 1
+    steps:
+      - uses: actions/checkout@v3
+      - name: cmake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{matrix.build}}
+      - name: build
+        run: cmake --build build --config ${{matrix.build}} --parallel 4
+      - name: test
+        working-directory: build
+        run: ctest -C ${{matrix.build}} -j4
+
+  windows:
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        build: [ Debug, Release ]
+        os: [ windows-2019, windows-latest ]
+        arch: [ Win32, x64 ]
+    name: ${{matrix.os}} ${{matrix.arch}} ${{matrix.build}}
+    env:
+      CTEST_OUTPUT_ON_FAILURE: 1
+    steps:
+    - uses: actions/checkout@v3
+    - name: cmake
+      run: cmake -S . -B build -A ${{matrix.arch}} -DCMAKE_BUILD_TYPE=${{matrix.build}}
+    - name: build
+      run: cmake --build build --config ${{matrix.build}} --parallel 4
+    - name: test
+      working-directory: build
+      run: ctest -C ${{matrix.build}} -j4
+
+  coverage:
+    needs: [ macos, linux, windows ]
+    runs-on: ubuntu-latest
+    env:
+      CTEST_OUTPUT_ON_FAILURE: 1
+      CXXFLAGS: "--coverage -fno-inline"
+    steps:
+    - uses: actions/checkout@v3
+    - name: cmake
+      run: cmake -S . -B build
+    - name: build
+      run: cmake --build build --parallel 4
+    - name: test
+      working-directory: build
+      run: ctest -j4
+    - name: lcov
+      working-directory: build
+      run: |
+        sudo apt install lcov
+        lcov -c -d . -o cov.info
+        lcov -l cov.info
+    - name: codecov
+      working-directory: build
+      shell: bash
+      run: bash <(curl -s https://codecov.io/bash) -f cov.info
+
+
