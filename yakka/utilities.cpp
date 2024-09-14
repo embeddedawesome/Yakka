@@ -427,7 +427,12 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
   });
   inja_env.add_callback("quote", 1, [&](const inja::Arguments &args) {
     std::stringstream ss;
-    ss << std::quoted(args[0]->get<std::string>());
+    if (args[0]->is_string())
+      ss << std::quoted(args[0]->get<std::string>());
+    else if (args[0]->is_number_integer())
+      ss << std::quoted(std::to_string(args[0]->get<int>()));
+    else if (args[0]->is_number_float())
+      ss << std::quoted(std::to_string(args[0]->get<float>()));
     return ss.str();
   });
 
