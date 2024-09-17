@@ -387,6 +387,10 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
     auto yaml_data = YAML::LoadFile(args[0]->get<std::string>());
     return yaml_data.as<nlohmann::json>();
   });
+  inja_env.add_callback("load_json", 1, [&](const inja::Arguments &args) {
+    std::ifstream file_stream(args[0]->get<std::string>());
+    return nlohmann::json::parse(file_stream);
+  });
   inja_env.add_callback("aggregate", 1, [&](const inja::Arguments &args) {
     nlohmann::json aggregate;
     auto path = json_pointer(args[0]->get<std::string>());

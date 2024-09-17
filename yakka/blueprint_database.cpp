@@ -90,6 +90,10 @@ std::vector<std::shared_ptr<blueprint_match>> blueprint_database::find_match(con
       auto yaml_data = YAML::LoadFile(args[0]->get<std::string>());
       return yaml_data.as<nlohmann::json>();
     });
+    local_inja_env.add_callback("load_json", 1, [&](const inja::Arguments &args) {
+      std::ifstream file_stream(args[0]->get<std::string>());
+      return nlohmann::json::parse(file_stream);
+    });
     local_inja_env.add_callback("aggregate", 1, [&](const inja::Arguments &args) {
       nlohmann::json aggregate;
       auto path = json_pointer(args[0]->get<std::string>());
