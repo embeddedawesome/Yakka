@@ -363,10 +363,10 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
   inja_env.add_callback("extension", 1, [](inja::Arguments &args) {
     return std::filesystem::path{ args.at(0)->get<std::string>() }.extension().string().substr(1);
   });
-  inja_env.add_callback("filesize", 1, [&](const inja::Arguments &args) {
+  inja_env.add_callback("filesize", 1, [](const inja::Arguments &args) {
     return fs::file_size(args[0]->get<std::string>());
   });
-  inja_env.add_callback("hex2dec", 1, [&](const inja::Arguments &args) {
+  inja_env.add_callback("hex2dec", 1, [](const inja::Arguments &args) {
     return std::stoul(args[0]->get<std::string>(), nullptr, 16);
   });
   inja_env.add_callback("render", 1, [&](const inja::Arguments &args) {
@@ -379,15 +379,15 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
     curdir_path               = backup;
     return render_output;
   });
-  inja_env.add_callback("read_file", 1, [&](const inja::Arguments &args) {
+  inja_env.add_callback("read_file", 1, [](const inja::Arguments &args) {
     auto file = std::ifstream(args[0]->get<std::string>());
     return std::string{ std::istreambuf_iterator<char>{ file }, {} };
   });
-  inja_env.add_callback("load_yaml", 1, [&](const inja::Arguments &args) {
+  inja_env.add_callback("load_yaml", 1, [](const inja::Arguments &args) {
     auto yaml_data = YAML::LoadFile(args[0]->get<std::string>());
     return yaml_data.as<nlohmann::json>();
   });
-  inja_env.add_callback("load_json", 1, [&](const inja::Arguments &args) {
+  inja_env.add_callback("load_json", 1, [](const inja::Arguments &args) {
     std::ifstream file_stream(args[0]->get<std::string>());
     return nlohmann::json::parse(file_stream);
   });
@@ -429,7 +429,7 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
     }
     return aggregate;
   });
-  inja_env.add_callback("quote", 1, [&](const inja::Arguments &args) {
+  inja_env.add_callback("quote", 1, [](const inja::Arguments &args) {
     std::stringstream ss;
     if (args[0]->is_string())
       ss << std::quoted(args[0]->get<std::string>());
