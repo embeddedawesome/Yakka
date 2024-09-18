@@ -154,6 +154,24 @@ std::optional<nlohmann::json> workspace::find_feature(const std::string feature)
   return {};
 }
 
+std::optional<nlohmann::json> workspace::find_blueprint(const std::string blueprint) const
+{
+  nlohmann::json node;
+  node = local_database.get_blueprint_provider(blueprint);
+  if (!node.is_null())
+    return node;
+  node = shared_database.get_blueprint_provider(blueprint);
+  if (!node.is_null())
+    return node;
+  for (const auto &db: package_databases) {
+    node = db.get_blueprint_provider(blueprint);
+    if (!node.is_null())
+      return node;
+  }
+
+  return {};
+}
+
 void workspace::load_config_file(const fs::path config_file_path)
 {
   try {

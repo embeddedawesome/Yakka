@@ -23,9 +23,11 @@ public:
   fs::path get_path() const;
   fs::path get_component(const std::string id, flag flags = flag::ALL_COMPONENTS) const;
   nlohmann::json get_feature_provider(const std::string feature) const;
+  nlohmann::json get_blueprint_provider(const std::string blueprint) const;
 
   void process_slc_sdk(fs::path slcs_path);
-  void parse_slcc_file(std::filesystem::path path);
+  void parse_slcc_file(const std::filesystem::path path);
+  void parse_yakka_file(const std::filesystem::path path, const std::string& id);
 
   bool has_scanned;
 

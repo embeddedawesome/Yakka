@@ -10,6 +10,9 @@
 #include <filesystem>
 
 namespace yakka {
+
+static void process_blueprint(nlohmann::json &database, const std::string &id_string, const c4::yml::ConstNodeRef &blueprint_node);
+
 component_database::component_database() : workspace_path("")
 {
   has_scanned       = false;
@@ -110,7 +113,9 @@ void component_database::scan_for_components(fs::path search_start_path)
     if (extension == yakka_component_extension || extension == yakka_component_old_extension) {
       spdlog::info("Found {}", p.string());
       const auto component_id = p.filename().replace_extension().generic_string();
-      add_component(component_id, p);
+      if (add_component(component_id, p)) {
+        parse_yakka_file(p, component_id);
+      }
     } else if (extension == slcp_component_extension || extension == slce_component_extension) {
       spdlog::info("Found project '{}'", p.string());
       const auto component_id = p.filename().replace_extension().generic_string();
@@ -205,7 +210,28 @@ nlohmann::json component_database::get_feature_provider(const std::string featur
   return {};
 }
 
-void component_database::parse_slcc_file(std::filesystem::path path)
+nlohmann::json component_database::get_blueprint_provider(const std::string blueprint) const
+{
+  if (this->database["blueprints"].contains(blueprint))
+    return this->database["blueprints"][blueprint];
+
+  return {};
+}
+
+void component_database::parse_yakka_file(const std::filesystem::path path, const std::string &id)
+{
+  std::vector<char> contents = yakka::get_file_contents<std::vector<char>>(path.string());
+  ryml::Tree tree            = ryml::parse_in_place(ryml::to_substr(contents));
+  auto root                  = tree.crootref();
+
+  if (root.has_child("blueprints")) {
+    for (const auto &b: root["blueprints"].children()) {
+      process_blueprint(database, id, b);
+    }
+  }
+}
+
+void component_database::parse_slcc_file(const std::filesystem::path path)
 {
   std::vector<char> contents = yakka::get_file_contents<std::vector<char>>(path.string());
   ryml::Tree tree            = ryml::parse_in_place(ryml::to_substr(contents));
@@ -213,6 +239,7 @@ void component_database::parse_slcc_file(std::filesystem::path path)
 
   c4::yml::ConstNodeRef id_node;
   c4::yml::ConstNodeRef provides_node;
+  c4::yml::ConstNodeRef blueprint_node;
 
   // Check if the slcc is an omap
   if (root.is_seq()) {
@@ -221,12 +248,16 @@ void component_database::parse_slcc_file(std::filesystem::path path)
         id_node = c["id"];
       if (c.has_child("provides"))
         provides_node = c["provides"];
+      if (c.has_child("blueprints"))
+        blueprint_node = c["blueprints"];
     }
   } else {
     if (root.has_child("id"))
       id_node = root["id"];
     if (root.has_child("provides"))
       provides_node = root["provides"];
+    if (root.has_child("blueprints"))
+      blueprint_node = root["blueprints"];
   }
 
   if (!id_node.valid())
@@ -234,23 +265,49 @@ void component_database::parse_slcc_file(std::filesystem::path path)
 
   std::string id_string = std::string(id_node.val().str, id_node.val().len);
 
-  if (add_component(id_string, path) && provides_node.valid()) {
-    for (const auto &f: provides_node.children()) {
-      if (!f.has_child("name"))
-        continue;
-      auto feature_node        = f["name"].val();
-      std::string feature_name = std::string(feature_node.str, feature_node.len);
-      if (f.has_child("condition")) {
-        nlohmann::json node({ { "name", id_string }, { "condition", {} } });
-        for (const auto &c: f["condition"].children()) {
-          std::string condition_string = std::string(c.val().str, c.val().len);
-          node["condition"].push_back(condition_string);
-        }
-        database["features"][feature_name].push_back(node);
-      } else
-        database["features"][feature_name].push_back(id_string);
+  if (add_component(id_string, path)) {
+    if (provides_node.valid()) {
+      for (const auto &f: provides_node.children()) {
+        if (!f.has_child("name"))
+          continue;
+        auto feature_node        = f["name"].val();
+        std::string feature_name = std::string(feature_node.str, feature_node.len);
+        if (f.has_child("condition")) {
+          nlohmann::json node({ { "name", id_string }, { "condition", {} } });
+          for (const auto &c: f["condition"].children()) {
+            std::string condition_string = std::string(c.val().str, c.val().len);
+            node["condition"].push_back(condition_string);
+          }
+          database["features"][feature_name].push_back(node);
+        } else
+          database["features"][feature_name].push_back(id_string);
+      }
+    }
+
+    if (blueprint_node.valid()) {
+      for (const auto &b: blueprint_node.children()) {
+        process_blueprint(database, id_string, b);
+      }
     }
   }
+}
+
+static void process_blueprint(nlohmann::json &database, const std::string &id_string, const c4::yml::ConstNodeRef &blueprint_node)
+{
+  // Ignore regex blueprints
+  if (blueprint_node.has_child("regex")) {
+    return;
+  }
+
+  // Ignore templated blueprints
+  if (blueprint_node.key().find("{") != ryml::npos) {
+    return;
+  }
+
+  // Store blueprint entry
+  std::string blueprint_name = std::string(blueprint_node.key().str, blueprint_node.key().len);
+  spdlog::info("Found blueprint: {}", blueprint_name);
+  database["blueprints"][blueprint_name].push_back(id_string);
 }
 
 } /* namespace yakka */
