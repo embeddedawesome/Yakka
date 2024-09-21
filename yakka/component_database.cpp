@@ -188,7 +188,7 @@ fs::path component_database::get_component(const std::string id, flag flags) con
     }
   } else if (node.is_array()) {
     for (const auto &n: node) {
-      const auto path      = std::filesystem::path{ n.get<std::string>() };
+      const auto path      = this->workspace_path / std::filesystem::path{ n.get<std::string>() };
       const auto extension = path.extension();
       if (flags == flag::IGNORE_SLCC && ((extension == slcc_component_extension) || (extension == slce_component_extension)))
         continue;
@@ -212,8 +212,9 @@ nlohmann::json component_database::get_feature_provider(const std::string featur
 
 nlohmann::json component_database::get_blueprint_provider(const std::string blueprint) const
 {
-  if (this->database["blueprints"].contains(blueprint))
-    return this->database["blueprints"][blueprint];
+  if (this->database.contains("blueprints"))
+    if (this->database["blueprints"].contains(blueprint))
+      return this->database["blueprints"][blueprint];
 
   return {};
 }

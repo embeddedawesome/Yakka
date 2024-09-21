@@ -266,7 +266,6 @@ int main(int argc, char **argv)
       // Find the component in the project component database
       auto component_location = workspace.find_component(component_id, project.component_flags);
       if (!component_location) {
-        // log->info("{}: Couldn't find it", c);
         continue;
       }
 
@@ -291,10 +290,14 @@ int main(int argc, char **argv)
   if (result["no-slcc"].count() == 0)
     project.process_slc_rules();
 
+  // Project evaluation is complete
+
+  // Print a list of required features
   spdlog::info("Required features:");
   for (auto f: project.required_features)
     spdlog::info("- {}", f);
 
+  // Generate and save the summary
   project.generate_project_summary();
   project.save_summary();
 
@@ -318,7 +321,39 @@ int main(int argc, char **argv)
   }
 
   t1 = std::chrono::high_resolution_clock::now();
-  project.parse_blueprints();
+  project.process_blueprints();
+
+  // Ensure all the commands have a blueprint
+  spdlog::info("Checking for missing blueprints");
+  for (const auto &c: project.commands) {
+    if (project.blueprint_database.blueprints.contains(c))
+      continue;
+
+    // Find a component that has that blueprint
+    auto result = workspace.find_blueprint(c);
+    if (result) {
+      const auto blueprint_options = result.value();
+      if (blueprint_options.size() == 1) {
+        const auto &component_name = blueprint_options[0].get<std::string>();
+        auto component_paths       = workspace.find_component(component_name);
+        if (component_paths) {
+          auto [component_path, db_path] = component_paths.value();
+          spdlog::info("Found a blueprint for {}: {}", c, component_path.string());
+          project.add_additional_tool(component_path);
+        } else {
+          spdlog::error("Could not find component for blueprint: {}", c);
+        }
+      } else {
+        spdlog::error("Multiple options for missing blueprint {}", c);
+        for (const auto &o: blueprint_options)
+          spdlog::error("- {}", o.get<std::string>());
+        return -1;
+      }
+    } else {
+      spdlog::info("Did not find a blueprint for {}", c);
+    }
+  }
+
   project.generate_target_database();
   t2 = std::chrono::high_resolution_clock::now();
 

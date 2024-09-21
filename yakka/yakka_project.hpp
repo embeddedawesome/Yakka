@@ -55,8 +55,13 @@ public:
   state evaluate_dependencies();
   //std::optional<fs::path> find_component(const std::string component_dotname);
   void evaluate_choices();
-
-  void parse_blueprints();
+  void add_additional_tool(const fs::path component_path);
+  
+  // Component processing functions
+  void process_tools(const std::shared_ptr<component> c);
+  void process_blueprints(const std::shared_ptr<component> c);
+  
+  void process_blueprints();
   void update_summary();
   void generate_project_summary();
 

@@ -645,17 +645,10 @@ void project::generate_project_summary()
  * It then logs this blueprint string, and adds a new blueprint to the blueprint_database, using the blueprint string as the key.
  * The new blueprint is created using the blueprint string, the blueprint value, and the directory of the component.
  */
-void project::parse_blueprints()
+void project::process_blueprints()
 {
-  for (const auto &[c_key, c_value]: project_summary["components"].items())
-    if (c_value.contains("blueprints"))
-      for (const auto &[b_key, b_value]: c_value["blueprints"].items()) {
-        std::string blueprint_string = try_render(inja_environment, b_value.contains("regex") ? b_value["regex"].get<std::string>() : b_key, project_summary);
-        spdlog::info("Blueprint: {}", blueprint_string);
-        //blueprint_database.blueprints[blueprint_string].push_back(b_value);
-        //b_value["parent_path"] = c_value["directory"];
-        blueprint_database.blueprints.insert({ blueprint_string, std::make_shared<blueprint>(blueprint_string, b_value, c_value["directory"].get<std::string>()) });
-      }
+  for (const auto& c: components)
+    process_blueprints(c);
 }
 
 void project::generate_target_database()
@@ -1567,6 +1560,47 @@ void project::process_slc_rules()
     }
   }
   template_contributions = new_contributions;
+}
+
+void project::process_blueprints(const std::shared_ptr<component> c)
+{
+  if (c->json.contains("blueprints")) {
+    for (const auto &[b_key, b_value]: c->json["blueprints"].items()) {
+      std::string blueprint_string = try_render(inja_environment, b_value.contains("regex") ? b_value["regex"].get<std::string>() : b_key, project_summary);
+      spdlog::info("Additional blueprint: {}", blueprint_string);
+      blueprint_database.blueprints.insert({ blueprint_string, std::make_shared<blueprint>(blueprint_string, b_value, c->json["directory"].get<std::string>()) });
+    }
+  }
+}
+
+void project::process_tools(const std::shared_ptr<component> c)
+{
+  if (c->json.contains("tools")) {
+    for (auto &[key, value]: c->json["tools"].items()) {
+      inja::Environment inja_env = inja::Environment();
+      inja_env.add_callback("curdir", 0, [&c](const inja::Arguments &args) {
+        return std::filesystem::absolute(c->component_path).string();
+      });
+
+      project_summary["tools"][key] = try_render(inja_env, value.get<std::string>(), project_summary);
+    }
+  }
+}
+
+void project::add_additional_tool(const fs::path component_path)
+{
+  // Load component
+  auto tool_component = std::make_shared<component>();
+  auto result         = tool_component->parse_file(component_path);
+  if (result != yakka_status::SUCCESS)
+    return;
+
+  // Add blueprints and tools to project
+  process_blueprints(tool_component);
+  process_tools(tool_component);
+
+  // Add component to project
+  components.push_back(tool_component);
 }
 
 } /* namespace yakka */
