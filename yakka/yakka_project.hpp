@@ -53,6 +53,8 @@ public:
   void parse_project_string(const std::vector<std::string> &project_string);
   void process_requirements(std::shared_ptr<yakka::component> component, nlohmann::json child_node);
   state evaluate_dependencies();
+  bool add_component(const std::string &component_name);
+  bool add_feature(const std::string &feature_name);
   //std::optional<fs::path> find_component(const std::string component_dotname);
   void evaluate_choices();
   void add_additional_tool(const fs::path component_path);
@@ -93,6 +95,7 @@ public:
   std::unordered_set<std::string> unprocessed_components;
   std::unordered_set<std::string> unprocessed_features;
   std::unordered_set<std::string> unprocessed_choices;
+  std::unordered_map<std::string, std::string> unprocessed_replacements;
   //std::unordered_set<std::string> replaced_components;
   std::unordered_map<std::string, std::string> replacements;
   std::unordered_set<std::string> required_components;
@@ -102,6 +105,7 @@ public:
   std::vector<std::pair<std::string, std::string>> incomplete_choices;
   std::vector<std::string> multiple_answer_choices;
   component_database::flag component_flags;
+  bool project_has_slcc;
 
   YAML::Node project_summary_yaml;
   std::string project_directory;

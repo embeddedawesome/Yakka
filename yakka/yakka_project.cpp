@@ -201,6 +201,173 @@ void project::update_summary()
   }
 }
 
+bool project::add_component(const std::string &component_name)
+{
+  // Convert string to id
+  const auto component_id = yakka::component_dotname_to_id(component_name);
+
+  // Check if component has been replaced
+  if (replacements.contains(component_id)) {
+    spdlog::info("Skipping {}. Being replaced by {}", component_id, replacements[component_id]);
+    unprocessed_components.insert(replacements[component_id]);
+    return false;
+  }
+
+  // Find the component in the project component database
+  auto component_location = workspace.find_component(component_id, component_flags);
+  if (!component_location) {
+    // spdlog::info("{}: Couldn't find it", c);
+    unknown_components.insert(component_id);
+    return false;
+  }
+
+  // Add component to the required list and continue if this is not a new component
+  // Insert component and continue if this is not new
+  if (required_components.insert(component_id).second == false)
+    return false;
+
+  auto [component_path, package_path]             = component_location.value();
+  std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
+  if (new_component->parse_file(component_path, package_path) == yakka::yakka_status::SUCCESS)
+    components.push_back(new_component);
+  else {
+    current_state = project::state::PROJECT_HAS_INVALID_COMPONENT;
+    return false;
+  }
+
+  // Add special processing of SLC related files
+  if (new_component->type == yakka::component::SLCC_FILE) {
+    project_has_slcc = true;
+    unprocessed_components.insert("jinja");
+    for (const auto &f: new_component->json["requires"]["features"])
+      slc_required.insert(f.get<std::string>());
+    for (const auto &f: new_component->json["provides"]["features"])
+      slc_provided.insert(f.get<std::string>());
+    for (const auto &r: new_component->json["recommends"]) {
+      auto id        = r["id"].get<std::string>();
+      auto start_pos = id.find('%');
+      auto end_pos   = id.rfind('%');
+      if (start_pos != std::string::npos && end_pos != std::string::npos && start_pos < end_pos)
+        id.erase(start_pos, end_pos - start_pos + 1);
+      slc_recommended.insert({ id, r });
+    }
+    for (const auto &[key, instance_list]: new_component->json["instances"].items())
+      for (const auto &i: instance_list)
+        this->instances.insert({ key, i.get<std::string>() });
+    // Extract config overrides
+    for (const auto &c: new_component->json["config_file"])
+      if (c.contains("override")) {
+        slc_overrides.insert({ c["override"]["file_id"].get<std::string>(), new_component });
+      }
+
+  } else if (new_component->type == yakka::component::SLCP_FILE) {
+    unprocessed_components.insert("jinja");
+    for (const auto &f: new_component->json["requires"]["features"])
+      slc_required.insert(f.get<std::string>());
+    for (const auto &r: new_component->json["recommends"]) {
+      auto id        = r["id"].get<std::string>();
+      auto start_pos = id.find('%');
+      auto end_pos   = id.rfind('%');
+      if (start_pos != std::string::npos && end_pos != std::string::npos && start_pos < end_pos)
+        id.erase(start_pos, end_pos - start_pos + 1);
+      slc_recommended.insert({ id, r });
+    }
+    for (const auto &[key, instance_list]: new_component->json["instances"].items())
+      for (const auto &i: instance_list)
+        this->instances.insert({ key, i.get<std::string>() });
+  }
+
+  // Add all the required components into the unprocessed list
+  if (new_component->json.contains("/requires/components"_json_pointer))
+    for (const auto &r: new_component->json["requires"]["components"]) {
+      unprocessed_components.insert(r.get<std::string>());
+      if (r.contains("instance")) {
+        for (const auto &i: r["instance"])
+          instances.insert({ r.get<std::string>(), i.get<std::string>() });
+      }
+    }
+
+  // Add all the required features into the unprocessed list
+  if (new_component->json.contains("/requires/features"_json_pointer))
+    for (const auto &f: new_component->json["requires"]["features"])
+      unprocessed_features.insert(f.get<std::string>());
+
+  // Add all the provided features into the unprocessed list
+  if (new_component->json.contains("/provides/features"_json_pointer))
+    for (const auto &f: new_component->json["provides"]["features"])
+      unprocessed_features.insert(f.get<std::string>());
+
+  // Add all the component choices to the global choice list
+  if (new_component->json.contains("choices"))
+    for (auto &[choice_name, value]: new_component->json["choices"].items()) {
+      if (!project_summary["choices"].contains(choice_name)) {
+        unprocessed_choices.insert(choice_name);
+        project_summary["choices"][choice_name]           = value;
+        project_summary["choices"][choice_name]["parent"] = new_component->id;
+      }
+    }
+
+  // for (const auto& c: new_component->json["replaces"]["component"]) {
+  if (new_component->json.contains("/replaces/component"_json_pointer)) {
+    const auto &replaced = new_component->json["replaces"]["component"].get<std::string>();
+
+    if (replacements.contains(replaced)) {
+      if (replacements[replaced] != component_id) {
+        spdlog::error("Multiple components replacing {}", replaced);
+        current_state = project::state::PROJECT_HAS_MULTIPLE_REPLACEMENTS;
+        return false;
+      }
+    } else {
+      spdlog::info("{} replaces {}", component_id, replaced);
+      unprocessed_replacements.insert({ replaced, component_id });
+    }
+  }
+
+  // Process all the currently required features. Note new feature will be processed in the features pass
+  if (new_component->json.contains("/supports/features"_json_pointer)) {
+    for (auto &f: required_features)
+      if (new_component->json["supports"]["features"].contains(f)) {
+        spdlog::info("Processing required feature '{}' in {}", f, component_id);
+        process_requirements(new_component, new_component->json["supports"]["features"][f]);
+      }
+  }
+  if (new_component->json.contains("/supports/components"_json_pointer)) {
+    // Process the new components support for all the currently required components
+    for (auto &c: required_components)
+      if (new_component->json["supports"]["components"].contains(c)) {
+        spdlog::info("Processing required component '{}' in {}", c, component_id);
+        process_requirements(new_component, new_component->json["supports"]["components"][c]);
+      }
+  }
+
+  // Process all the existing components support for the new component
+  for (auto &c: components)
+    if (c->json.contains("/supports/components"_json_pointer / component_id)) {
+      // if (c->json.contains("supports") && c->json["supports"].contains("components") && c->json["supports"]["components"].contains(component_id)) {
+      spdlog::info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
+      process_requirements(c, c->json["supports"]["components"][component_id]);
+    }
+
+  return true;
+}
+
+bool project::add_feature(const std::string &feature_name)
+{
+  // Insert feature and continue if this is not new
+  if (required_features.insert(feature_name).second == false)
+    return false;
+
+  // Process the feature "supports" for each existing component
+  for (auto &c: components)
+    if (c->json.contains("/supports/features"_json_pointer / feature_name)) {
+      // if (c->json.contains("supports") && c->json["supports"].contains("features") && c->json["supports"]["features"].contains(f)) {
+      spdlog::info("Processing feature '{}' in {}", feature_name, c->json["name"].get<std::string>());
+      process_requirements(c, c->json["supports"]["features"][feature_name]);
+    }
+
+  return true;
+}
+
 /**
  * @brief Processes all the @ref unprocessed_components and @ref unprocessed_features, adding items to @ref unknown_components if they are not in the component database
  *        It is assumed the caller will process the @ref unknown_components before adding them back to @ref unprocessed_component and calling this again.
@@ -208,8 +375,7 @@ void project::update_summary()
  */
 project::state project::evaluate_dependencies()
 {
-  std::unordered_map<std::string, std::string> new_replacements;
-  bool project_has_slcc = false;
+  //project_has_slcc = false;
 
   // Start processing all the required components and features
   while (!unprocessed_components.empty() || !unprocessed_features.empty()) {
@@ -217,164 +383,18 @@ project::state project::evaluate_dependencies()
     // Note: Items will be added to unprocessed_components during processing
     component_list_t temp_component_list = std::move(unprocessed_components);
     for (const auto &i: temp_component_list) {
-      // Convert string to id
-      const auto component_id = yakka::component_dotname_to_id(i);
-
-      // Check if component has been replaced
-      if (replacements.contains(component_id)) {
-        spdlog::info("Skipping {}. Being replaced by {}", component_id, replacements[component_id]);
-        unprocessed_components.insert(replacements[component_id]);
-        continue;
+      // Try add the component
+      if (!add_component(i)) {
+        if (current_state != yakka::project::state::PROJECT_VALID)
+          return current_state;
       }
-
-      // Find the component in the project component database
-      auto component_location = workspace.find_component(component_id, component_flags);
-      if (!component_location) {
-        // spdlog::info("{}: Couldn't find it", c);
-        unknown_components.insert(component_id);
-        continue;
-      }
-
-      // Add component to the required list and continue if this is not a new component
-      // Insert component and continue if this is not new
-      if (required_components.insert(component_id).second == false)
-        continue;
-
-      auto [component_path, package_path]             = component_location.value();
-      std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
-      if (new_component->parse_file(component_path, package_path) == yakka::yakka_status::SUCCESS)
-        components.push_back(new_component);
-      else
-        return project::state::PROJECT_HAS_INVALID_COMPONENT;
-
-      // Add special processing of SLC related files
-      if (new_component->type == yakka::component::SLCC_FILE) {
-        project_has_slcc = true;
-        unprocessed_components.insert("jinja");
-        for (const auto &f: new_component->json["requires"]["features"])
-          slc_required.insert(f.get<std::string>());
-        for (const auto &f: new_component->json["provides"]["features"])
-          slc_provided.insert(f.get<std::string>());
-        for (const auto &r: new_component->json["recommends"]) {
-          auto id        = r["id"].get<std::string>();
-          auto start_pos = id.find('%');
-          auto end_pos   = id.rfind('%');
-          if (start_pos != std::string::npos && end_pos != std::string::npos && start_pos < end_pos)
-            id.erase(start_pos, end_pos - start_pos + 1);
-          slc_recommended.insert({ id, r });
-        }
-        for (const auto &[key, instance_list]: new_component->json["instances"].items())
-          for (const auto &i: instance_list)
-            this->instances.insert({ key, i.get<std::string>() });
-        // Extract config overrides
-        for (const auto &c: new_component->json["config_file"])
-          if (c.contains("override")) {
-            slc_overrides.insert({ c["override"]["file_id"].get<std::string>(), new_component });
-          }
-
-      } else if (new_component->type == yakka::component::SLCP_FILE) {
-        unprocessed_components.insert("jinja");
-        for (const auto &f: new_component->json["requires"]["features"])
-          slc_required.insert(f.get<std::string>());
-        for (const auto &r: new_component->json["recommends"]) {
-          auto id        = r["id"].get<std::string>();
-          auto start_pos = id.find('%');
-          auto end_pos   = id.rfind('%');
-          if (start_pos != std::string::npos && end_pos != std::string::npos && start_pos < end_pos)
-            id.erase(start_pos, end_pos - start_pos + 1);
-          slc_recommended.insert({ id, r });
-        }
-        for (const auto &[key, instance_list]: new_component->json["instances"].items())
-          for (const auto &i: instance_list)
-            this->instances.insert({ key, i.get<std::string>() });
-      }
-
-      // Add all the required components into the unprocessed list
-      if (new_component->json.contains("/requires/components"_json_pointer))
-        for (const auto &r: new_component->json["requires"]["components"]) {
-          unprocessed_components.insert(r.get<std::string>());
-          if (r.contains("instance")) {
-            for (const auto &i: r["instance"])
-              instances.insert({ r.get<std::string>(), i.get<std::string>() });
-          }
-        }
-
-      // Add all the required features into the unprocessed list
-      if (new_component->json.contains("/requires/features"_json_pointer))
-        for (const auto &f: new_component->json["requires"]["features"])
-          unprocessed_features.insert(f.get<std::string>());
-
-      // Add all the provided features into the unprocessed list
-      if (new_component->json.contains("/provides/features"_json_pointer))
-        for (const auto &f: new_component->json["provides"]["features"])
-          unprocessed_features.insert(f.get<std::string>());
-
-      // Add all the component choices to the global choice list
-      if (new_component->json.contains("choices"))
-        for (auto &[choice_name, value]: new_component->json["choices"].items()) {
-          if (!project_summary["choices"].contains(choice_name)) {
-            unprocessed_choices.insert(choice_name);
-            project_summary["choices"][choice_name]           = value;
-            project_summary["choices"][choice_name]["parent"] = new_component->id;
-          }
-        }
-
-      // for (const auto& c: new_component->json["replaces"]["component"]) {
-      if (new_component->json.contains("/replaces/component"_json_pointer)) {
-        const auto &replaced = new_component->json["replaces"]["component"].get<std::string>();
-
-        if (replacements.contains(replaced)) {
-          if (replacements[replaced] != component_id) {
-            spdlog::error("Multiple components replacing {}", replaced);
-            return project::state::PROJECT_HAS_MULTIPLE_REPLACEMENTS;
-          }
-        } else {
-          spdlog::info("{} replaces {}", component_id, replaced);
-          new_replacements.insert({ replaced, component_id });
-        }
-      }
-
-      // Process all the currently required features. Note new feature will be processed in the features pass
-      if (new_component->json.contains("/supports/features"_json_pointer)) {
-        for (auto &f: required_features)
-          if (new_component->json["supports"]["features"].contains(f)) {
-            spdlog::info("Processing required feature '{}' in {}", f, component_id);
-            process_requirements(new_component, new_component->json["supports"]["features"][f]);
-          }
-      }
-      if (new_component->json.contains("/supports/components"_json_pointer)) {
-        // Process the new components support for all the currently required components
-        for (auto &c: required_components)
-          if (new_component->json["supports"]["components"].contains(c)) {
-            spdlog::info("Processing required component '{}' in {}", c, component_id);
-            process_requirements(new_component, new_component->json["supports"]["components"][c]);
-          }
-      }
-
-      // Process all the existing components support for the new component
-      for (auto &c: components)
-        if (c->json.contains("/supports/components"_json_pointer / component_id)) {
-          // if (c->json.contains("supports") && c->json["supports"].contains("components") && c->json["supports"]["components"].contains(component_id)) {
-          spdlog::info("Processing component '{}' in {}", component_id, c->json["name"].get<std::string>());
-          process_requirements(c, c->json["supports"]["components"][component_id]);
-        }
     }
 
     // Process all the new features
     // Note: Items will be added to unprocessed_features during processing
     feature_list_t temp_feature_list = std::move(unprocessed_features);
     for (const auto &f: temp_feature_list) {
-      // Insert feature and continue if this is not new
-      if (required_features.insert(f).second == false)
-        continue;
-
-      // Process the feature "supports" for each existing component
-      for (auto &c: components)
-        if (c->json.contains("/supports/features"_json_pointer / f)) {
-          // if (c->json.contains("supports") && c->json["supports"].contains("features") && c->json["supports"]["features"].contains(f)) {
-          spdlog::info("Processing feature '{}' in {}", f, c->json["name"].get<std::string>());
-          process_requirements(c, c->json["supports"]["features"][f]);
-        }
+      add_feature(f);
     }
 
     // Check if we have finished but we have unprocessed choices
@@ -412,14 +432,14 @@ project::state project::evaluate_dependencies()
     }
 
     // Check if we have finished but we've come across replaced components
-    if (unprocessed_components.empty() && unprocessed_features.empty() && new_replacements.size() != 0) {
+    if (unprocessed_components.empty() && unprocessed_features.empty() && unprocessed_replacements.size() != 0) {
       // move new replacements
-      for (const auto &[replacement, id]: new_replacements) {
+      for (const auto &[replacement, id]: unprocessed_replacements) {
         spdlog::info("Adding {} to replaced_components", replacement);
         // replaced_components.insert(replacement);
         replacements.insert({ replacement, id });
       }
-      new_replacements.clear();
+      unprocessed_replacements.clear();
 
       // Restart the whole process
       required_features.clear();
@@ -502,7 +522,7 @@ project::state project::evaluate_dependencies()
 
         auto feature_node = f.value();
         bool resolved     = false;
-        std::vector<std::string> possible_options;
+        std::unordered_set<std::string> possible_options;
         if (feature_node.size() > 1) {
           // Check if any of the options is recommended
           for (const auto &option: feature_node) {
@@ -523,7 +543,7 @@ project::state project::evaluate_dependencies()
                 resolved = true;
                 break;
               } else {
-                possible_options.push_back(name);
+                possible_options.insert(name);
               }
 
             } else if (slc_recommended.contains(option.get<std::string>())) {
@@ -538,18 +558,20 @@ project::state project::evaluate_dependencies()
               resolved = true;
               break;
             } else {
-              possible_options.push_back(option.get<std::string>());
+              possible_options.insert(option.get<std::string>());
             }
           }
 
-          if (resolved == false && possible_options.size() == 1) {
-            const auto name = possible_options.front();
-            spdlog::info("Adding component '{}' to satisfy '{}'", name, r);
-            unprocessed_components.insert(name);
-            resolved = true;
+          if (resolved == false) {
+            if (possible_options.size() == 1) {
+              const auto name = *possible_options.begin();
+              spdlog::info("Adding component '{}' to satisfy '{}'", name, r);
+              unprocessed_components.insert(name);
+              resolved = true;
+            }
           }
 
-          if (!resolved)
+          if (resolved == false)
             slc_required.insert(r);
         }
       }
