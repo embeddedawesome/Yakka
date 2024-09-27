@@ -700,7 +700,15 @@ void project::generate_target_database()
           target_database.targets.insert({ t, m });
 
           // Check if the blueprint has additional requirements
-          if (m->blueprint.requirements)
+          if (m->blueprint->requirements.size() != 0)
+            for (const auto& t: m->blueprint->requirements) {
+              const auto p = workspace.find_component(t);
+              if (p.has_value()) {
+                auto [component_path, db_path] = p.value();
+                this->add_additional_tool(component_path);
+              }
+            }
+          
         }
       }
       auto tasks = target_database.targets.equal_range(t);
