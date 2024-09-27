@@ -669,7 +669,7 @@ void project::generate_project_summary()
  */
 void project::process_blueprints()
 {
-  for (const auto& c: components)
+  for (const auto &c: components)
     process_blueprints(c);
 }
 
@@ -695,8 +695,13 @@ void project::generate_target_database()
       // Check if target is not in the database. Note task_database is a multimap
       if (target_database.targets.find(t) == target_database.targets.end()) {
         const auto match = blueprint_database.find_match(t, this->project_summary);
-        for (const auto &m: match)
+        for (const auto &m: match) {
+          // Add an entry to the database
           target_database.targets.insert({ t, m });
+
+          // Check if the blueprint has additional requirements
+          if (m->blueprint.requirements)
+        }
       }
       auto tasks = target_database.targets.equal_range(t);
 

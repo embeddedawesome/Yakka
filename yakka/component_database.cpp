@@ -122,7 +122,11 @@ void component_database::scan_for_components(fs::path search_start_path)
       add_component(component_id, p);
     } else if (extension == slcc_component_extension) {
       spdlog::info("Found {}", p.string());
-      parse_slcc_file(p);
+      try {
+        parse_slcc_file(p);
+      } catch (std::exception &e) {
+        spdlog::error("Error parsing {}: {}", p.string(), e.what());
+      }
     }
   };
 

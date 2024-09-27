@@ -10,6 +10,10 @@ blueprint::blueprint(const std::string &target, const nlohmann::json &blueprint,
   if (blueprint.contains("regex"))
     this->regex = blueprint["regex"].get<std::string>();
 
+  if (blueprint.contains("requires"))
+    for (auto &d: blueprint["requires"])
+      this->requirements.push_back(d.get<std::string>());
+
   if (blueprint.contains("depends"))
     for (auto &d: blueprint["depends"]) {
       if (d.is_primitive())
