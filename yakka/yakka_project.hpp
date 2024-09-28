@@ -100,6 +100,7 @@ public:
   std::unordered_map<std::string, std::string> replacements;
   std::unordered_set<std::string> required_components;
   std::unordered_set<std::string> required_features;
+  std::unordered_set<std::string> additional_tools;
   std::unordered_set<std::string> commands;
   std::unordered_set<std::string> unknown_components;
   std::vector<std::pair<std::string, std::string>> incomplete_choices;
