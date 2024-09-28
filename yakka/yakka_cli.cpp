@@ -96,6 +96,14 @@ int main(int argc, char **argv)
     std::cout << "Scanning '.' for components\n";
     workspace.local_database.scan_for_components();
     workspace.local_database.save();
+
+    for (auto &db: workspace.package_databases) {
+      std::cout << "Scanning '" << db.get_path().string() << "' for components\n";
+      db.erase();
+      db.clear();
+      db.scan_for_components();
+      db.save();
+    }
     std::cout << "Scan complete.\n";
   }
 
