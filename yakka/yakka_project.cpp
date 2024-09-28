@@ -702,6 +702,8 @@ void project::generate_target_database()
           // Check if the blueprint has additional requirements
           if (m->blueprint->requirements.size() != 0)
             for (const auto& t: m->blueprint->requirements) {
+              if (additional_tools.contains(t))
+                continue;
               const auto p = workspace.find_component(t);
               if (p.has_value()) {
                 auto [component_path, db_path] = p.value();
@@ -1636,6 +1638,7 @@ void project::add_additional_tool(const fs::path component_path)
 
   // Add component to project
   components.push_back(tool_component);
+  additional_tools.insert(tool_component->id);
 }
 
 } /* namespace yakka */
