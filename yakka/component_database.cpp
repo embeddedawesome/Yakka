@@ -78,6 +78,8 @@ void component_database::clear()
 
 bool component_database::add_component(std::string component_id, fs::path path)
 {
+  path = fs::absolute(path);
+
   if (!fs::exists(path))
     return false;
 
@@ -198,8 +200,13 @@ fs::path component_database::get_component(const std::string id, flag flags) con
         continue;
       if (flags == flag::IGNORE_YAKKA && extension == yakka_component_extension)
         continue;
-      if (fs::exists(path))
+      if (fs::exists(path)) {
         return path;
+      }
+      else {
+        spdlog::error("Couldn't find {}", path.string());
+        return {};
+      }
     }
   }
 
