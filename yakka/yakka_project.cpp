@@ -235,8 +235,11 @@ bool project::add_component(const std::string &component_name)
     return false;
   }
 
-  // Add special processing of SLC related files
-  if (new_component->type == yakka::component::SLCC_FILE) {
+  // Add special processing of SLC related files and data
+  if (new_component->type == yakka::component::YAKKA_FILE) {
+    for (const auto &f: new_component->json["requires"]["slc"])
+      slc_required.insert(f.get<std::string>());
+  } else if (new_component->type == yakka::component::SLCC_FILE) {
     project_has_slcc = true;
     unprocessed_components.insert("jinja");
     for (const auto &f: new_component->json["requires"]["features"])
@@ -307,7 +310,6 @@ bool project::add_component(const std::string &component_name)
       }
     }
 
-  // for (const auto& c: new_component->json["replaces"]["component"]) {
   if (new_component->json.contains("/replaces/component"_json_pointer)) {
     const auto &replaced = new_component->json["replaces"]["component"].get<std::string>();
 
@@ -460,7 +462,7 @@ project::state project::evaluate_dependencies()
     }
 
     // Check if we have finished but our project is using SLCC files
-    if (unprocessed_components.empty() && unprocessed_features.empty() && project_has_slcc) {
+    if (unprocessed_components.empty() && unprocessed_features.empty() && component_flags != component_database::flag::IGNORE_SLCC) {
       // Find any features that aren't provided
       std::unordered_set<std::string> temp_require_list = std::move(slc_required);
       for (const auto &r: temp_require_list) {
@@ -512,7 +514,7 @@ project::state project::evaluate_dependencies()
     }
 
     // If there are no resolutions found for missing features or components, look at any recommendations
-    if (unprocessed_components.empty() && unprocessed_features.empty() && project_has_slcc) {
+    if (unprocessed_components.empty() && unprocessed_features.empty() && component_flags != component_database::flag::IGNORE_SLCC) {
       // Find any features that aren't provided
       std::unordered_set<std::string> temp_require_list = std::move(slc_required);
       for (const auto &r: temp_require_list) {
@@ -701,7 +703,7 @@ void project::generate_target_database()
 
           // Check if the blueprint has additional requirements
           if (m->blueprint->requirements.size() != 0)
-            for (const auto& t: m->blueprint->requirements) {
+            for (const auto &t: m->blueprint->requirements) {
               if (additional_tools.contains(t))
                 continue;
               const auto p = workspace.find_component(t);
@@ -710,7 +712,6 @@ void project::generate_target_database()
                 this->add_additional_tool(component_path);
               }
             }
-          
         }
       }
       auto tasks = target_database.targets.equal_range(t);
