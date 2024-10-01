@@ -80,7 +80,7 @@ int main(int argc, char **argv)
                        ("d,data", "Additional data", cxxopts::value<std::string>())
                        ("no-slcc", "Ignore SLC files", cxxopts::value<bool>()->default_value("false"))
                        ("no-yakka", "Ignore Yakka files", cxxopts::value<bool>()->default_value("false"))
-                       ("action", "Select from 'register', 'list', 'update', 'git', 'remove' or a command", cxxopts::value<std::string>());
+                       ("action", "Select from 'register', 'list', 'update', 'git', 'remove', 'fetch' or a command", cxxopts::value<std::string>());
   // clang-format on
 
   options.parse_positional({ "action" });
@@ -172,6 +172,19 @@ int main(int argc, char **argv)
 
     auto [output, result] = yakka::exec("git", git_command);
     std::cout << output;
+    return 0;
+  } else if (action == "fetch") {
+    yakka::project project("", workspace);
+    // Identify components named on command line and add to unknown components
+    for (auto s: result.unmatched()) {
+      if (s.front() == '+' || s.back() == '!')
+        continue;
+      else
+        project.unknown_components.insert(s);
+    }
+
+    // Fetch the components
+    download_unknown_components(workspace, project);
     return 0;
   } else if (action.back() != '!') {
     std::cout << "Must provide an action or a command (commands end with !)\n";
