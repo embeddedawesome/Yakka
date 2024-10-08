@@ -134,8 +134,12 @@ void component::convert_to_yakka()
         component_path = file_path.parent_path();
       else
         component_path = "./";
-    else
-      component_path = package_path;
+    else {
+      if (this->type == SLCP_FILE)
+        component_path = file_path.parent_path();
+      else
+        component_path = package_path;
+    }
   }
   json["directory"] = component_path.string();
 
