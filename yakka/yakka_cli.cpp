@@ -423,7 +423,7 @@ void run_taskflow(yakka::project &project)
   auto execution_future = executor.run(project.taskflow);
 
   do {
-    for (const auto i: project.todo_task_groups) {
+    for (const auto &i: project.todo_task_groups) {
       if (i.second->current_count != i.second->last_progress_update) {
         task_progress_ui[i.second->ui_id].set_option(option::PostfixText{ std::to_string(i.second->current_count) + "/" + std::to_string(i.second->total_count) });
         task_progress_ui[i.second->ui_id].set_progress((100 * i.second->current_count) / i.second->total_count);
@@ -435,7 +435,7 @@ void run_taskflow(yakka::project &project)
     }
   } while (execution_future.wait_for(500ms) != std::future_status::ready);
 
-  for (const auto i: project.todo_task_groups) {
+  for (const auto &i: project.todo_task_groups) {
     task_progress_ui[i.second->ui_id].set_option(option::PostfixText{ std::to_string(i.second->current_count) + "/" + std::to_string(i.second->total_count) });
     task_progress_ui[i.second->ui_id].set_progress((100 * i.second->current_count) / i.second->total_count);
   }
