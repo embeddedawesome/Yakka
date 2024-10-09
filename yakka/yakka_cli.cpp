@@ -398,7 +398,6 @@ int main(int argc, char **argv)
 
 void run_taskflow(yakka::project &project)
 {
-  int last_progress_update = 0;
   tf::Executor executor(std::min(32U, std::thread::hardware_concurrency()));
   project.todo_task_groups["Processing"] = std::make_shared<yakka::task_group>("Processing");
   auto finish                            = project.taskflow.emplace([&]() {
