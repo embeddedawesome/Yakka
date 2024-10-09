@@ -67,6 +67,8 @@ class schema_validator {
           properties:
             regex:
               type: string
+            group:
+              type: string
             depends:
               type: array
             process:

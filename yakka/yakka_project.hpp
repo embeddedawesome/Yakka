@@ -25,10 +25,27 @@ const std::string default_output_directory = "output/";
 
 typedef std::function<yakka::process_return(std::string, const nlohmann::json &, std::string, const nlohmann::json &, inja::Environment &)> blueprint_command;
 
+struct task_group {
+  std::string name;
+  int total_count;
+  std::atomic<int> current_count;
+  size_t ui_id;
+  int last_progress_update;
+
+  task_group(const std::string name) : name(name)
+  {
+    total_count          = 0;
+    current_count        = 0;
+    ui_id                = 0;
+    last_progress_update = 0;
+  }
+};
+
 struct construction_task {
   std::shared_ptr<blueprint_match> match;
   fs::file_time_type last_modified;
   tf::Task task;
+  std::shared_ptr<task_group> group;
   // construction_task_state state;
   // std::future<std::pair<std::string, int>> thread_result;
 
@@ -58,11 +75,11 @@ public:
   //std::optional<fs::path> find_component(const std::string component_dotname);
   void evaluate_choices();
   void add_additional_tool(const fs::path component_path);
-  
+
   // Component processing functions
   void process_tools(const std::shared_ptr<component> c);
   void process_blueprints(const std::shared_ptr<component> c);
-  
+
   void process_blueprints();
   void update_summary();
   void generate_project_summary();
@@ -126,12 +143,14 @@ public:
   inja::Environment inja_environment;
   //std::multimap<std::string, std::shared_ptr<blueprint_match> > target_database;
   std::multimap<std::string, construction_task> todo_list;
-  int work_task_count;
+  // int work_task_count;
+  std::map<std::string, std::shared_ptr<task_group>> todo_task_groups;
+
   tf::Taskflow taskflow;
   std::atomic<bool> abort_build;
 
   std::map<std::string, blueprint_command> blueprint_commands;
-  std::function<void()> task_complete_handler;
+  std::function<void(std::shared_ptr<task_group> group)> task_complete_handler;
 
   // SLC specific
   nlohmann::json template_contributions;

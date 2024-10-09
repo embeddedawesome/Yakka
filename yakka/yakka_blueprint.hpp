@@ -25,6 +25,7 @@ struct blueprint {
   std::vector<dependency> dependencies; // Unprocessed dependencies. Raw values as found in the YAML.
   nlohmann::json process;
   std::string parent_path;
+  std::string task_group;
 
   blueprint(const std::string &target, const nlohmann::json &blueprint, const std::string &parent_path);
 };

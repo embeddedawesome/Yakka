@@ -398,34 +398,47 @@ int main(int argc, char **argv)
 
 void run_taskflow(yakka::project &project)
 {
-  project.work_task_count             = 0;
-  std::atomic<int> execution_progress = 0;
-  int last_progress_update            = 0;
+  int last_progress_update = 0;
   tf::Executor executor(std::min(32U, std::thread::hardware_concurrency()));
-  auto finish = project.taskflow.emplace([&]() {
-    execution_progress = 100;
+  project.todo_task_groups["Processing"] = std::make_shared<yakka::task_group>("Processing");
+  auto finish                            = project.taskflow.emplace([&]() {
+    // execution_progress = 100;
   });
   for (auto &i: project.commands)
     project.create_tasks(i, finish);
 
-  ProgressBar building_bar{ option::BarWidth{ 50 }, option::ShowPercentage{ true }, option::PrefixText{ "Building " }, option::MaxProgress{ project.work_task_count } };
+  DynamicProgress<ProgressBar> task_progress_ui;
+  std::vector<std::shared_ptr<ProgressBar>> task_progress_bars;
+  for (auto &i: project.todo_task_groups) {
+    std::shared_ptr<ProgressBar> new_task_bar = std::make_shared<ProgressBar>(option::BarWidth{ 50 }, option::ShowPercentage{ true }, option::PrefixText{ i.second->name }, option::MaxProgress{ i.second->current_count });
+    task_progress_bars.push_back(new_task_bar);
+    i.second->ui_id = task_progress_ui.push_back(*new_task_bar);
+  }
 
-  project.task_complete_handler = [&]() {
-    ++execution_progress;
+  project.task_complete_handler = [&](std::shared_ptr<yakka::task_group> group) {
+    ++group->current_count;
+    // ++execution_progress;
   };
 
   auto execution_future = executor.run(project.taskflow);
 
   do {
-    if (execution_progress != last_progress_update) {
-      building_bar.set_option(option::PostfixText{ std::to_string(execution_progress) + "/" + std::to_string(project.work_task_count) });
-      building_bar.set_progress(execution_progress);
-      last_progress_update = execution_progress;
+    for (const auto i: project.todo_task_groups) {
+      if (i.second->current_count != i.second->last_progress_update) {
+        task_progress_ui[i.second->ui_id].set_option(option::PostfixText{ std::to_string(i.second->current_count) + "/" + std::to_string(i.second->total_count) });
+        task_progress_ui[i.second->ui_id].set_progress((100 * i.second->current_count) / i.second->total_count);
+        i.second->last_progress_update = i.second->current_count;
+        if (i.second->current_count == i.second->total_count) {
+          task_progress_ui[i.second->ui_id].mark_as_completed();
+        }
+      }
     }
   } while (execution_future.wait_for(500ms) != std::future_status::ready);
 
-  building_bar.set_option(option::PostfixText{ std::to_string(project.work_task_count) + "/" + std::to_string(project.work_task_count) });
-  building_bar.set_progress(project.work_task_count);
+  for (const auto i: project.todo_task_groups) {
+    task_progress_ui[i.second->ui_id].set_option(option::PostfixText{ std::to_string(i.second->current_count) + "/" + std::to_string(i.second->total_count) });
+    task_progress_ui[i.second->ui_id].set_progress((100 * i.second->current_count) / i.second->total_count);
+  }
 }
 
 static void download_unknown_components(yakka::workspace &workspace, yakka::project &project)

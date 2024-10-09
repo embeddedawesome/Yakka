@@ -33,5 +33,8 @@ blueprint::blueprint(const std::string &target, const nlohmann::json &blueprint,
 
   if (blueprint.contains("process"))
     process = blueprint["process"];
+
+  if (blueprint.contains("group"))
+    this->task_group = blueprint["group"].get<std::string>();
 }
 } // namespace yakka

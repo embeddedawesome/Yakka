@@ -15,9 +15,10 @@ using namespace std::chrono_literals;
 
 project::project(const std::string project_name, yakka::workspace &workspace) : project_name(project_name), yakka_home_directory("/.yakka"), project_directory("."), workspace(workspace)
 {
-  this->abort_build     = false;
-  this->current_state   = yakka::project::state::PROJECT_VALID;
-  this->component_flags = component_database::flag::ALL_COMPONENTS;
+  abort_build      = false;
+  project_has_slcc = false;
+  current_state    = yakka::project::state::PROJECT_VALID;
+  component_flags  = component_database::flag::ALL_COMPONENTS;
 }
 
 project::~project()
@@ -1191,10 +1192,22 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
 
   for (auto i = targets.first; i != targets.second; ++i) {
     // spdlog::info("{}: Not a leaf node", target_name);
-    ++work_task_count;
+    // ++work_task_count;
     auto new_todo          = todo_list.insert(std::make_pair(target_name, construction_task()));
     new_todo->second.match = i->second;
-    auto task              = taskflow.placeholder();
+    if (i->second->blueprint->task_group.empty()) {
+      new_todo->second.group = todo_task_groups["Processing"];
+    } else {
+      if (todo_task_groups.contains(i->second->blueprint->task_group))
+        new_todo->second.group = todo_task_groups[i->second->blueprint->task_group];
+      else {
+        new_todo->second.group                             = std::make_shared<yakka::task_group>(i->second->blueprint->task_group);
+        todo_task_groups[i->second->blueprint->task_group] = new_todo->second.group;
+      }
+    }
+    ++new_todo->second.group->total_count;
+
+    auto task = taskflow.placeholder();
     task.data(&new_todo->second).work([=, this]() {
       if (abort_build)
         return;
@@ -1251,7 +1264,7 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
       }
       if (task_complete_handler) {
         // spdlog::info("{} complete", target_name);
-        task_complete_handler();
+        task_complete_handler(d->group);
       }
 
       return;
