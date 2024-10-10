@@ -200,10 +200,12 @@ fs::path component_database::get_component(const std::string id, flag flags) con
         continue;
       if (flags == flag::IGNORE_YAKKA && extension == yakka_component_extension)
         continue;
+      // If there is an SLCP and there is more than one entry, ignore the SLCP
+      if (extension == slcp_component_extension && node.size() > 1)
+        continue;
       if (fs::exists(path)) {
         return path;
-      }
-      else {
+      } else {
         spdlog::error("Couldn't find {}", path.string());
         return {};
       }
