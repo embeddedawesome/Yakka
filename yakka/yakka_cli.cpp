@@ -409,7 +409,7 @@ void run_taskflow(yakka::project &project)
   DynamicProgress<ProgressBar> task_progress_ui;
   std::vector<std::shared_ptr<ProgressBar>> task_progress_bars;
   for (auto &i: project.todo_task_groups) {
-    std::shared_ptr<ProgressBar> new_task_bar = std::make_shared<ProgressBar>(option::BarWidth{ 50 }, option::ShowPercentage{ true }, option::PrefixText{ i.second->name }, option::MaxProgress{ i.second->current_count });
+    std::shared_ptr<ProgressBar> new_task_bar = std::make_shared<ProgressBar>(option::BarWidth{ 50 }, option::ShowPercentage{ true }, option::PrefixText{ i.second->name }, option::MaxProgress{ i.second->total_count });
     task_progress_bars.push_back(new_task_bar);
     i.second->ui_id = task_progress_ui.push_back(*new_task_bar);
   }
@@ -425,7 +425,8 @@ void run_taskflow(yakka::project &project)
     for (const auto &i: project.todo_task_groups) {
       if (i.second->current_count != i.second->last_progress_update) {
         task_progress_ui[i.second->ui_id].set_option(option::PostfixText{ std::to_string(i.second->current_count) + "/" + std::to_string(i.second->total_count) });
-        task_progress_ui[i.second->ui_id].set_progress((100 * i.second->current_count) / i.second->total_count);
+        size_t new_progress = (100 * i.second->current_count) / i.second->total_count;
+        task_progress_ui[i.second->ui_id].set_progress(new_progress);
         i.second->last_progress_update = i.second->current_count;
         if (i.second->current_count == i.second->total_count) {
           task_progress_ui[i.second->ui_id].mark_as_completed();
