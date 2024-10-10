@@ -535,7 +535,7 @@ project::state project::evaluate_dependencies()
               if (!condition_is_fulfilled(option) || is_disqualified_by_unless(option))
                 continue;
 
-              if (slc_recommended.contains(name)) {
+              if (slc_recommended.contains(name) && condition_is_fulfilled(slc_recommended[name]) && !is_disqualified_by_unless(slc_recommended[name])) {
                 spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
                 const auto recommend_node = slc_recommended[name];
                 if (recommend_node.contains("instance")) {
@@ -549,7 +549,7 @@ project::state project::evaluate_dependencies()
                 possible_options.insert(name);
               }
 
-            } else if (slc_recommended.contains(option.get<std::string>())) {
+            } else if (slc_recommended.contains(option.get<std::string>()) && condition_is_fulfilled(slc_recommended[option.get<std::string>()]) && !is_disqualified_by_unless(slc_recommended[option.get<std::string>()])) {
               const auto name = option.get<std::string>();
               spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
               const auto recommend_node = slc_recommended[name];
