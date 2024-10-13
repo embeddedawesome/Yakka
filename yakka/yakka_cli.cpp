@@ -425,8 +425,8 @@ void run_taskflow(yakka::project &project)
     for (const auto &i: project.todo_task_groups) {
       if (i.second->current_count != i.second->last_progress_update) {
         task_progress_ui[i.second->ui_id].set_option(option::PostfixText{ std::to_string(i.second->current_count) + "/" + std::to_string(i.second->total_count) });
-        size_t new_progress = (100 * i.second->current_count) / i.second->total_count;
-        task_progress_ui[i.second->ui_id].set_progress(new_progress);
+        //size_t new_progress = (100 * i.second->current_count) / i.second->total_count;
+        task_progress_ui[i.second->ui_id].set_progress(i.second->current_count);
         i.second->last_progress_update = i.second->current_count;
         if (i.second->current_count == i.second->total_count) {
           task_progress_ui[i.second->ui_id].mark_as_completed();
@@ -437,8 +437,9 @@ void run_taskflow(yakka::project &project)
 
   for (const auto &i: project.todo_task_groups) {
     task_progress_ui[i.second->ui_id].set_option(option::PostfixText{ std::to_string(i.second->current_count) + "/" + std::to_string(i.second->total_count) });
-    task_progress_ui[i.second->ui_id].set_progress((100 * i.second->current_count) / i.second->total_count);
+    task_progress_ui[i.second->ui_id].set_progress(i.second->current_count);
   }
+  task_progress_ui.print_progress();
 }
 
 static void download_unknown_components(yakka::workspace &workspace, yakka::project &project)
