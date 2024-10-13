@@ -1545,7 +1545,9 @@ void project::process_slc_rules()
           add_generated_item(c->json);
 
           // Create blueprints
-          nlohmann::json blueprint = { { "process", nullptr } };
+          nlohmann::json blueprint = { {"depends", nullptr}, { "process", nullptr } };
+          blueprint["depends"].push_back({{c->json["directory"].get<std::string>() + "/" + template_file.string()}});
+          blueprint["depends"].push_back({{"{{project_output}}/template_contributions.json"}});
           blueprint["process"].push_back({ { "jinja", "-t " + c->json["directory"].get<std::string>() + "/" + template_file.string() + " -d {{project_output}}/template_contributions.json" } });
           blueprint["process"].push_back({ { "save", nullptr } });
 
