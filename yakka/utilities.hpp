@@ -30,6 +30,7 @@ std::string try_render_file(inja::Environment &env, const std::string &filename,
 std::pair<std::string, int> download_resource(const std::string url, fs::path destination);
 nlohmann::json::json_pointer create_condition_pointer(const nlohmann::json condition);
 bool has_data_dependency_changed(std::string data_path, const nlohmann::json left, const nlohmann::json right);
+void add_common_template_commands(inja::Environment &inja_env);
 
 template <class CharContainer> static size_t get_file_contents(const std::string &filename, CharContainer *container)
 {

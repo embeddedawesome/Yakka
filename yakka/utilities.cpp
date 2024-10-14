@@ -325,19 +325,8 @@ std::string try_render_file(inja::Environment &env, const std::string &filename,
   }
 }
 
-std::pair<std::string, int> run_command(const std::string target, construction_task *task, project *project)
+void add_common_template_commands(inja::Environment &inja_env)
 {
-  std::string captured_output = "";
-  inja::Environment inja_env  = inja::Environment();
-  auto &blueprint             = task->match;
-
-  std::string curdir_path = blueprint->blueprint->parent_path;
-  inja_env.add_callback("$", 1, [&blueprint](const inja::Arguments &args) {
-    return blueprint->regex_matches[args[0]->get<int>()];
-  });
-  inja_env.add_callback("curdir", 0, [&](const inja::Arguments &args) {
-    return curdir_path;
-  });
   inja_env.add_callback("dir", 1, [](inja::Arguments &args) {
     auto path = std::filesystem::path{ args.at(0)->get<std::string>() }.relative_path();
     if (path.has_filename())
@@ -369,16 +358,6 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
   inja_env.add_callback("hex2dec", 1, [](const inja::Arguments &args) {
     return std::stoul(args[0]->get<std::string>(), nullptr, 16);
   });
-  inja_env.add_callback("render", 1, [&](const inja::Arguments &args) {
-    return try_render(inja_env, args[0]->get<std::string>(), project->project_summary);
-  });
-  inja_env.add_callback("render", 2, [&curdir_path, &inja_env, &project](const inja::Arguments &args) {
-    auto backup               = curdir_path;
-    curdir_path               = args[1]->get<std::string>();
-    std::string render_output = try_render(inja_env, args[0]->get<std::string>(), project->project_summary);
-    curdir_path               = backup;
-    return render_output;
-  });
   inja_env.add_callback("read_file", 1, [](const inja::Arguments &args) {
     auto file = std::ifstream(args[0]->get<std::string>());
     return std::string{ std::istreambuf_iterator<char>{ file }, {} };
@@ -391,6 +370,50 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
     std::ifstream file_stream(args[0]->get<std::string>());
     return nlohmann::json::parse(file_stream);
   });
+  inja_env.add_callback("quote", 1, [](const inja::Arguments &args) {
+    std::stringstream ss;
+    if (args[0]->is_string())
+      ss << std::quoted(args[0]->get<std::string>());
+    else if (args[0]->is_number_integer())
+      ss << std::quoted(std::to_string(args[0]->get<int>()));
+    else if (args[0]->is_number_float())
+      ss << std::quoted(std::to_string(args[0]->get<float>()));
+    return ss.str();
+  });
+  inja_env.add_callback("replace", 3, [](const inja::Arguments &args) {
+    auto input  = args[0]->get<std::string>();
+    auto target = std::regex(args[1]->get<std::string>());
+    auto match  = args[2]->get<std::string>();
+    return std::regex_replace(input, target, match);
+  });
+}
+
+std::pair<std::string, int> run_command(const std::string target, construction_task *task, project *project)
+{
+  std::string captured_output = "";
+  inja::Environment inja_env  = inja::Environment();
+  auto &blueprint             = task->match;
+  std::string curdir_path     = blueprint->blueprint->parent_path;
+
+  add_common_template_commands(inja_env);
+
+  inja_env.add_callback("$", 1, [&blueprint](const inja::Arguments &args) {
+    return blueprint->regex_matches[args[0]->get<int>()];
+  });
+  inja_env.add_callback("curdir", 0, [&](const inja::Arguments &args) {
+    return curdir_path;
+  });
+  inja_env.add_callback("render", 1, [&](const inja::Arguments &args) {
+    return try_render(inja_env, args[0]->get<std::string>(), project->project_summary);
+  });
+  inja_env.add_callback("render", 2, [&curdir_path, &inja_env, &project](const inja::Arguments &args) {
+    auto backup               = curdir_path;
+    curdir_path               = args[1]->get<std::string>();
+    std::string render_output = try_render(inja_env, args[0]->get<std::string>(), project->project_summary);
+    curdir_path               = backup;
+    return render_output;
+  });
+
   inja_env.add_callback("aggregate", 1, [&](const inja::Arguments &args) {
     nlohmann::json aggregate;
     auto path = json_pointer(args[0]->get<std::string>());
@@ -428,16 +451,6 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
         aggregate.push_back(inja_env.render(v.get<std::string>(), project->project_summary));
     }
     return aggregate;
-  });
-  inja_env.add_callback("quote", 1, [](const inja::Arguments &args) {
-    std::stringstream ss;
-    if (args[0]->is_string())
-      ss << std::quoted(args[0]->get<std::string>());
-    else if (args[0]->is_number_integer())
-      ss << std::quoted(std::to_string(args[0]->get<int>()));
-    else if (args[0]->is_number_float())
-      ss << std::quoted(std::to_string(args[0]->get<float>()));
-    return ss.str();
   });
 
   std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();

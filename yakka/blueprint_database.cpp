@@ -36,36 +36,14 @@ std::vector<std::shared_ptr<blueprint_match>> blueprint_database::find_match(con
     match->blueprint      = blueprint.second;
 
     inja::Environment local_inja_env;
+
+    add_common_template_commands(local_inja_env);
+
     local_inja_env.add_callback("$", 1, [&match](const inja::Arguments &args) {
       return match->regex_matches[args[0]->get<int>()];
     });
     local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments &args) {
       return match->blueprint->parent_path;
-    });
-    local_inja_env.add_callback("dir", 1, [](inja::Arguments &args) {
-      auto path = std::filesystem::path{ args.at(0)->get<std::string>() }.relative_path();
-      if (path.has_filename())
-        return path.parent_path().string();
-      else
-        return path.string();
-    });
-    local_inja_env.add_callback("glob", [](inja::Arguments &args) {
-      nlohmann::json aggregate = nlohmann::json::array();
-      std::vector<std::string> string_args;
-      for (const auto &i: args)
-        string_args.push_back(i->get<std::string>());
-      for (auto &p: glob::rglob(string_args))
-        aggregate.push_back(p.generic_string());
-      return aggregate;
-    });
-    local_inja_env.add_callback("notdir", 1, [](inja::Arguments &args) {
-      return std::filesystem::path{ args.at(0)->get<std::string>() }.filename();
-    });
-    local_inja_env.add_callback("absolute_dir", 1, [](inja::Arguments &args) {
-      return std::filesystem::absolute(args.at(0)->get<std::string>());
-    });
-    local_inja_env.add_callback("extension", 1, [](inja::Arguments &args) {
-      return std::filesystem::path{ args.at(0)->get<std::string>() }.extension().string().substr(1);
     });
     local_inja_env.add_callback("render", 1, [&](const inja::Arguments &args) {
       return local_inja_env.render(args[0]->get<std::string>(), project_summary);
@@ -81,18 +59,6 @@ std::vector<std::shared_ptr<blueprint_match>> blueprint_database::find_match(con
         }
       }
       return choice;
-    });
-    local_inja_env.add_callback("read_file", 1, [&](const inja::Arguments &args) {
-      auto file = std::ifstream(args[0]->get<std::string>());
-      return std::string{ std::istreambuf_iterator<char>{ file }, {} };
-    });
-    local_inja_env.add_callback("load_yaml", 1, [&](const inja::Arguments &args) {
-      auto yaml_data = YAML::LoadFile(args[0]->get<std::string>());
-      return yaml_data.as<nlohmann::json>();
-    });
-    local_inja_env.add_callback("load_json", 1, [&](const inja::Arguments &args) {
-      std::ifstream file_stream(args[0]->get<std::string>());
-      return nlohmann::json::parse(file_stream);
     });
     local_inja_env.add_callback("aggregate", 1, [&](const inja::Arguments &args) {
       nlohmann::json aggregate;
