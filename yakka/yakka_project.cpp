@@ -1387,36 +1387,25 @@ void project::create_config_file(const std::shared_ptr<yakka::component> compone
 
   config_file_path          = this->inja_environment.render(config_file_path.generic_string(), { { "instance", prefix } });
   fs::path destination_path = fs::path{ default_output_directory + project_name + "/config" } / this->inja_environment.render(fs::path(config_filename).filename().string(), { { "instance", instance_name } });
+  if (!instance_name.empty()) {
+    // Convert instance name uppercase
+    std::transform(instance_name.begin(), instance_name.end(), instance_name.begin(), ::toupper);
+  }
 
   if (!fs::exists(config_file_path)) {
     spdlog::error("Failed to find config_file: {}", config_file_path.string());
     return;
   }
 
-  spdlog::info("Creating config file '{}' from '{}'", destination_path.string(), config_file_path.string());
+  // Create blueprints
+  nlohmann::json blueprint = { { "depends", nullptr }, { "process", nullptr } };
+  blueprint["depends"].push_back({ { config_file_path.string() } });
+  blueprint["depends"].push_back({ { "{{project_output}}/template_contributions.json" } });
+  blueprint["process"].push_back({ { "inja", "{% set input = read_file(" + config_file_path.string() + " )%}{{replace(input, 'INSTANCE', '" + instance_name + "')}}" } });
+  blueprint["process"].push_back({ { "save", nullptr } });
 
-  // Read the content of the source file
-  std::ifstream config_file(config_file_path);
-  std::string content((std::istreambuf_iterator<char>(config_file)), std::istreambuf_iterator<char>());
-  config_file.close();
-
-  // Replace 'INSTANCE' with uppercase instance name
-  if (!instance_name.empty()) {
-    std::transform(instance_name.begin(), instance_name.end(), instance_name.begin(), ::toupper);
-    std::string search_str     = "INSTANCE";
-    std::string replace_str    = instance_name;
-    std::string::size_type pos = 0;
-    while ((pos = content.find(search_str, pos)) != std::string::npos) {
-      content.replace(pos, search_str.length(), replace_str);
-      pos += replace_str.length();
-    }
-  }
-
-  // Write modified content to the destination file
-  fs::create_directories(destination_path.parent_path());
-  std::ofstream modified_config_file(destination_path);
-  modified_config_file << content;
-  modified_config_file.close();
+  component->json["blueprints"][destination_path.string()] = blueprint;
+  component->json["generated"]["includes"].push_back(destination_path.string());
 }
 
 void project::process_slc_rules()
@@ -1545,9 +1534,9 @@ void project::process_slc_rules()
           add_generated_item(c->json);
 
           // Create blueprints
-          nlohmann::json blueprint = { {"depends", nullptr}, { "process", nullptr } };
-          blueprint["depends"].push_back({{c->json["directory"].get<std::string>() + "/" + template_file.string()}});
-          blueprint["depends"].push_back({{"{{project_output}}/template_contributions.json"}});
+          nlohmann::json blueprint = { { "depends", nullptr }, { "process", nullptr } };
+          blueprint["depends"].push_back({ { c->json["directory"].get<std::string>() + "/" + template_file.string() } });
+          blueprint["depends"].push_back({ { "{{project_output}}/template_contributions.json" } });
           blueprint["process"].push_back({ { "jinja", "-t " + c->json["directory"].get<std::string>() + "/" + template_file.string() + " -d {{project_output}}/template_contributions.json" } });
           blueprint["process"].push_back({ { "save", nullptr } });
 
