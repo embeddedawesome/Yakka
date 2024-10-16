@@ -412,6 +412,7 @@ void run_taskflow(yakka::project &project)
     std::shared_ptr<ProgressBar> new_task_bar = std::make_shared<ProgressBar>(option::BarWidth{ 50 }, option::ShowPercentage{ true }, option::PrefixText{ i.second->name }, option::MaxProgress{ i.second->total_count });
     task_progress_bars.push_back(new_task_bar);
     i.second->ui_id = task_progress_ui.push_back(*new_task_bar);
+    task_progress_ui[i.second->ui_id].set_option(option::PostfixText{ std::to_string(i.second->current_count) + "/" + std::to_string(i.second->total_count) });
   }
 
   project.task_complete_handler = [&](std::shared_ptr<yakka::task_group> group) {
