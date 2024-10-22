@@ -1295,9 +1295,19 @@ void project::save_summary()
   json_file << project_summary.dump(3);
   json_file.close();
 
-  std::ofstream template_contributions_file(project_summary["project_output"].get<std::string>() + "/template_contributions.json");
-  template_contributions_file << template_contributions.dump(3);
-  template_contributions_file.close();
+  std::string template_contribution_filename = project_summary["project_output"].get<std::string>() + "/template_contributions.json";
+  // Check if template contribution file exists
+  if (fs::exists(template_contribution_filename)) {
+    // Read the content and compare to the current value, only rewrite if content is different
+    std::ifstream template_file_stream(template_contribution_filename);
+    auto existing_template_contribution = nlohmann::json::parse(template_file_stream);
+    auto patch                          = nlohmann::json::diff(template_contributions, existing_template_contribution);
+    if (patch.size() != 0) {
+      std::ofstream template_contributions_file(template_contribution_filename);
+      template_contributions_file << template_contributions.dump(3);
+      template_contributions_file.close();
+    }
+  }
 }
 
 class custom_error_handler : public nlohmann::json_schema::basic_error_handler {
