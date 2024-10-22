@@ -913,7 +913,12 @@ void project::load_common_commands()
       if (!p.parent_path().empty())
         fs::create_directories(p.parent_path());
       save_file.open(save_filename, std::ios_base::binary);
+      if (!save_file.is_open()) {
+        spdlog::error("Failed to save file: '{}'", save_filename);
+        return { "", -1 };
+      }
       save_file << captured_output;
+      save_file.flush();
       save_file.close();
     } catch (std::exception &e) {
       spdlog::error("Failed to save file: '{}'", save_filename);
