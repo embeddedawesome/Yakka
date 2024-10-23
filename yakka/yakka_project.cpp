@@ -1416,7 +1416,7 @@ void project::create_config_file(const std::shared_ptr<yakka::component> compone
   nlohmann::json blueprint = { { "depends", nullptr }, { "process", nullptr } };
   blueprint["depends"].push_back(config_file_path.string());
   blueprint["depends"].push_back("{{project_output}}/template_contributions.json");
-  blueprint["process"].push_back({ { "inja", "{% set input = read_file(\"" + config_file_path.string() + "\" )%}{{replace(input, \"INSTANCE\", \"" + instance_name + "\")}}" } });
+  blueprint["process"].push_back({ { "inja", "{% set input = read_file(\"" + config_file_path.string() + "\" )%}{{replace(input, \"\\bINSTANCE\\b\", \"" + instance_name + "\")}}" } });
   blueprint["process"].push_back({ { "save", nullptr } });
 
   component->json["blueprints"][destination_path.string()] = blueprint;
