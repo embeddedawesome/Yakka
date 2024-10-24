@@ -220,7 +220,7 @@ properties:
             type: string
       required: [ name, value ]
   template_file:
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
@@ -240,7 +240,7 @@ properties:
           type: boolean
       required: [ path ]
   toolchain_settings:
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
@@ -418,7 +418,7 @@ properties:
             type: string
         required: [ url ]
   ui_hints:
-    type: object
+    type: [object, null]
     properties:
       visibility:
         type: string
