@@ -1307,12 +1307,14 @@ void project::save_summary()
     std::ifstream template_file_stream(template_contribution_filename);
     auto existing_template_contribution = nlohmann::json::parse(template_file_stream);
     auto patch                          = nlohmann::json::diff(template_contributions, existing_template_contribution);
-    if (patch.size() != 0) {
-      std::ofstream template_contributions_file(template_contribution_filename);
-      template_contributions_file << template_contributions.dump(3);
-      template_contributions_file.close();
+    if (patch.size() == 0) {
+      return;
     }
   }
+  // Create the template contributions file
+  std::ofstream template_contributions_file(template_contribution_filename);
+  template_contributions_file << template_contributions.dump(3);
+  template_contributions_file.close();
 }
 
 class custom_error_handler : public nlohmann::json_schema::basic_error_handler {
