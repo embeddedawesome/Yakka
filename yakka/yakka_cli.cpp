@@ -414,6 +414,7 @@ void run_taskflow(yakka::project &project)
     i.second->ui_id = task_progress_ui.push_back(*new_task_bar);
     task_progress_ui[i.second->ui_id].set_option(option::PostfixText{ std::to_string(i.second->current_count) + "/" + std::to_string(i.second->total_count) });
   }
+  task_progress_ui.print_progress();
 
   project.task_complete_handler = [&](std::shared_ptr<yakka::task_group> group) {
     ++group->current_count;
