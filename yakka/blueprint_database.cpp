@@ -131,13 +131,13 @@ std::vector<std::shared_ptr<blueprint_match>> blueprint_database::find_match(con
           auto generated_node = YAML::Load(generated_depend);
           for (auto i: generated_node) {
             auto temp = i.Scalar();
-            match->dependencies.push_back(temp.starts_with("./") ? temp.substr(2) : temp);
+            match->dependencies.push_back(temp.starts_with("./") ? temp.substr(temp.find_first_not_of("/", 2)) : temp);
           }
         } catch (std::exception &e) {
           std::cerr << "Failed to parse dependency: " << d.name << "\n";
         }
       } else {
-        match->dependencies.push_back(generated_depend.starts_with("./") ? generated_depend.substr(2) : generated_depend);
+        match->dependencies.push_back(generated_depend.starts_with("./") ? generated_depend.substr(generated_depend.find_first_not_of("/", 2)) : generated_depend);
       }
     }
 

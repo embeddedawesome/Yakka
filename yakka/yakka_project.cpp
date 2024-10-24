@@ -1281,7 +1281,7 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
     // For each dependency described in blueprint, retrieve or create task, add relationship, and add item to todo list
     if (i->second)
       for (auto &dep_target: i->second->dependencies)
-        create_tasks(dep_target.starts_with("./") ? dep_target.substr(2) : dep_target, new_todo->second.task);
+        create_tasks(dep_target.starts_with("./") ? dep_target.substr(dep_target.find_first_not_of("/", 2)) : dep_target, new_todo->second.task);
     // else
     //     spdlog::info("{} does not have blueprint match", i->first);
   }
