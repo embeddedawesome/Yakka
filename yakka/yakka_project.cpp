@@ -467,115 +467,58 @@ project::state project::evaluate_dependencies()
       // Find any features that aren't provided
       std::unordered_set<std::string> temp_require_list = std::move(slc_required);
       for (const auto &r: temp_require_list) {
-        if (!slc_provided.contains(r)) {
-          // Check the databases
-          auto f = workspace.find_feature(r);
-          if (f.has_value()) {
-            auto feature_node = f.value();
-            std::vector<std::string> possible_options;
-            if (feature_node.size() == 1) {
-              spdlog::info("Found a component that provides '{}'", r);
-              const auto &n = feature_node.front();
-              if (n.is_object()) {
-                if (condition_is_fulfilled(n) && !is_disqualified_by_unless(n)) {
-                  spdlog::info("Adding component '{}' to satisfy '{}'", n["name"].get<std::string>(), r);
-                  unprocessed_components.insert(n["name"].get<std::string>());
-                } else {
-                  slc_required.insert(r);
-                }
-              } else {
-                spdlog::info("Adding component '{}' to satisfy '{}'", n.get<std::string>(), r);
-                unprocessed_components.insert(n.get<std::string>());
-              }
-              // This item is now resolved
-              continue;
-            }
-          }
+        if (slc_provided.contains(r))
+          continue;
 
-          // Check if there is a component with the same name
-          auto component_location = workspace.find_component(r, component_flags);
-          if (component_location.has_value()) {
-            // See if it provides the feature we need
-            auto [path, package] = component_location.value();
-            yakka::component temp;
-            temp.parse_file(path, package);
-            auto node = temp.json["/provides/features"_json_pointer];
-            if (std::find(node.begin(), node.end(), r) != node.end()) {
-              // Add component to the component list
-              spdlog::info("Adding component '{}' to satisfy '{}'", path.string(), r);
-              unprocessed_components.insert(r);
-              continue;
-            }
-          }
-
-          // Check if any recommendations help
-          slc_required.insert(r);
-        }
-      }
-    }
-
-    // If there are no resolutions found for missing features or components, look at any recommendations
-    if (unprocessed_components.empty() && unprocessed_features.empty() && component_flags != component_database::flag::IGNORE_SLCC) {
-      // Find any features that aren't provided
-      std::unordered_set<std::string> temp_require_list = std::move(slc_required);
-      for (const auto &r: temp_require_list) {
+        // Check the databases
         auto f = workspace.find_feature(r);
         if (!f.has_value())
           continue;
 
         auto feature_node = f.value();
-        bool resolved     = false;
-        std::unordered_set<std::string> possible_options;
-        if (feature_node.size() > 1) {
-          // Check if any of the options is recommended
-          for (const auto &option: feature_node) {
-            if (option.is_object()) {
-              const auto name = option["name"].get<std::string>();
+        std::vector<std::string> recommended_options;
+        std::vector<std::string> other_options;
 
-              if (!condition_is_fulfilled(option) || is_disqualified_by_unless(option))
-                continue;
+        // Go through possible options
+        for (const auto &option: feature_node) {
+          // Ignore if it is excluded
+          if (option.is_object() && (!condition_is_fulfilled(option) || is_disqualified_by_unless(option)))
+            continue;
 
-              if (slc_recommended.contains(name) && condition_is_fulfilled(slc_recommended[name]) && !is_disqualified_by_unless(slc_recommended[name])) {
-                spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
-                const auto recommend_node = slc_recommended[name];
-                if (recommend_node.contains("instance")) {
-                  for (const auto &i: recommend_node["instance"])
-                    instances.insert({ name, i.get<std::string>() });
-                }
-                unprocessed_components.insert(name);
-                resolved = true;
-                break;
-              } else {
-                possible_options.insert(name);
-              }
+          const auto name = option.is_object() ? option["name"].get<std::string>() : option.get<std::string>();
 
-            } else if (slc_recommended.contains(option.get<std::string>()) && condition_is_fulfilled(slc_recommended[option.get<std::string>()]) && !is_disqualified_by_unless(slc_recommended[option.get<std::string>()])) {
-              const auto name = option.get<std::string>();
-              spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
-              const auto recommend_node = slc_recommended[name];
-              if (recommend_node.contains("instance")) {
-                for (const auto &i: recommend_node["instance"])
-                  instances.insert({ name, i.get<std::string>() });
-              }
-              unprocessed_components.insert(name);
-              resolved = true;
-              break;
-            } else {
-              possible_options.insert(option.get<std::string>());
+          // If this is recommended add to th recommended list, otherwise add to other options list
+          if (slc_recommended.contains(name)) {
+            if (condition_is_fulfilled(slc_recommended[name]) && !is_disqualified_by_unless(slc_recommended[name]))
+              recommended_options.push_back(name);
+          } else {
+            other_options.push_back(name);
+          }
+        }
+
+        // If there is more than 1 recommendation, the user must decide
+        // If there is a single recommendation, use that
+        // If there are no recommendations but only 1 option, use that
+        if (recommended_options.size() > 1) {
+          spdlog::error("Multiple recommendations for '{}'", r);
+          slc_required.insert(r);
+        } else if (recommended_options.size() == 1) {
+          const auto name           = recommended_options.front();
+          const auto recommend_node = slc_recommended[name];
+          spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
+          if (recommend_node.contains("instance")) {
+            for (const auto &i: recommend_node["instance"]) {
+              spdlog::info("Creating instance '{}' for '{}'", i.get<std::string>(), name);
+              instances.insert({ name, i.get<std::string>() });
             }
           }
-
-          if (resolved == false) {
-            if (possible_options.size() == 1) {
-              const auto name = *possible_options.begin();
-              spdlog::info("Adding component '{}' to satisfy '{}'", name, r);
-              unprocessed_components.insert(name);
-              resolved = true;
-            }
-          }
-
-          if (resolved == false)
-            slc_required.insert(r);
+          unprocessed_components.insert(name);
+        } else if (other_options.size() == 1) {
+          const auto name = other_options.front();
+          spdlog::info("Adding component '{}' to satisfy '{}'", name, r);
+          unprocessed_components.insert(name);
+        } else {
+          slc_required.insert(r);
         }
       }
     }
