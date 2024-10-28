@@ -148,7 +148,7 @@ void component_database::scan_for_components(fs::path search_start_path)
     auto rdi = fs::recursive_directory_iterator(search_start_path);
     for (auto p = fs::begin(rdi); p != fs::end(rdi); ++p) {
       // Skip any directories that start with '.'
-      if (p->is_directory() && p->path().filename().string().front() == '.') {
+      if (p->is_directory() && p->path().filename().generic_wstring().front() == '.') {
         p.disable_recursion_pending();
         continue;
       }
