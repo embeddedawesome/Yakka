@@ -455,6 +455,20 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
     }
     return aggregate;
   });
+  inja_env.add_callback("load_component", 1, [&](const inja::Arguments &args) {
+    const auto component_name     = args[0]->get<std::string>();
+    const auto component_location = project->workspace.find_component(component_name);
+    if (!component_location.has_value()) {
+      return nlohmann::json{};
+    }
+    auto [component_path, package_path] = component_location.value();
+    yakka::component new_component;
+    if (new_component.parse_file(component_path, package_path) == yakka::yakka_status::SUCCESS) {
+      return new_component.json;
+    } else {
+      return nlohmann::json{};
+    }
+  });
 
   std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 
