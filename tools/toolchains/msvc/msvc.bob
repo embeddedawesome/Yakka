@@ -35,13 +35,24 @@ flags:
 tools:
   cl: "cl.exe"
   link: "link.exe"
+  lib: "lib.exe"
 
 blueprints:
+  compile:
+    depends:
+      - '{{project_output}}/{{project_name}}.lib'
+
   link:
     depends:
       - '{{project_output}}/{{project_name}}.exe'
 
-  '{{project_output}}/{{project_name}}.exe':
+  '{{project_output}}/{{project_name}}.lib':
+    depends:
+      - '[{% for name, component in components %}{%if existsIn(component,"sources") %}{% for source in component.sources %}{{project_output}}/components/{{name}}/{{source}}.o, {% endfor %}{% endif %}{% endfor %}]'
+    process:
+      - lib: "@{{project_output}}/{{project_name}}.global_ld_options -OUT:{{project_output}}/{{project_name}}.lib"
+
+  '{{project_output}}/{{project_name}}.exe': 
     depends:
       - '[{% for name, component in components %}{%if existsIn(component,"sources") %}{% for source in component.sources %}{{project_output}}/components/{{name}}/{{source}}.o, {% endfor %}{% endif %}{% endfor %}]'
       - '{{project_output}}/{{project_name}}.global_ld_options'
