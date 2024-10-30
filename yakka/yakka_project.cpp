@@ -472,8 +472,10 @@ project::state project::evaluate_dependencies()
 
         // Check the databases
         auto f = workspace.find_feature(r);
-        if (!f.has_value())
+        if (!f.has_value()) {
+          slc_required.insert(r);
           continue;
+        }
 
         auto feature_node = f.value();
         std::vector<std::string> recommended_options;
@@ -522,6 +524,25 @@ project::state project::evaluate_dependencies()
         }
       }
     }
+
+    // Final check to see if Yakka component can provide an SLC requirement
+    if (unprocessed_components.empty() && unprocessed_features.empty() && !slc_required.empty() && component_flags != component_database::flag::IGNORE_SLCC) {
+      std::unordered_set<std::string> temp_require_list = std::move(slc_required);
+      for (const auto &r: temp_require_list) {
+        if (slc_provided.contains(r))
+          continue;
+
+        // Try find a component with a matching name
+        auto component_location = workspace.find_component(r, component_flags);
+        if (component_location.has_value()) {
+          auto [path, package] = component_location.value();
+          spdlog::info("Adding component '{}' to satisfy '{}'", path.string(), r);
+          unprocessed_components.insert(r);
+        } else {
+          slc_required.insert(r);
+        }
+      }
+    }
   }
 
   for (const auto &r: slc_required) {
@@ -534,6 +555,9 @@ project::state project::evaluate_dependencies()
 
   if (unknown_components.size() != 0)
     return project::state::PROJECT_HAS_UNKNOWN_COMPONENTS;
+
+  if (slc_required.size() != 0)
+    return project::state::PROJECT_HAS_UNRESOLVED_REQUIREMENTS;
 
   return project::state::PROJECT_VALID;
 }
