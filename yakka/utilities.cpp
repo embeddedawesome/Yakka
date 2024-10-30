@@ -9,6 +9,7 @@
 #include <ranges>
 #include <algorithm>
 #include <iomanip>
+#include <filesystem>
 
 namespace yakka {
 
@@ -329,10 +330,7 @@ void add_common_template_commands(inja::Environment &inja_env)
 {
   inja_env.add_callback("dir", 1, [](inja::Arguments &args) {
     auto path = std::filesystem::path{ args.at(0)->get<std::string>() }.relative_path();
-    if (path.has_filename())
-      return path.parent_path().string();
-    else
-      return path.string();
+    return path.has_filename() ? path.parent_path().string() : path.string();
   });
   inja_env.add_callback("notdir", 1, [](inja::Arguments &args) {
     return std::filesystem::path{ args.at(0)->get<std::string>() }.filename();
@@ -363,8 +361,13 @@ void add_common_template_commands(inja::Environment &inja_env)
     return std::string{ std::istreambuf_iterator<char>{ file }, {} };
   });
   inja_env.add_callback("load_yaml", 1, [](const inja::Arguments &args) {
-    auto yaml_data = YAML::LoadFile(args[0]->get<std::string>());
-    return yaml_data.as<nlohmann::json>();
+    const auto file_path = args[0]->get<std::string>();
+    if (std::filesystem::exists(file_path)) {
+      auto yaml_data = YAML::LoadFile(file_path);
+      return yaml_data.as<nlohmann::json>();
+    } else {
+      return nlohmann::json();
+    }
   });
   inja_env.add_callback("load_json", 1, [](const inja::Arguments &args) {
     std::ifstream file_stream(args[0]->get<std::string>());
