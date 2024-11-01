@@ -1442,6 +1442,19 @@ void project::process_slc_rules()
       }
     }
 
+    // Process library
+    if (c->json.contains("library")) {
+      for (const auto &p: c->json["library"]) {
+        if (!p.contains("path"))
+          continue;
+        if (is_disqualified_by_unless(p) || !condition_is_fulfilled(p))
+          continue;
+
+        fs::path source_path{ p["path"].get<std::string>() };
+        c->json["libraries"].push_back(p["path"]);
+      }
+    }
+
     // Process template_contributions
     for (const auto &t: c->json["template_contribution"]) {
       if (is_disqualified_by_unless(t) || !condition_is_fulfilled(t))
