@@ -389,6 +389,12 @@ void add_common_template_commands(inja::Environment &inja_env)
     auto match  = args[2]->get<std::string>();
     return std::regex_replace(input, target, match);
   });
+  inja_env.add_callback("match", 3, [](const inja::Arguments &args) {
+    auto input  = args[0]->get<std::string>();
+    auto target = std::regex(args[1]->get<std::string>());
+    auto match  = args[2]->get<std::string>();
+    return std::regex_match(input, target, match);
+  });
 }
 
 std::pair<std::string, int> run_command(const std::string target, construction_task *task, project *project)
