@@ -389,12 +389,6 @@ void add_common_template_commands(inja::Environment &inja_env)
     auto match  = args[2]->get<std::string>();
     return std::regex_replace(input, target, match);
   });
-  inja_env.add_callback("match", 3, [](const inja::Arguments &args) {
-    auto input  = args[0]->get<std::string>();
-    auto target = std::regex(args[1]->get<std::string>());
-    auto match  = args[2]->get<std::string>();
-    return std::regex_match(input, target, match);
-  });
 }
 
 std::pair<std::string, int> run_command(const std::string target, construction_task *task, project *project)
@@ -403,9 +397,32 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
   inja::Environment inja_env  = inja::Environment();
   auto &blueprint             = task->match;
   std::string curdir_path     = blueprint->blueprint->parent_path;
+  nlohmann::json data_store;
 
   add_common_template_commands(inja_env);
 
+  inja_env.add_callback("store", 3, [&](const inja::Arguments &args) {
+    if (args[0] && args[1]) {
+      nlohmann::json::json_pointer ptr{ args[0]->get<std::string>() };
+      auto key             = args[1]->get<std::string>();
+      data_store[ptr][key] = *args[2];
+    }
+    return nlohmann::json{};
+  });
+  inja_env.add_callback("store", 2, [&](const inja::Arguments &args) {
+    nlohmann::json::json_pointer ptr{ args[0]->get<std::string>() };
+    data_store[ptr] = *args[1];
+    return nlohmann::json{};
+  });
+  inja_env.add_callback("fetch", 2, [&](const inja::Arguments &args) {
+    nlohmann::json::json_pointer ptr{ args[0]->get<std::string>() };
+    auto key = args[1]->get<std::string>();
+    return data_store[ptr][key];
+  });
+  inja_env.add_callback("fetch", 1, [&](const inja::Arguments &args) {
+    nlohmann::json::json_pointer ptr{ args[0]->get<std::string>() };
+    return data_store[ptr];
+  });
   inja_env.add_callback("$", 1, [&blueprint](const inja::Arguments &args) {
     return blueprint->regex_matches[args[0]->get<int>()];
   });
