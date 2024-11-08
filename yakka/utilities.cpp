@@ -347,6 +347,9 @@ void add_common_template_commands(inja::Environment &inja_env)
   inja_env.add_callback("absolute_dir", 1, [](inja::Arguments &args) {
     return std::filesystem::absolute(args.at(0)->get<std::string>());
   });
+  inja_env.add_callback("relative_path", 2, [](inja::Arguments &args) {
+    return std::filesystem::relative(args.at(0)->get<std::string>(), args.at(1)->get<std::string>());
+  });
   inja_env.add_callback("extension", 1, [](inja::Arguments &args) {
     return std::filesystem::path{ args.at(0)->get<std::string>() }.extension().string().substr(1);
   });
@@ -414,6 +417,22 @@ std::pair<std::string, int> run_command(const std::string target, construction_t
     data_store[ptr] = *args[1];
     return nlohmann::json{};
   });
+  inja_env.add_callback("push_back", 2, [&](const inja::Arguments &args) {
+    nlohmann::json::json_pointer ptr{ args[0]->get<std::string>() };
+    if (!data_store.contains(ptr)) {
+      data_store[ptr] = nlohmann::json::array();
+    }
+    data_store[ptr].push_back(*args[1]);
+    return nlohmann::json{};
+  });
+  inja_env.add_callback("unique", 1, [&](const inja::Arguments &args) {
+    nlohmann::json filtered;
+    std::copy_if(args[0]->cbegin(), args[0]->cend(), std::back_inserter(filtered), [&](const nlohmann::json &item) {
+      return std::find(filtered.begin(), filtered.end(), item.get<std::string>()) == filtered.end();
+    });
+    return filtered;
+  });
+
   inja_env.add_callback("fetch", 2, [&](const inja::Arguments &args) {
     nlohmann::json::json_pointer ptr{ args[0]->get<std::string>() };
     auto key = args[1]->get<std::string>();
