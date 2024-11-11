@@ -3,6 +3,7 @@
 #include "yakka_schema.hpp"
 #include "utilities.hpp"
 #include "spdlog/spdlog.h"
+#include "glob/glob.h"
 #include <nlohmann/json-schema.hpp>
 #include <fstream>
 #include <chrono>
@@ -1402,6 +1403,23 @@ void project::process_slc_rules()
     auto instance_names               = instances.equal_range(c->id);
     const bool instantiable           = c->json.contains("instantiable");
     const std::string instance_prefix = (instantiable) ? c->json["instantiable"]["prefix"].get<std::string>() : "";
+
+    // Process SLCE files and add every component found in the component paths
+    if (c->type == component::SLCE_FILE) {
+      std::unordered_set<std::filesystem::path> added_components;
+      // Find all .slcc files in the component paths and add them
+      for (const auto &p: c->json["component_path"]) {
+        for (const auto &component_path: glob::rglob(p["path"].get<std::string>() + "/**/*.slcc")) {
+          // Only add component if it hasn't been seen before
+          if (added_components.insert(component_path).second == true) {
+            std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
+            if (new_component->parse_file(component_path, "") == yakka::yakka_status::SUCCESS) {
+              components.push_back(new_component);
+            }
+          }
+        }
+      }
+    }
 
     // Process sources
     if (c->json.contains("source")) {
