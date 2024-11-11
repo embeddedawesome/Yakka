@@ -1456,31 +1456,33 @@ void project::process_slc_rules()
     }
 
     // Process template_contributions
-    for (const auto &t: c->json["template_contribution"]) {
-      if (is_disqualified_by_unless(t) || !condition_is_fulfilled(t))
-        continue;
+    if (c->json.contains("template_contribution")) {
+      for (const auto &t: c->json["template_contribution"]) {
+        if (is_disqualified_by_unless(t) || !condition_is_fulfilled(t))
+          continue;
 
-      const auto name = t["name"].get<std::string>();
-      if (instantiable && t.contains("value")) {
-        if (t["value"].is_string()) {
-          const auto value = t["value"].get<std::string>();
-          for (auto i = instance_names.first; i != instance_names.second; ++i) {
-            template_contributions[name].push_back(t);
-            template_contributions[name].back()["value"] = this->inja_environment.render(value, { { "instance", i->second } });
-          }
-        } else if (t["value"].is_object()) {
-          for (auto i = instance_names.first; i != instance_names.second; ++i) {
-            template_contributions[name].push_back(t);
-            for (auto &[key, value]: template_contributions[name].back()["value"].items()) {
-              if (value.is_string())
-                template_contributions[name].back()["value"][key] = this->inja_environment.render(value.get<std::string>(), { { "instance", i->second } });
+        const auto name = t["name"].get<std::string>();
+        if (instantiable && t.contains("value")) {
+          if (t["value"].is_string()) {
+            const auto value = t["value"].get<std::string>();
+            for (auto i = instance_names.first; i != instance_names.second; ++i) {
+              template_contributions[name].push_back(t);
+              template_contributions[name].back()["value"] = this->inja_environment.render(value, { { "instance", i->second } });
             }
+          } else if (t["value"].is_object()) {
+            for (auto i = instance_names.first; i != instance_names.second; ++i) {
+              template_contributions[name].push_back(t);
+              for (auto &[key, value]: template_contributions[name].back()["value"].items()) {
+                if (value.is_string())
+                  template_contributions[name].back()["value"][key] = this->inja_environment.render(value.get<std::string>(), { { "instance", i->second } });
+              }
+            }
+          } else {
+            template_contributions[name].push_back(t);
           }
         } else {
           template_contributions[name].push_back(t);
         }
-      } else {
-        template_contributions[name].push_back(t);
       }
     }
 
