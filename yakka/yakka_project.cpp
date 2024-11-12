@@ -1396,7 +1396,9 @@ void project::create_config_file(const std::shared_ptr<yakka::component> compone
 void project::process_slc_rules()
 {
   // Go through each SLC based component
-  for (const auto &c: components) {
+  std::vector<std::shared_ptr<yakka::component>>::size_type size = components.size();
+  for (std::vector<std::shared_ptr<yakka::component>>::size_type i = 0; i < size; ++i) {
+    const auto &c = components[i];
     if (c->type == component::YAKKA_FILE)
       continue;
 
@@ -1415,10 +1417,12 @@ void project::process_slc_rules()
             std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
             if (new_component->parse_file(component_path, "") == yakka::yakka_status::SUCCESS) {
               components.push_back(new_component);
+              ++size;
             }
           }
         }
       }
+      continue;
     }
 
     // Process sources
