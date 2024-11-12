@@ -40,7 +40,11 @@ std::vector<std::shared_ptr<blueprint_match>> blueprint_database::find_match(con
     add_common_template_commands(local_inja_env);
 
     local_inja_env.add_callback("$", 1, [&match](const inja::Arguments &args) {
-      return match->regex_matches[args[0]->get<int>()];
+      const int index = args[0]->get<int>();
+      if (index < match->regex_matches.size())
+        return nlohmann::json(match->regex_matches[index]);
+
+      return nlohmann::json();
     });
     local_inja_env.add_callback("curdir", 0, [&match](const inja::Arguments &args) {
       return match->blueprint->parent_path;
