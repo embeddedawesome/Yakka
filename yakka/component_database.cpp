@@ -118,11 +118,11 @@ void component_database::scan_for_components(fs::path search_start_path)
       if (add_component(component_id, p)) {
         parse_yakka_file(p, component_id);
       }
-    } else if (extension == slcp_component_extension || extension == slce_component_extension) {
+    } else if (extension == slcp_component_extension) {
       spdlog::info("Found project '{}'", p.string());
       const auto component_id = p.filename().replace_extension().generic_string();
       add_component(component_id, p);
-    } else if (extension == slcc_component_extension) {
+    } else if (extension == slcc_component_extension || extension == slce_component_extension) {
       spdlog::info("Found {}", p.string());
       try {
         parse_slcc_file(p);

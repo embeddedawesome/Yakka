@@ -3,6 +3,7 @@
 #include "yakka_schema.hpp"
 #include "utilities.hpp"
 #include "spdlog/spdlog.h"
+#include "glob/glob.h"
 #include <nlohmann/json-schema.hpp>
 #include <fstream>
 #include <chrono>
@@ -927,7 +928,21 @@ void project::load_common_commands()
   blueprint_commands["rm"] = [](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
     std::string filename = command.get<std::string>();
     filename             = try_render(inja_env, filename, generated_json);
-    fs::remove(filename);
+    // Check if the input was a YAML array construct
+    if (filename.front() == '[' && filename.back() == ']') {
+      // Load the generated dependency string as YAML and push each item individually
+      try {
+        auto file_list = YAML::Load(filename);
+        for (auto i: file_list) {
+          const auto file = i.Scalar();
+          fs::remove(file);
+        }
+      } catch (std::exception &e) {
+        spdlog::error("Failed to parse file list: {}", filename);
+      }
+    } else {
+      fs::remove(filename);
+    }
     return { captured_output, 0 };
   };
 
@@ -1395,13 +1410,34 @@ void project::create_config_file(const std::shared_ptr<yakka::component> compone
 void project::process_slc_rules()
 {
   // Go through each SLC based component
-  for (const auto &c: components) {
+  std::vector<std::shared_ptr<yakka::component>>::size_type size = components.size();
+  for (std::vector<std::shared_ptr<yakka::component>>::size_type i = 0; i < size; ++i) {
+    const auto &c = components[i];
     if (c->type == component::YAKKA_FILE)
       continue;
 
     auto instance_names               = instances.equal_range(c->id);
     const bool instantiable           = c->json.contains("instantiable");
     const std::string instance_prefix = (instantiable) ? c->json["instantiable"]["prefix"].get<std::string>() : "";
+
+    // Process SLCE files and add every component found in the component paths
+    if (c->type == component::SLCE_FILE) {
+      std::unordered_set<std::filesystem::path> added_components;
+      // Find all .slcc files in the component paths and add them
+      for (const auto &p: c->json["component_path"]) {
+        for (const auto &component_path: glob::rglob(p["path"].get<std::string>() + "/**/*.slcc")) {
+          // Only add component if it hasn't been seen before
+          if (added_components.insert(component_path).second == true) {
+            std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
+            if (new_component->parse_file(component_path, "") == yakka::yakka_status::SUCCESS) {
+              components.push_back(new_component);
+              ++size;
+            }
+          }
+        }
+      }
+      continue;
+    }
 
     // Process sources
     if (c->json.contains("source")) {
@@ -1435,10 +1471,12 @@ void project::process_slc_rules()
 
         nlohmann::json temp = p.contains("value") ? p : p["name"];
         if (instantiable) {
-          c->json["defines"]["global"].push_back(this->inja_environment.render(temp.get<std::string>(), { { "instance", instance_prefix } }));
-        } else {
-          c->json["defines"]["global"].push_back(temp);
+          if (temp.contains("value"))
+            temp["name"] = this->inja_environment.render(temp["name"].get<std::string>(), { { "instance", instance_prefix } });
+          else
+            temp = this->inja_environment.render(temp.get<std::string>(), { { "instance", instance_prefix } });
         }
+        c->json["defines"]["global"].push_back(temp);
       }
     }
 
@@ -1456,31 +1494,33 @@ void project::process_slc_rules()
     }
 
     // Process template_contributions
-    for (const auto &t: c->json["template_contribution"]) {
-      if (is_disqualified_by_unless(t) || !condition_is_fulfilled(t))
-        continue;
+    if (c->json.contains("template_contribution")) {
+      for (const auto &t: c->json["template_contribution"]) {
+        if (is_disqualified_by_unless(t) || !condition_is_fulfilled(t))
+          continue;
 
-      const auto name = t["name"].get<std::string>();
-      if (instantiable && t.contains("value")) {
-        if (t["value"].is_string()) {
-          const auto value = t["value"].get<std::string>();
-          for (auto i = instance_names.first; i != instance_names.second; ++i) {
-            template_contributions[name].push_back(t);
-            template_contributions[name].back()["value"] = this->inja_environment.render(value, { { "instance", i->second } });
-          }
-        } else if (t["value"].is_object()) {
-          for (auto i = instance_names.first; i != instance_names.second; ++i) {
-            template_contributions[name].push_back(t);
-            for (auto &[key, value]: template_contributions[name].back()["value"].items()) {
-              if (value.is_string())
-                template_contributions[name].back()["value"][key] = this->inja_environment.render(value.get<std::string>(), { { "instance", i->second } });
+        const auto name = t["name"].get<std::string>();
+        if (instantiable && t.contains("value")) {
+          if (t["value"].is_string()) {
+            const auto value = t["value"].get<std::string>();
+            for (auto i = instance_names.first; i != instance_names.second; ++i) {
+              template_contributions[name].push_back(t);
+              template_contributions[name].back()["value"] = this->inja_environment.render(value, { { "instance", i->second } });
             }
+          } else if (t["value"].is_object()) {
+            for (auto i = instance_names.first; i != instance_names.second; ++i) {
+              template_contributions[name].push_back(t);
+              for (auto &[key, value]: template_contributions[name].back()["value"].items()) {
+                if (value.is_string())
+                  template_contributions[name].back()["value"][key] = this->inja_environment.render(value.get<std::string>(), { { "instance", i->second } });
+              }
+            }
+          } else {
+            template_contributions[name].push_back(t);
           }
         } else {
           template_contributions[name].push_back(t);
         }
-      } else {
-        template_contributions[name].push_back(t);
       }
     }
 

@@ -329,7 +329,7 @@ std::string try_render_file(inja::Environment &env, const std::string &filename,
 void add_common_template_commands(inja::Environment &inja_env)
 {
   inja_env.add_callback("dir", 1, [](inja::Arguments &args) {
-    auto path = std::filesystem::path{ args.at(0)->get<std::string>() }.relative_path();
+    auto path = std::filesystem::path{ args.at(0)->get<std::string>() };
     return path.has_filename() ? path.parent_path().string() : path.string();
   });
   inja_env.add_callback("notdir", 1, [](inja::Arguments &args) {
@@ -347,14 +347,25 @@ void add_common_template_commands(inja::Environment &inja_env)
   inja_env.add_callback("absolute_dir", 1, [](inja::Arguments &args) {
     return std::filesystem::absolute(args.at(0)->get<std::string>());
   });
+  inja_env.add_callback("relative_path", 1, [](inja::Arguments &args) {
+    auto path          = std::filesystem::path{ args.at(0)->get<std::string>() };
+    const auto current = std::filesystem::current_path();
+    auto new_path      = std::filesystem::relative(path, current);
+    return new_path.generic_string();
+  });
   inja_env.add_callback("relative_path", 2, [](inja::Arguments &args) {
-    return std::filesystem::relative(args.at(0)->get<std::string>(), args.at(1)->get<std::string>());
+    const auto path1 = args.at(0)->get<std::string>();
+    const auto path2 = std::filesystem::absolute(args.at(1)->get<std::string>());
+    return std::filesystem::relative(path1, path2).generic_string();
   });
   inja_env.add_callback("extension", 1, [](inja::Arguments &args) {
     return std::filesystem::path{ args.at(0)->get<std::string>() }.extension().string().substr(1);
   });
   inja_env.add_callback("filesize", 1, [](const inja::Arguments &args) {
     return fs::file_size(args[0]->get<std::string>());
+  });
+  inja_env.add_callback("file_exists", 1, [](const inja::Arguments &args) {
+    return fs::exists(args[0]->get<std::string>());
   });
   inja_env.add_callback("hex2dec", 1, [](const inja::Arguments &args) {
     return std::stoul(args[0]->get<std::string>(), nullptr, 16);
