@@ -173,6 +173,27 @@ fs::path component_database::get_path() const
   return this->workspace_path;
 }
 
+std::string component_database::get_component_id(const fs::path path) const
+{
+  for (const auto& [name, node]: database["components"].items()) {
+    // Check if path is in this component
+    if (node.is_string()) {
+      const auto node_path = std::filesystem::path{ node.get<std::string>() };
+      if (node_path == path) {
+        return name;
+      }
+    } else if (node.is_array()) {
+      for (const auto &n: node) {
+        const auto node_path = std::filesystem::path{ n.get<std::string>() };
+        if (node_path == path) {
+          return name;
+        }
+      }
+    }
+  }
+  return "";
+}
+
 fs::path component_database::get_component(const std::string id, flag flags) const
 {
   if (!this->database["components"].contains(id))

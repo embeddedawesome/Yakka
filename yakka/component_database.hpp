@@ -22,6 +22,7 @@ public:
   void scan_for_components(fs::path search_start_path = "");
   fs::path get_path() const;
   fs::path get_component(const std::string id, flag flags = flag::ALL_COMPONENTS) const;
+  std::string get_component_id(const fs::path path) const;
   nlohmann::json get_feature_provider(const std::string feature) const;
   nlohmann::json get_blueprint_provider(const std::string blueprint) const;
 
