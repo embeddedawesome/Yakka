@@ -928,7 +928,21 @@ void project::load_common_commands()
   blueprint_commands["rm"] = [](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
     std::string filename = command.get<std::string>();
     filename             = try_render(inja_env, filename, generated_json);
-    fs::remove(filename);
+    // Check if the input was a YAML array construct
+    if (filename.front() == '[' && filename.back() == ']') {
+      // Load the generated dependency string as YAML and push each item individually
+      try {
+        auto file_list = YAML::Load(filename);
+        for (auto i: file_list) {
+          const auto file = i.Scalar();
+          fs::remove(file);
+        }
+      } catch (std::exception &e) {
+        spdlog::error("Failed to parse file list: {}", filename);
+      }
+    } else {
+      fs::remove(filename);
+    }
     return { captured_output, 0 };
   };
 
