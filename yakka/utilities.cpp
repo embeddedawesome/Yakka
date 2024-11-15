@@ -364,6 +364,9 @@ void add_common_template_commands(inja::Environment &inja_env)
   inja_env.add_callback("filesize", 1, [](const inja::Arguments &args) {
     return fs::file_size(args[0]->get<std::string>());
   });
+  inja_env.add_callback("file_exists", 1, [](const inja::Arguments &args) {
+    return fs::exists(args[0]->get<std::string>());
+  });
   inja_env.add_callback("hex2dec", 1, [](const inja::Arguments &args) {
     return std::stoul(args[0]->get<std::string>(), nullptr, 16);
   });
