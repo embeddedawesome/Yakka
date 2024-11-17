@@ -405,9 +405,8 @@ void add_common_template_commands(inja::Environment &inja_env)
   });
   inja_env.add_callback("regex_escape", 1, [](const inja::Arguments &args) {
     auto input  = args[0]->get<std::string>();
-    auto regx = std::regex("[.*+?^${}()|[\]\\]");
-    auto match  = "\\$&";
-    return std::regex_replace(input, regx, match);
+    const std::regex metacharacters(R"([\.\^\$\+\(\)\[\]\{\}\|\?])");
+    return std::regex_replace(input, metacharacters, "\\$&");
   });
 }
 

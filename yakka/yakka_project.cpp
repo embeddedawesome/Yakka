@@ -20,6 +20,8 @@ project::project(const std::string project_name, yakka::workspace &workspace) : 
   project_has_slcc = false;
   current_state    = yakka::project::state::PROJECT_VALID;
   component_flags  = component_database::flag::ALL_COMPONENTS;
+  
+  add_common_template_commands(inja_environment);
 }
 
 project::~project()
@@ -632,7 +634,7 @@ void project::generate_project_summary()
 /**
  * @brief Parses the blueprints of the project.
  * 
- * This function iterates over the components of the project, as specified in the project_summary.
+
  * For each component, it checks if it contains blueprints. If it does, it iterates over these blueprints.
  * For each blueprint, it renders a string using the inja_environment, based on whether the blueprint contains a regex or not.
  * It then logs this blueprint string, and adds a new blueprint to the blueprint_database, using the blueprint string as the key.
