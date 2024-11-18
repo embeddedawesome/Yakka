@@ -384,7 +384,7 @@ project::state project::evaluate_dependencies()
   //project_has_slcc = false;
 
   // Start processing all the required components and features
-  while (!unprocessed_components.empty() || !unprocessed_features.empty()) {
+  while (!unprocessed_components.empty() || !unprocessed_features.empty() || !slc_required.empty()) {
     // Loop through the list of unprocessed components.
     // Note: Items will be added to unprocessed_components during processing
     component_list_t temp_component_list = std::move(unprocessed_components);
@@ -546,6 +546,9 @@ project::state project::evaluate_dependencies()
         }
       }
     }
+
+    if (unprocessed_components.empty() && unprocessed_features.empty())
+      break;
   }
 
   for (const auto &r: slc_required) {
@@ -1412,8 +1415,8 @@ void project::create_config_file(const std::shared_ptr<yakka::component> compone
 void project::process_slc_rules()
 {
   // Go through each SLC based component
-  std::vector<std::shared_ptr<yakka::component>>::size_type size = components.size();
-  for (std::vector<std::shared_ptr<yakka::component>>::size_type i = 0; i < size; ++i) {
+  // std::vector<std::shared_ptr<yakka::component>>::size_type size = components.size();
+  for (std::vector<std::shared_ptr<yakka::component>>::size_type i = 0; i < components.size(); ++i) {
     const auto &c = components[i];
     if (c->type == component::YAKKA_FILE)
       continue;
@@ -1433,11 +1436,16 @@ void project::process_slc_rules()
             std::shared_ptr<yakka::component> new_component = std::make_shared<yakka::component>();
             if (new_component->parse_file(component_path, "") == yakka::yakka_status::SUCCESS) {
               components.push_back(new_component);
-              ++size;
+              // ++size;
+              // Process all the required components
+              if (new_component->json.contains("requires") && new_component->json["requires"].contains("features"))
+                for (const auto &r: new_component->json["requires"]["features"])
+                  slc_required.insert(r.get<std::string>());
             }
           }
         }
       }
+      evaluate_dependencies();
       continue;
     }
 
