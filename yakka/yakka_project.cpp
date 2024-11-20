@@ -1077,9 +1077,9 @@ void project::load_common_commands()
           }
         if (source.contains("file_paths"))
           for (const auto &f: source["file_paths"]) {
-            auto source_string = try_render(inja_env, f.get<std::string>(), generated_json);
-            auto dest          = destination + "/" + source_string;
-            std::filesystem::create_directories(dest);
+            auto source_string         = try_render(inja_env, f.get<std::string>(), generated_json);
+            std::filesystem::path dest = destination + "/" + source_string;
+            std::filesystem::create_directories(dest.parent_path());
             std::filesystem::copy(source_string, dest, std::filesystem::copy_options::update_existing);
           }
         if (source.contains("files"))
