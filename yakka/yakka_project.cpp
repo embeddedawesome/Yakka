@@ -241,8 +241,9 @@ bool project::add_component(const std::string &component_name)
 
   // Add special processing of SLC related files and data
   if (new_component->type == yakka::component::YAKKA_FILE) {
-    for (const auto &f: new_component->json["requires"]["slc"])
-      slc_required.insert(f.get<std::string>());
+    if (this->project_has_slcc)
+      for (const auto &f: new_component->json["requires"]["slc"])
+        slc_required.insert(f.get<std::string>());
   } else if (new_component->type == yakka::component::SLCC_FILE) {
     project_has_slcc = true;
     unprocessed_components.insert("jinja");
