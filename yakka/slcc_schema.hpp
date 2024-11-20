@@ -50,7 +50,7 @@ properties:
     required: [ prefix ]
   config_file:
     description: List of configuration files to be included in the project.
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
@@ -84,7 +84,7 @@ properties:
           type: boolean
       required: [ path ]
   source:
-    type: array
+    type: [array, null]
     items:
       type: object
       properites:
@@ -110,7 +110,7 @@ properties:
             type: string
       required: [ path ]
   include:
-    type: array
+    type: [array, null]
     items:
       type: object
       properites:
@@ -146,7 +146,7 @@ properties:
             type: string
       required: [ path ]
   library:
-    type: array
+    type: [array, null]
     items:
       anyOf:
         - type: object
@@ -178,7 +178,7 @@ properties:
                 items:
                   type: string
   define:
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
@@ -260,7 +260,7 @@ properties:
             type: string
       required: [ option, value ]
   other_file:
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
@@ -313,7 +313,7 @@ properties:
           type: boolean
       required: [ name ]
   conflicts:
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
@@ -326,7 +326,7 @@ properties:
             type: string
       required: [ name ]
   validation_helper:
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
@@ -344,7 +344,7 @@ properties:
             type: string
       required: [ path ]
   validation_library:
-    type: array
+    type: [array, null]
     items:
       type: object
       properties:
