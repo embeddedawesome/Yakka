@@ -1126,6 +1126,32 @@ void project::load_common_commands()
     const auto temp_yaml = YAML::Load(captured_output);
     return { YAML::Dump(temp_yaml), 0 };
   };
+  blueprint_commands["diff"] = [](std::string target, const nlohmann::json &command, std::string captured_output, const nlohmann::json &generated_json, inja::Environment &inja_env) -> yakka::process_return {
+    if (!command.is_object()) {
+      spdlog::error("'diff' command invalid");
+      return { "", -1 };
+    }
+    nlohmann::json left;
+    nlohmann::json right;
+    if (command.contains("left_file")) {
+      const fs::path left_file = try_render(inja_env, command["left_file"].get<std::string>(), generated_json);
+      std::ifstream ifs(left_file);
+      left = nlohmann::json::parse(ifs);
+    } else if (command.contains("left")) {
+      left = try_render(inja_env, command["left"].get<std::string>(), generated_json);
+    }
+
+    if (command.contains("right_file")) {
+      const fs::path right_file = try_render(inja_env, command["right_file"].get<std::string>(), generated_json);
+      std::ifstream ifs(right_file);
+      right = nlohmann::json::parse(ifs);
+    } else if (command.contains("right")) {
+      right = try_render(inja_env, command["right"].get<std::string>(), generated_json);
+    }
+
+    nlohmann::json patch = nlohmann::json::diff(left, right);
+    return { patch.dump(), 0 };
+  };
 }
 
 void project::create_tasks(const std::string target_name, tf::Task &parent)
