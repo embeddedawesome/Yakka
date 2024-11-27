@@ -422,7 +422,7 @@ properties:
     properties:
       visibility:
         type: string
-        pattern: "never|basic|advanced"
+        pattern: "always|never|basic|advanced"
   clone:
     type: object
     properties:
