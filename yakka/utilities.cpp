@@ -345,7 +345,12 @@ void add_common_template_commands(inja::Environment &inja_env)
     return aggregate;
   });
   inja_env.add_callback("absolute_dir", 1, [](inja::Arguments &args) {
-    return std::filesystem::absolute(args.at(0)->get<std::string>());
+    const auto path = std::filesystem::path{ args.at(0)->get<std::string>() };
+    return std::filesystem::absolute(path).generic_string();
+  });
+  inja_env.add_callback("absolute_path", 1, [](inja::Arguments &args) {
+    const auto path = std::filesystem::path{ args.at(0)->get<std::string>() };
+    return std::filesystem::absolute(path).generic_string();
   });
   inja_env.add_callback("relative_path", 1, [](inja::Arguments &args) {
     auto path          = std::filesystem::path{ args.at(0)->get<std::string>() };
@@ -404,7 +409,7 @@ void add_common_template_commands(inja::Environment &inja_env)
     return std::regex_replace(input, target, match);
   });
   inja_env.add_callback("regex_escape", 1, [](const inja::Arguments &args) {
-    auto input  = args[0]->get<std::string>();
+    auto input = args[0]->get<std::string>();
     const std::regex metacharacters(R"([\.\^\$\+\(\)\[\]\{\}\|\?])");
     return std::regex_replace(input, metacharacters, "\\$&");
   });
