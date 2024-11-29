@@ -601,6 +601,7 @@ void project::generate_project_summary()
   project_summary["project_output"]                        = default_output_directory + project_name;
   project_summary["configuration"]["host_os"]              = host_os_string;
   project_summary["configuration"]["executable_extension"] = executable_extension;
+  project_summary["configuration"]["path"]                 = workspace.configuration_json["path"];
 
   if (!project_summary.contains("tools"))
     project_summary["tools"] = nlohmann::json::object();
