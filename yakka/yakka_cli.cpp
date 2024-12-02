@@ -250,7 +250,7 @@ int main(int argc, char **argv)
 
   // Check if SLC needs to be supported
   if (result["no-slcc"].count() != 0) {
-    project.component_flags = yakka::component_database::flag::IGNORE_SLCC;
+    project.component_flags = yakka::component_database::flag::IGNORE_ALL_SLC;
   } else {
     // Add SLC features
     if (result["with"].count() != 0) {

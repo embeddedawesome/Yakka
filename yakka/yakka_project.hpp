@@ -79,7 +79,7 @@ public:
   void parse_project_string(const std::vector<std::string> &project_string);
   void process_requirements(std::shared_ptr<yakka::component> component, nlohmann::json child_node);
   state evaluate_dependencies();
-  bool add_component(const std::string &component_name);
+  bool add_component(const std::string &component_name, component_database::flag flags);
   bool add_feature(const std::string &feature_name);
   //std::optional<fs::path> find_component(const std::string component_dotname);
   void evaluate_choices();

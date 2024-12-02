@@ -175,7 +175,7 @@ fs::path component_database::get_path() const
 
 std::string component_database::get_component_id(const fs::path path) const
 {
-  for (const auto& [name, node]: database["components"].items()) {
+  for (const auto &[name, node]: database["components"].items()) {
     // Check if path is in this component
     if (node.is_string()) {
       const auto node_path = std::filesystem::path{ node.get<std::string>() };
@@ -204,10 +204,13 @@ fs::path component_database::get_component(const std::string id, flag flags) con
   if (node.is_string()) {
     const auto path      = std::filesystem::path{ node.get<std::string>() };
     const auto extension = path.extension();
-    if (flags == flag::IGNORE_SLCC && ((extension == slcc_component_extension) || (extension == slce_component_extension)))
+    if (flags == flag::IGNORE_ALL_SLC && ((extension == slcc_component_extension) || (extension == slce_component_extension) || (extension == slcp_component_extension)))
       return {};
 
     if (flags == flag::IGNORE_YAKKA && extension == yakka_component_extension)
+      return {};
+
+    if (flags == flag::ONLY_SLCC && ((extension == slce_component_extension) || (extension == slcp_component_extension)))
       return {};
 
     if (fs::exists(path)) {
@@ -217,9 +220,11 @@ fs::path component_database::get_component(const std::string id, flag flags) con
     for (const auto &n: node) {
       const auto path      = this->workspace_path / std::filesystem::path{ n.get<std::string>() };
       const auto extension = path.extension();
-      if (flags == flag::IGNORE_SLCC && ((extension == slcc_component_extension) || (extension == slce_component_extension)))
+      if (flags == flag::IGNORE_ALL_SLC && ((extension == slcc_component_extension) || (extension == slce_component_extension) || (extension == slcp_component_extension)))
         continue;
       if (flags == flag::IGNORE_YAKKA && extension == yakka_component_extension)
+        continue;
+      if (flags == flag::ONLY_SLCC && ((extension == slce_component_extension) || (extension == slcp_component_extension)))
         continue;
       // If there is an SLCP and there is more than one entry, ignore the SLCP
       if (extension == slcp_component_extension && node.size() > 1)

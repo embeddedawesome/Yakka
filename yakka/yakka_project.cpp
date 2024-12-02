@@ -20,7 +20,7 @@ project::project(const std::string project_name, yakka::workspace &workspace) : 
   project_has_slcc = false;
   current_state    = yakka::project::state::PROJECT_VALID;
   component_flags  = component_database::flag::ALL_COMPONENTS;
-  
+
   add_common_template_commands(inja_environment);
 }
 
@@ -205,7 +205,7 @@ void project::update_summary()
   }
 }
 
-bool project::add_component(const std::string &component_name)
+bool project::add_component(const std::string &component_name, component_database::flag flags)
 {
   // Convert string to id
   const auto component_id = yakka::component_dotname_to_id(component_name);
@@ -218,7 +218,7 @@ bool project::add_component(const std::string &component_name)
   }
 
   // Find the component in the project component database
-  auto component_location = workspace.find_component(component_id, component_flags);
+  auto component_location = workspace.find_component(component_id, flags);
   if (!component_location) {
     // spdlog::info("{}: Couldn't find it", c);
     unknown_components.insert(component_id);
@@ -391,7 +391,7 @@ project::state project::evaluate_dependencies()
     component_list_t temp_component_list = std::move(unprocessed_components);
     for (const auto &i: temp_component_list) {
       // Try add the component
-      if (!add_component(i)) {
+      if (!add_component(i, component_flags)) {
         if (current_state != yakka::project::state::PROJECT_VALID)
           return current_state;
       }
@@ -467,7 +467,7 @@ project::state project::evaluate_dependencies()
     }
 
     // Check if we have finished but our project is using SLCC files
-    if (unprocessed_components.empty() && unprocessed_features.empty() && component_flags != component_database::flag::IGNORE_SLCC) {
+    if (unprocessed_components.empty() && unprocessed_features.empty() && component_flags != component_database::flag::IGNORE_ALL_SLC) {
       // Find any features that aren't provided
       std::unordered_set<std::string> temp_require_list = std::move(slc_required);
       for (const auto &r: temp_require_list) {
@@ -518,11 +518,13 @@ project::state project::evaluate_dependencies()
               instances.insert({ name, i.get<std::string>() });
             }
           }
-          unprocessed_components.insert(name);
+          // unprocessed_components.insert(name);
+          add_component(name, component_database::flag::ONLY_SLCC);
         } else if (other_options.size() == 1) {
           const auto name = *other_options.begin();
           spdlog::info("Adding component '{}' to satisfy '{}'", name, r);
-          unprocessed_components.insert(name);
+          add_component(name, component_database::flag::ONLY_SLCC);
+          // unprocessed_components.insert(name);
         } else {
           slc_required.insert(r);
         }
@@ -530,7 +532,7 @@ project::state project::evaluate_dependencies()
     }
 
     // Final check to see if Yakka component can provide an SLC requirement
-    if (unprocessed_components.empty() && unprocessed_features.empty() && !slc_required.empty() && component_flags != component_database::flag::IGNORE_SLCC) {
+    if (unprocessed_components.empty() && unprocessed_features.empty() && !slc_required.empty() && component_flags != component_database::flag::IGNORE_ALL_SLC) {
       std::unordered_set<std::string> temp_require_list = std::move(slc_required);
       for (const auto &r: temp_require_list) {
         if (slc_provided.contains(r))

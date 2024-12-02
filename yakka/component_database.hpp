@@ -11,7 +11,7 @@ public:
   component_database();
   virtual ~component_database();
 
-  enum class flag { ALL_COMPONENTS, IGNORE_SLCC, IGNORE_SLCP, IGNORE_YAKKA };
+  enum class flag { ALL_COMPONENTS, IGNORE_ALL_SLC, ONLY_SLCC, IGNORE_YAKKA };
 
   void insert(const std::string id, fs::path config_file);
   void load(const fs::path workspace_path);
@@ -28,7 +28,7 @@ public:
 
   void process_slc_sdk(fs::path slcs_path);
   void parse_slcc_file(const std::filesystem::path path);
-  void parse_yakka_file(const std::filesystem::path path, const std::string& id);
+  void parse_yakka_file(const std::filesystem::path path, const std::string &id);
 
   bool has_scanned;
 
