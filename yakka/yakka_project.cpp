@@ -482,8 +482,8 @@ project::state project::evaluate_dependencies()
         }
 
         auto feature_node = f.value();
-        std::vector<std::string> recommended_options;
-        std::vector<std::string> other_options;
+        std::unordered_set<std::string> recommended_options;
+        std::unordered_set<std::string> other_options;
 
         // Go through possible options
         for (const auto &option: feature_node) {
@@ -493,12 +493,12 @@ project::state project::evaluate_dependencies()
 
           const auto name = option.is_object() ? option["name"].get<std::string>() : option.get<std::string>();
 
-          // If this is recommended add to th recommended list, otherwise add to other options list
+          // If this is recommended add to the recommended list, otherwise add to other options list
           if (slc_recommended.contains(name)) {
             if (condition_is_fulfilled(slc_recommended[name]) && !is_disqualified_by_unless(slc_recommended[name]))
-              recommended_options.push_back(name);
+              recommended_options.insert(name);
           } else {
-            other_options.push_back(name);
+            other_options.insert(name);
           }
         }
 
@@ -509,7 +509,7 @@ project::state project::evaluate_dependencies()
           spdlog::error("Multiple recommendations for '{}'", r);
           slc_required.insert(r);
         } else if (recommended_options.size() == 1) {
-          const auto name           = recommended_options.front();
+          const auto name           = *recommended_options.begin();
           const auto recommend_node = slc_recommended[name];
           spdlog::info("Adding recommended component '{}' to satisfy '{}'", name, r);
           if (recommend_node.contains("instance")) {
@@ -520,7 +520,7 @@ project::state project::evaluate_dependencies()
           }
           unprocessed_components.insert(name);
         } else if (other_options.size() == 1) {
-          const auto name = other_options.front();
+          const auto name = *other_options.begin();
           spdlog::info("Adding component '{}' to satisfy '{}'", name, r);
           unprocessed_components.insert(name);
         } else {
