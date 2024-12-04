@@ -167,7 +167,7 @@ public:
   std::unordered_set<std::string> slc_provided;
   std::map<std::string, const nlohmann::json> slc_recommended;
   std::multimap<std::string, std::string> instances;
-  std::map<std::string, const std::shared_ptr<yakka::component>> slc_overrides;
+  std::multimap<std::string, const std::shared_ptr<yakka::component>> slc_overrides;
   bool is_disqualified_by_unless(const nlohmann::json &node);
   bool condition_is_fulfilled(const nlohmann::json &node);
   void process_slc_rules();

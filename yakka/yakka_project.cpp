@@ -1404,18 +1404,21 @@ void project::create_config_file(const std::shared_ptr<yakka::component> compone
   if (config.contains("file_id")) {
     const auto file_id = config["file_id"].get<std::string>();
     if (slc_overrides.contains(file_id)) {
-      const auto overriding_component = slc_overrides[file_id];
-      // Find the matching config, check conditions, and matching instance.
-      for (const auto &i: overriding_component->json["config_file"])
-        if (i.contains("override") && i["override"]["file_id"].get<std::string>() == file_id && !is_disqualified_by_unless(i) && condition_is_fulfilled(i)) {
-          if (i["override"].contains("instance") && i["override"]["instance"].get<std::string>() == instance_name) {
-            config_file_path = overriding_component->component_path / i["path"].get<std::string>();
-            break;
-          } else if (!i["override"].contains("instance")) {
-            config_file_path = overriding_component->component_path / i["path"].get<std::string>();
-            break;
+      auto overriding_components = slc_overrides.equal_range(file_id);
+      for (auto c = overriding_components.first; c != overriding_components.second; ++c) {
+        // Find the matching config, check conditions, and matching instance.
+        for (const auto &i: c->second->json["config_file"]) {
+          if (i.contains("override") && i["override"]["file_id"].get<std::string>() == file_id && !is_disqualified_by_unless(i) && condition_is_fulfilled(i)) {
+            if (i["override"].contains("instance") && i["override"]["instance"].get<std::string>() == instance_name) {
+              config_file_path = c->second->component_path / i["path"].get<std::string>();
+              break;
+            } else if (!i["override"].contains("instance")) {
+              config_file_path = c->second->component_path / i["path"].get<std::string>();
+              break;
+            }
           }
         }
+      }
     }
   }
 
