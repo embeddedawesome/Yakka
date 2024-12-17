@@ -3,6 +3,9 @@
 #include "subprocess.hpp"
 #include "spdlog/spdlog.h"
 #include "glob/glob.h"
+#include <concepts>
+#include <string_view>
+#include <expected>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -620,54 +623,93 @@ nlohmann::json::json_pointer create_condition_pointer(const nlohmann::json condi
   return pointer;
 }
 
-bool has_data_dependency_changed(std::string data_path, const nlohmann::json left, const nlohmann::json right)
+// Helper struct to hold component comparison results
+struct ComparisonResult {
+  bool changed{false};
+  std::string error_message;
+};
+
+[[nodiscard]]
+std::expected<bool, std::string> has_data_dependency_changed(
+    std::string_view data_path,
+    const nlohmann::json& left,
+    const nlohmann::json& right) noexcept
 {
-  if (data_path[0] != data_dependency_identifier)
-    return false;
+  // Verify validity of data_path
+  if (data_path.empty() || data_path[0] != data_dependency_identifier) {
+      return false;
+  }
+    
+  if (data_path[1] != '/') {
+      return std::unexpected{"Invalid path format: missing root separator"};
+  }
 
-  assert(data_path[1] == '/');
-
-  // std::lock_guard<std::mutex> lock(project_lock);
-  try {
-    if (left.is_null() || left["components"].is_null())
+  // Verify validity of left data
+  if (left.is_null() || left["components"].is_null()) {
       return true;
+  }
 
-    // Check for wildcard or component name
+  try {
+    const auto process_component = [&](std::string_view component_name, 
+                                    const nlohmann::json::json_pointer& pointer) -> ComparisonResult {
+      if (!left["components"].contains(component_name)) {
+          return {true, ""};
+      }
+
+      const auto& left_comp = left["components"][component_name];
+      const auto& right_comp = right["components"][component_name];
+
+      auto get_value = [](const auto& json, const auto& ptr) {
+          return json.contains(ptr) ? json[ptr] : nlohmann::json{};
+      };
+
+      auto left_value = get_value(left_comp, pointer);
+      auto right_value = get_value(right_comp, pointer);
+
+      return {left_value != right_value, ""};
+    };
+
     if (data_path[2] == data_wildcard_identifier) {
       if (data_path[3] != '/') {
-        spdlog::error("Data dependency malformed: {}", data_path);
-        return false;
+          return std::unexpected{"Data dependency malformed: " + std::string{data_path}};
       }
 
-      data_path = data_path.substr(3);
-      nlohmann::json::json_pointer pointer{ data_path };
-      for (const auto &[c_key, c_value]: right["components"].items()) {
-        std::string component_name = c_key;
-        if (!left["components"].contains(component_name))
-          return true;
-        auto a = left["components"][component_name].contains(pointer) ? left["components"][component_name][pointer] : nlohmann::json{};
-        auto b = right["components"][component_name].contains(pointer) ? right["components"][component_name][pointer] : nlohmann::json{};
-        if (a != b) {
-          return true;
-        }
+      auto path_view = std::string_view{data_path}.substr(3);
+      nlohmann::json::json_pointer pointer{std::string{path_view}};
+
+      // Using C++20 ranges to process components
+      for (const auto& [component_name, _] : right["components"].items()) {
+          auto result = process_component(component_name, pointer);
+          if (!result.error_message.empty()) {
+              return std::unexpected{std::move(result.error_message)};
+          }
+          if (result.changed) {
+              return true;
+          }
       }
     } else {
-      std::string component_name = data_path.substr(2, data_path.find_first_of('/', 2) - 2);
-      data_path                  = data_path.substr(data_path.find_first_of('/', 2));
-      nlohmann::json::json_pointer pointer{ data_path };
-      if (!left["components"].contains(component_name))
-        return true;
-      auto a = left["components"][component_name].contains(pointer) ? left["components"][component_name][pointer] : nlohmann::json{};
-      auto b = right["components"][component_name].contains(pointer) ? right["components"][component_name][pointer] : nlohmann::json{};
-      if (a != b) {
-        return true;
+      auto path_view = std::string_view{data_path}.substr(2);
+      auto separator_pos = path_view.find_first_of('/');
+      if (separator_pos == std::string_view::npos) {
+          return std::unexpected{"Invalid path format: missing component separator"};
       }
+
+      auto component_name = path_view.substr(0, separator_pos);
+      auto remaining_path = path_view.substr(separator_pos);
+      nlohmann::json::json_pointer pointer{std::string{remaining_path}};
+
+      auto result = process_component(component_name, pointer);
+      if (!result.error_message.empty()) {
+          return std::unexpected{std::move(result.error_message)};
+      }
+      return result.changed;
     }
+
     return false;
-  } catch (const std::exception &e) {
-    spdlog::error("Failed to determine data dependency: {}", e.what());
-    return false;
+  } catch (const std::exception& e) {
+      return std::unexpected{std::string{"Failed to determine data dependency: "} + e.what()};
   }
 }
+
 
 } // namespace yakka
