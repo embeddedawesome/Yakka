@@ -1189,7 +1189,13 @@ void project::create_tasks(const std::string target_name, tf::Task &parent)
       task.data(&new_todo->second).work([=, this]() {
         // spdlog::info("{}: data", target_name);
         auto *d          = static_cast<construction_task *>(task.data());
-        d->last_modified = has_data_dependency_changed(target_name, previous_summary, project_summary) ? fs::file_time_type::max() : fs::file_time_type::min();
+        auto result = has_data_dependency_changed(target_name, previous_summary, project_summary);
+        if (result) {
+            d->last_modified = *result ? fs::file_time_type::max() : fs::file_time_type::min();
+        } else {
+            spdlog::error("Data dependency '{}' error: {}", target_name, result.error());
+            return;
+        }
         if (d->last_modified > start_time)
           spdlog::info("{} has been updated", target_name);
         return;

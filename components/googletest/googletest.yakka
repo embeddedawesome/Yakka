@@ -3,3 +3,9 @@ name: Google Test
 includes:
   global:
     - main/googletest/include
+  local:
+    - main/googletest
+
+sources:
+  - main/googletest/src/gtest_main.cc
+  - main/googletest/src/gtest-all.cc

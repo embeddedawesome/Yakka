@@ -625,8 +625,8 @@ nlohmann::json::json_pointer create_condition_pointer(const nlohmann::json condi
 
 // Helper struct to hold component comparison results
 struct ComparisonResult {
-  bool changed{false};
-  std::string error_message;
+    bool changed{false};
+    std::string error_message;
 };
 
 [[nodiscard]]
@@ -635,80 +635,79 @@ std::expected<bool, std::string> has_data_dependency_changed(
     const nlohmann::json& left,
     const nlohmann::json& right) noexcept
 {
-  // Verify validity of data_path
-  if (data_path.empty() || data_path[0] != data_dependency_identifier) {
-      return false;
-  }
+    if (data_path.empty() || data_path[0] != data_dependency_identifier) {
+        return false;
+    }
     
-  if (data_path[1] != '/') {
-      return std::unexpected{"Invalid path format: missing root separator"};
-  }
-
-  // Verify validity of left data
-  if (left.is_null() || left["components"].is_null()) {
-      return true;
-  }
-
-  try {
-    const auto process_component = [&](std::string_view component_name, 
-                                    const nlohmann::json::json_pointer& pointer) -> ComparisonResult {
-      if (!left["components"].contains(component_name)) {
-          return {true, ""};
-      }
-
-      const auto& left_comp = left["components"][component_name];
-      const auto& right_comp = right["components"][component_name];
-
-      auto get_value = [](const auto& json, const auto& ptr) {
-          return json.contains(ptr) ? json[ptr] : nlohmann::json{};
-      };
-
-      auto left_value = get_value(left_comp, pointer);
-      auto right_value = get_value(right_comp, pointer);
-
-      return {left_value != right_value, ""};
-    };
-
-    if (data_path[2] == data_wildcard_identifier) {
-      if (data_path[3] != '/') {
-          return std::unexpected{"Data dependency malformed: " + std::string{data_path}};
-      }
-
-      auto path_view = std::string_view{data_path}.substr(3);
-      nlohmann::json::json_pointer pointer{std::string{path_view}};
-
-      // Using C++20 ranges to process components
-      for (const auto& [component_name, _] : right["components"].items()) {
-          auto result = process_component(component_name, pointer);
-          if (!result.error_message.empty()) {
-              return std::unexpected{std::move(result.error_message)};
-          }
-          if (result.changed) {
-              return true;
-          }
-      }
-    } else {
-      auto path_view = std::string_view{data_path}.substr(2);
-      auto separator_pos = path_view.find_first_of('/');
-      if (separator_pos == std::string_view::npos) {
-          return std::unexpected{"Invalid path format: missing component separator"};
-      }
-
-      auto component_name = path_view.substr(0, separator_pos);
-      auto remaining_path = path_view.substr(separator_pos);
-      nlohmann::json::json_pointer pointer{std::string{remaining_path}};
-
-      auto result = process_component(component_name, pointer);
-      if (!result.error_message.empty()) {
-          return std::unexpected{std::move(result.error_message)};
-      }
-      return result.changed;
+    if (data_path[1] != '/') {
+        return std::unexpected{"Invalid path format: missing root separator"};
     }
 
-    return false;
-  } catch (const std::exception& e) {
-      return std::unexpected{std::string{"Failed to determine data dependency: "} + e.what()};
-  }
+    // Early return if left data is missing
+    if (left.is_null() || left["components"].is_null()) {
+        return true;
+    }
+
+    try {
+        const auto process_component = [&](std::string_view component_name, 
+                                        const nlohmann::json::json_pointer& pointer) -> ComparisonResult {
+            if (!left["components"].contains(component_name) || !right["components"].contains(component_name)) {
+                return {true, ""};
+            }
+
+            const auto& left_comp = left["components"][std::string{component_name}];
+            const auto& right_comp = right["components"][std::string{component_name}];
+
+            auto get_value = [](const auto& json, const auto& ptr) {
+                return json.contains(ptr) ? json[ptr] : nlohmann::json{};
+            };
+
+            auto left_value = get_value(left_comp, pointer);
+            auto right_value = get_value(right_comp, pointer);
+
+            return {left_value != right_value, ""};
+        };
+
+        if (data_path[2] == data_wildcard_identifier) {
+            if (data_path[3] != '/') {
+                return std::unexpected{"Data dependency malformed: " + std::string{data_path}};
+            }
+
+            auto path_view = std::string_view{data_path}.substr(3);
+            nlohmann::json::json_pointer pointer{std::string{path_view}};
+
+            // Using C++20 ranges to process components
+            for (const auto& [component_name, _] : right["components"].items()) {
+                auto result = process_component(component_name, pointer);
+                if (!result.error_message.empty()) {
+                    return std::unexpected{std::move(result.error_message)};
+                }
+                if (result.changed) {
+                    return true;
+                }
+            }
+        } else {
+            auto path_view = std::string_view{data_path}.substr(2);
+            auto separator_pos = path_view.find_first_of('/');
+            if (separator_pos == std::string_view::npos) {
+                return std::unexpected{"Invalid path format: missing component separator"};
+            }
+
+            auto component_name = path_view.substr(0, separator_pos);
+            auto remaining_path = path_view.substr(separator_pos);
+            nlohmann::json::json_pointer pointer{std::string{remaining_path}};
+
+            auto result = process_component(component_name, pointer);
+            if (!result.error_message.empty()) {
+                return std::unexpected{std::move(result.error_message)};
+            }
+            return result.changed;
+        }
+
+        return false;
+    } catch (const std::exception& e) {
+        return std::unexpected{std::string{"Failed to determine data dependency: "} + e.what()};
+    }
 }
 
 

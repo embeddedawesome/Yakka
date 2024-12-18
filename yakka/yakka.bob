@@ -9,6 +9,10 @@ sources:
   - blueprint_database.cpp
   - utilities.cpp
 
+includes:
+  global:
+    - '.'
+
 requires:
   components:
     - yaml-cpp
