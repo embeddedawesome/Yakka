@@ -11,7 +11,7 @@ flags:
   cpp:
     global:
       - -O3
-      - -std=c++latest
+      - -std=c++2b
       - -MD
       - -ffunction-sections
       - -fdata-sections
