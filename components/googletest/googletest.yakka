@@ -3,6 +3,7 @@ name: Google Test
 includes:
   global:
     - main/googletest/include
+    - main/googlemock/include
   local:
     - main/googletest
 

@@ -2,6 +2,7 @@ name: Yakka unit tests
 
 sources:
   - data_dependency_unit_tests.cpp
+  - workspace_unit_tests.cpp
 
 requires:
   components:
