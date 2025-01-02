@@ -14,16 +14,18 @@ windows_sdk:
 flags:
   c:
     global:
-      - /Fm /c /EHsc /Ox /Zi /FS -MT /utf-8
-      - -I"{{components.msvc.tooling.build_tool_path}}/include" 
+      - /Fm /c /EHsc /Ox /FS -MT /utf-8
+      - /GL
+      - -I"{{components.msvc.tooling.build_tool_path}}/include"
       - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/um"
-      - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/shared" 
+      - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/shared"
       - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/ucrt"
       - -DEBUG:FULL
 
   cpp:
     global:
-      - /Fm /c /EHsc /Ox /Zi /FS -MT /utf-8 /std:c++latest
+      - /Fm /c /EHsc /Ox /FS -MT /utf-8 /std:c++latest
+      - /GL
       - -I"{{components.msvc.tooling.build_tool_path}}/include" 
       - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/um"
       - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/shared" 
@@ -55,11 +57,20 @@ blueprints:
     depends:
       - '{{project_output}}/{{project_name}}.exe'
 
+  '{{project_output}}/{{project_name}}.global_lib_options':
+    depends:
+      - data:
+          - '/*/sources'
+    process:
+      - inja: "/NOLOGO /LTCG {% for name, component in components %}{%if existsIn(component,\"sources\") %}{% for source in component/sources %}{{project_output}}/components/{{name}}/{{source}}.o {% endfor %}{% endif %}{% endfor %}"
+      - save:
+
   '{{project_output}}/{{project_name}}.lib':
     depends:
       - '[{% for name, component in components %}{%if existsIn(component,"sources") %}{% for source in component.sources %}{{project_output}}/components/{{name}}/{{source}}.o, {% endfor %}{% endif %}{% endfor %}]'
+      - '{{project_output}}/{{project_name}}.global_lib_options'
     process:
-      - lib: "@{{project_output}}/{{project_name}}.global_ld_options -OUT:{{project_output}}/{{project_name}}.lib"
+      - lib: "@{{project_output}}/{{project_name}}.global_lib_options -OUT:{{project_output}}/{{project_name}}.lib"
 
   '{{project_output}}/{{project_name}}.exe': 
     depends:
