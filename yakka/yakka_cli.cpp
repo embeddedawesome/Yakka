@@ -122,8 +122,9 @@ int main(int argc, char **argv)
     // Ensure the BOB registries directory exists
     fs::create_directories(".yakka/registries");
     spdlog::info("Adding component registry...");
-    if (workspace.add_component_registry(result.unmatched()[0]) != yakka::yakka_status::SUCCESS) {
-      spdlog::error("Failed to add component registry. See yakka.log for details");
+    auto status = workspace.add_component_registry(result.unmatched()[0]);
+    if (!status.has_value()) {
+      spdlog::error("Failed to add component registry. See yakka.log for details: {}", status.error().message());
       return -1;
     }
     spdlog::info("Complete");
@@ -470,7 +471,7 @@ static void download_unknown_components(yakka::workspace &workspace, yakka::proj
           fetch_progress_bars.push_back(new_progress_bar);
           size_t id = fetch_progress_ui.push_back(*new_progress_bar);
           fetch_progress_ui.print_progress();
-          auto result = workspace.fetch_component(i, *node, [&fetch_progress_ui, id](std::string prefix, size_t number) {
+          auto result = workspace.fetch_component(i, *node, [&fetch_progress_ui, id](std::string_view prefix, size_t number) {
             fetch_progress_ui[id].set_option(option::PrefixText{ prefix });
             if (number >= 100) {
               fetch_progress_ui[id].set_progress(100);

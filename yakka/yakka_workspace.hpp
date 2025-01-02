@@ -6,34 +6,37 @@
 #include "component_database.hpp"
 #include <string>
 #include <future>
+#include <expected>
 #include <optional>
 #include <filesystem>
 
 namespace yakka {
 class workspace {
 public:
-  workspace();
-  ~workspace();
-  void init(fs::path workspace_path = ".");
-  std::future<fs::path> fetch_component(const std::string &name, YAML::Node node, std::function<void(std::string, size_t)> progress_handler);
+  workspace()  = default;
+  ~workspace() = default;
+
+  std::expected<void, std::error_code> init(const fs::path &workspace_path = ".");
+
+  std::future<fs::path> fetch_component(std::string_view name, const YAML::Node &node, std::function<void(std::string_view, size_t)> progress_handler);
   void load_component_registries();
-  yakka_status add_component_registry(const std::string &url);
-  std::optional<YAML::Node> find_registry_component(const std::string &name);
-  std::optional<std::pair<fs::path, fs::path>> find_component(const std::string component_dotname, component_database::flag flags = component_database::flag::ALL_COMPONENTS);
-  std::optional<nlohmann::json> find_feature(const std::string feature) const;
-  std::optional<nlohmann::json> find_blueprint(const std::string blueprint) const;
-  void load_config_file(const fs::path config_file_path);
+  std::expected<void, std::error_code> add_component_registry(std::string_view url);
+  std::optional<YAML::Node> find_registry_component(std::string_view name) const;
+  std::optional<std::pair<fs::path, fs::path>> find_component(std::string_view component_dotname, component_database::flag flags = component_database::flag::ALL_COMPONENTS);
+  std::optional<nlohmann::json> find_feature(std::string_view feature) const;
+  std::optional<nlohmann::json> find_blueprint(std::string_view blueprint) const;
+  std::expected<void, std::error_code> load_config_file(const fs::path &config_file_path);
   std::string template_render(const std::string input);
-  yakka_status fetch_registry(const std::string &url);
-  yakka_status update_component(const std::string &name);
+  std::expected<void, std::error_code> fetch_registry(std::string_view url);
+  std::expected<void, std::error_code> update_component(std::string_view name);
   fs::path get_yakka_shared_home();
 
-  static std::filesystem::path do_fetch_component(const std::string &name,
-                                                  const std::string url,
-                                                  const std::string branch,
-                                                  const fs::path git_location,
-                                                  const fs::path checkout_location,
-                                                  std::function<void(std::string, size_t)> progress_handler);
+  static std::expected<fs::path, std::error_code> do_fetch_component(std::string_view name,
+                                                                     std::string_view url,
+                                                                     std::string_view branch,
+                                                                     const fs::path &git_location,
+                                                                     const fs::path &checkout_location,
+                                                                     std::function<void(std::string_view, size_t)> progress_handler);
 
 public:
   std::shared_ptr<spdlog::logger> log;
