@@ -62,7 +62,12 @@ yakka_status component::parse_file(fs::path file_path, fs::path package_path)
 
     // Set version
     if (json.contains("version")) {
-      this->version = semver::version::parse(json["version"].get<std::string>());
+      try {
+        this->version = semver::version::parse(json["version"].get<std::string>());
+      } catch (std::exception &e) {
+        spdlog::error("Failed to parse version: '{}'\n{}\n", json["version"].get<std::string>(), e.what());
+        this->version = "0.0.0"_v;
+      }
     } else {
       this->version = "0.0.0"_v;
     }
