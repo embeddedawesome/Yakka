@@ -12,6 +12,15 @@ windows_sdk:
   version: '{{ first( windows_sdk/directory/* ) }}'
 
 flags:
+  c:
+    global:
+      - /Fm /c /EHsc /Ox /Zi /FS -MT /utf-8
+      - -I"{{components.msvc.tooling.build_tool_path}}/include" 
+      - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/um"
+      - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/shared" 
+      - -I"{{components.msvc.tooling.kit.path}}/Include/{{components.msvc.tooling.kit.version}}/ucrt"
+      - -DEBUG:FULL
+
   cpp:
     global:
       - /Fm /c /EHsc /Ox /Zi /FS -MT /utf-8 /std:c++latest
