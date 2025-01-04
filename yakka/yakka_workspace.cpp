@@ -252,7 +252,7 @@ std::future<fs::path> workspace::fetch_component(std::string_view name, const YA
 
   const auto checkout_location = (node["type"] && node["type"].as<std::string>() == "tool" && shared_components_write_access) ? shared_components_path / "repos" / std::string(name) : workspace_path / "components" / std::string(name);
 
-  return std::async(std::launch::async, [=, this]() -> fs::path {
+  return std::async(std::launch::async, [=]() -> fs::path {
     auto result = do_fetch_component(std::string(name), url, branch, git_location, checkout_location, progress_handler);
     if (result) {
       return *result;
