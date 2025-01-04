@@ -10,7 +10,6 @@
 #include <string_view>
 #include <ranges>
 #include <format>
-#include <print>
 
 namespace fs = std::filesystem;
 
@@ -36,7 +35,7 @@ std::expected<void, std::error_code> workspace::init(const fs::path &workspace_p
       fs::create_directories(shared_components_path);
     }
   } catch (const fs::filesystem_error &e) {
-    std::print("Failed to load shared component path: {}\n", e.what());
+    spdlog::error("Failed to load shared component path: {}\n", e.what());
     return std::unexpected(e.code());
   }
 
@@ -86,7 +85,7 @@ void workspace::load_component_registries()
       const auto registry_name  = entry.path().filename().replace_extension().string();
       registries[registry_name] = YAML::LoadFile(entry.path().string());
     } catch (const std::exception &e) {
-      std::print("Could not parse component registry '{}': {}\n", entry.path().string(), e.what());
+      spdlog::error("Could not parse component registry '{}': {}\n", entry.path().string(), e.what());
     }
   }
 }
@@ -234,7 +233,7 @@ std::expected<void, std::error_code> workspace::load_config_file(const fs::path 
 
     return {};
   } catch (const std::exception &e) {
-    std::print("Couldn't read '{}': {}\n", config_file_path.string(), e.what());
+    spdlog::error("Couldn't read '{}': {}\n", config_file_path.string(), e.what());
     return std::unexpected(std::make_error_code(std::errc::invalid_argument));
   }
 }
@@ -270,7 +269,7 @@ std::expected<void, std::error_code> workspace::fetch_registry(std::string_view 
   const auto fetch_string   = std::format("-C .yakka/registries/ clone {} --progress --single-branch", url);
 
   auto [output, result] = yakka::exec(GIT_STRING, fetch_string);
-  std::print("{}\n", output);
+  spdlog::info("{}\n", output);
 
   if (result != 0) {
     return std::unexpected(std::make_error_code(std::errc::protocol_error));
