@@ -10,7 +10,6 @@
 #include <string_view>
 #include <ranges>
 #include <format>
-#include <print>
 
 namespace fs = std::filesystem;
 
@@ -36,7 +35,7 @@ std::expected<void, std::error_code> workspace::init(const fs::path &workspace_p
       fs::create_directories(shared_components_path);
     }
   } catch (const fs::filesystem_error &e) {
-    std::print("Failed to load shared component path: {}\n", e.what());
+    spdlog::error("Failed to load shared component path: {}\n", e.what());
     return std::unexpected(e.code());
   }
 
@@ -49,17 +48,28 @@ std::expected<void, std::error_code> workspace::init(const fs::path &workspace_p
     }
   }
 
-  local_database.load(this->workspace_path);
+  auto result = local_database.load(this->workspace_path);
+  if (!result) {
+    spdlog::error("Failed to load local database: {}\n", result.error().message());
+    return std::unexpected(result.error());
+  }
 
   if (!this->shared_components_path.empty()) {
-    shared_database.load(this->shared_components_path);
+    auto result = shared_database.load(this->shared_components_path);
+    if (!result) {
+      spdlog::error("Failed to load shared database: {}\n", result.error().message());
+      return std::unexpected(result.error());
+    }
   }
 
   // Using ranges for package database loading
   if (!this->packages.empty()) {
     package_databases.reserve(packages.size());
     std::ranges::for_each(packages, [this](const auto &p) {
-      package_databases.emplace_back().load(p);
+      auto result = package_databases.emplace_back().load(p);
+      if (!result) {
+        spdlog::error("Failed to load package database at {}: {}\n", p.string(), result.error().message());
+      }
     });
   }
 
@@ -86,7 +96,7 @@ void workspace::load_component_registries()
       const auto registry_name  = entry.path().filename().replace_extension().string();
       registries[registry_name] = YAML::LoadFile(entry.path().string());
     } catch (const std::exception &e) {
-      std::print("Could not parse component registry '{}': {}\n", entry.path().string(), e.what());
+      spdlog::error("Could not parse component registry '{}': {}\n", entry.path().string(), e.what());
     }
   }
 }
@@ -117,24 +127,24 @@ std::optional<std::pair<fs::path, fs::path>> workspace::find_component(std::stri
 
   const auto [local, shared] = std::tuple{ local_database.get_component(component_id, flags), shared_database.get_component(component_id, flags) };
 
-  if (local.empty() && shared.empty()) {
+  if (!local.has_value() && !shared.has_value()) {
     // Using ranges to search package databases
     auto found = std::ranges::find_if(package_databases, [&](const auto &db) {
-      return !db.get_component(component_id, flags).empty();
+      return db.get_component(component_id, flags).has_value();
     });
 
     if (found != package_databases.end()) {
-      return std::pair{ found->get_component(component_id, flags), found->get_path() };
+      return std::pair{ found->get_component(component_id, flags).value(), found->get_path() };
     }
     return std::nullopt;
   }
 
-  if (!local.empty())
-    return std::pair{ local, fs::path{} };
-  if (!shared.empty())
-    return std::pair{ shared, fs::path{} };
+  if (local.has_value())
+    return std::pair{ *local, fs::path{} };
+  if (shared.has_value())
+    return std::pair{ *shared, fs::path{} };
 
-  if (!local_database.has_scanned && try_update_the_database) {
+  if (!local_database.has_done_scan() && try_update_the_database) {
     local_database.clear();
     local_database.scan_for_components();
     return find_component(component_dotname, flags);
@@ -147,17 +157,17 @@ std::optional<std::pair<fs::path, fs::path>> workspace::find_component(std::stri
 std::optional<nlohmann::json> workspace::find_feature(std::string_view feature) const
 {
   // Using structured bindings and if-init statement
-  if (auto node = local_database.get_feature_provider(std::string(feature)); !node.is_null()) {
-    return node;
+  if (auto node = local_database.get_feature_provider(std::string(feature)); node.has_value()) {
+    return *node;
   }
 
-  if (auto node = shared_database.get_feature_provider(std::string(feature)); !node.is_null()) {
-    return node;
+  if (auto node = shared_database.get_feature_provider(std::string(feature)); node.has_value()) {
+    return *node;
   }
 
   // Using ranges to search package databases
   auto found = std::ranges::find_if(package_databases, [&](const auto &db) {
-    return !db.get_feature_provider(std::string(feature)).is_null();
+    return db.get_feature_provider(std::string(feature)).has_value();
   });
 
   if (found != package_databases.end()) {
@@ -170,16 +180,16 @@ std::optional<nlohmann::json> workspace::find_feature(std::string_view feature) 
 // Blueprint finding with modern features
 std::optional<nlohmann::json> workspace::find_blueprint(std::string_view blueprint) const
 {
-  if (auto node = local_database.get_blueprint_provider(std::string(blueprint)); !node.is_null()) {
-    return node;
+  if (auto node = local_database.get_blueprint_provider(std::string(blueprint)); node.has_value()) {
+    return *node;
   }
 
-  if (auto node = shared_database.get_blueprint_provider(std::string(blueprint)); !node.is_null()) {
-    return node;
+  if (auto node = shared_database.get_blueprint_provider(std::string(blueprint)); node.has_value()) {
+    return *node;
   }
 
   auto found = std::ranges::find_if(package_databases, [&](const auto &db) {
-    return !db.get_blueprint_provider(std::string(blueprint)).is_null();
+    return db.get_blueprint_provider(std::string(blueprint)).has_value();
   });
 
   if (found != package_databases.end()) {
@@ -234,7 +244,7 @@ std::expected<void, std::error_code> workspace::load_config_file(const fs::path 
 
     return {};
   } catch (const std::exception &e) {
-    std::print("Couldn't read '{}': {}\n", config_file_path.string(), e.what());
+    spdlog::error("Couldn't read '{}': {}\n", config_file_path.string(), e.what());
     return std::unexpected(std::make_error_code(std::errc::invalid_argument));
   }
 }
@@ -270,7 +280,7 @@ std::expected<void, std::error_code> workspace::fetch_registry(std::string_view 
   const auto fetch_string   = std::format("-C .yakka/registries/ clone {} --progress --single-branch", url);
 
   auto [output, result] = yakka::exec(GIT_STRING, fetch_string);
-  std::print("{}\n", output);
+  spdlog::info("{}\n", output);
 
   if (result != 0) {
     return std::unexpected(std::make_error_code(std::errc::protocol_error));
@@ -285,9 +295,9 @@ std::expected<void, std::error_code> workspace::update_component(std::string_vie
   std::string git_directory_string;
 
   // Determine git directory string based on component location
-  if (!local_database.get_component(std::string(name)).empty()) {
+  if (local_database.get_component(std::string(name)).has_value()) {
     git_directory_string = std::format("--git-dir .yakka/repos/{0}/.git --work-tree components/{0} ", name);
-  } else if (!shared_database.get_component(std::string(name)).empty()) {
+  } else if (shared_database.get_component(std::string(name)).has_value()) {
     git_directory_string = std::format("-C {}/repos/{} ", shared_components_path.string(), name);
   } else {
     return std::unexpected(std::make_error_code(std::errc::no_such_file_or_directory));

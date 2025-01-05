@@ -514,16 +514,24 @@ static void download_unknown_components(yakka::workspace &workspace, yakka::proj
       if (new_component_path.string().starts_with(workspace.shared_components_path.string())) {
         spdlog::info("Scanning for new component in shared database");
         workspace.shared_database.scan_for_components(new_component_path);
-        workspace.shared_database.save();
+        auto result = workspace.shared_database.save();
+        if (!result.has_value()) {
+          spdlog::error("Failed to save shared database: {}", result.error().message());
+          exit(1);
+        }
       } else {
         spdlog::info("Scanning for new component in local database");
         workspace.local_database.scan_for_components(new_component_path);
-        workspace.shared_database.save();
+        auto result = workspace.shared_database.save();
+        if (!result.has_value()) {
+          spdlog::error("Failed to save shared database: {}", result.error().message());
+          exit(1);
+        }
       }
 
       // Check if any of our unknown components have been found
       for (auto i = project.unknown_components.cbegin(); i != project.unknown_components.cend();) {
-        if (!workspace.local_database.get_component(*i, project.component_flags).empty() || !workspace.shared_database.get_component(*i, project.component_flags).empty()) {
+        if (!workspace.local_database.get_component(*i, project.component_flags).has_value() || !workspace.shared_database.get_component(*i, project.component_flags).has_value()) {
           // Remove component from the unknown list and add it to the unprocessed list
           project.unprocessed_components.insert(*i);
           i = project.unknown_components.erase(i);
