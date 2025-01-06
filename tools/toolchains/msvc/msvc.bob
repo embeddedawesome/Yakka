@@ -39,6 +39,7 @@ flags:
       - -OPT:REF
       - -DEBUG:FULL
       - -OPT:NOICF
+      -  /LTCG
       - -LIBPATH:"{{components.msvc.tooling.kit.path}}/Lib/{{components.msvc.tooling.kit.version}}/um/x64"
       - -LIBPATH:"{{components.msvc.tooling.build_tool_path}}/lib/onecore/x64"
       - -LIBPATH:"{{components.msvc.tooling.kit.path}}/Lib/{{components.msvc.tooling.kit.version}}/ucrt/x64"
