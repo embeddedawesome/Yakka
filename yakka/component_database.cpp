@@ -2,13 +2,14 @@
 #include "spdlog/spdlog.h"
 #include "ryml.hpp"
 #include "ryml_std.hpp"
+#include "utilities.hpp"
 #include <ranges>
 #include <format>
 #include <fstream>
 
 namespace yakka {
 
-static void process_blueprint(nlohmann::json &database, const std::string &id_string, const c4::yml::ConstNodeRef &blueprint_node);
+static void process_blueprint(nlohmann::json &database, std::string_view id_string, const c4::yml::ConstNodeRef &blueprint_node);
 namespace fs = std::filesystem;
 using error  = std::error_code;
 
@@ -21,7 +22,10 @@ component_database::component_database() : workspace_path(""), has_scanned(false
 component_database::~component_database()
 {
   if (database_is_dirty) {
-    save();
+    auto result = save();
+    if (!result) {
+      spdlog::error("Failed to save database: {}", result.error().message());
+    }
   }
 }
 
@@ -168,6 +172,16 @@ std::expected<std::string, error> component_database::get_component_id(const pat
   return std::unexpected(std::make_error_code(std::errc::no_such_file_or_directory));
 }
 
+std::optional<json> component_database::get_blueprint_provider(std::string_view blueprint) const
+{
+  const auto blueprint_str = std::string{ blueprint };
+  if (database["blueprints"].contains(blueprint_str)) {
+    return database["blueprints"][blueprint_str];
+  }
+
+  return std::nullopt;
+}
+
 std::expected<void, std::error_code> component_database::parse_yakka_file(const path &path, std::string_view id)
 {
   std::vector<char> contents = yakka::get_file_contents<std::vector<char>>(path.string());
@@ -190,7 +204,7 @@ std::optional<json> component_database::get_feature_provider(std::string_view fe
   return std::nullopt;
 }
 
-static void process_blueprint(nlohmann::json &database, const std::string &id_string, const c4::yml::ConstNodeRef &blueprint_node)
+static void process_blueprint(nlohmann::json &database, std::string_view id_string, const c4::yml::ConstNodeRef &blueprint_node)
 {
   // Ignore regex blueprints
   if (blueprint_node.has_child("regex")) {
