@@ -14,7 +14,7 @@ namespace fs = std::filesystem;
 using error  = std::error_code;
 
 // Constructor initializes empty database with default values
-component_database::component_database() : workspace_path(""), has_scanned(false), database_is_dirty(false)
+component_database::component_database() : workspace_path(""), database_is_dirty(false), has_scanned(false)
 {
 }
 
@@ -99,9 +99,9 @@ std::expected<bool, error> component_database::add_component(std::string_view co
   const auto id_str      = std::string{ component_id };
 
   if (database["components"].contains(id_str)) {
-    const auto &entries = database["components"][id_str];
+    const json &entries = database["components"][id_str];
     if (std::ranges::any_of(entries, [&](const auto &entry) {
-          return entry.get<std::string>() == path_string;
+          return entry.template get<std::string>() == path_string;
         })) {
       return false;
     }
@@ -164,7 +164,7 @@ std::expected<std::string, error> component_database::get_component_id(const pat
       return name;
     }
     if (node.is_array() && std::ranges::any_of(node, [&](const auto &n) {
-          return fs::path{ n.get<std::string>() } == path;
+          return fs::path{ n.template get<std::string>() } == path;
         })) {
       return name;
     }
@@ -193,6 +193,8 @@ std::expected<void, std::error_code> component_database::parse_yakka_file(const 
       process_blueprint(database, id, b);
     }
   }
+
+  return {};
 }
 
 std::optional<json> component_database::get_feature_provider(std::string_view feature) const

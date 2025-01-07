@@ -31,6 +31,7 @@ public:
   std::expected<void, std::error_code> update_component(std::string_view name);
   fs::path get_yakka_shared_home();
 
+  std::expected<void, std::error_code> execute_git_command(std::string_view command, std::string_view git_directory_string);
   static std::expected<fs::path, std::error_code> do_fetch_component(std::string_view name,
                                                                      std::string_view url,
                                                                      std::string_view branch,

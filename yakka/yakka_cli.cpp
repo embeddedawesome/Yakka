@@ -95,14 +95,22 @@ int main(int argc, char **argv)
 
     std::cout << "Scanning '.' for components\n";
     workspace.local_database.scan_for_components();
-    workspace.local_database.save();
+    auto result = workspace.local_database.save();
+    if (!result.has_value()) {
+      std::cerr << "Failed to save local database: " << result.error().message() << "\n";
+      return -1;
+    }
 
     for (auto &db: workspace.package_databases) {
       std::cout << "Scanning '" << db.get_path().string() << "' for components\n";
       db.erase();
       db.clear();
       db.scan_for_components();
-      db.save();
+      auto result = db.save();
+      if (!result.has_value()) {
+        std::cerr << "Failed to save package database: " << result.error().message() << "\n";
+        return -1;
+      }
     }
     std::cout << "Scan complete.\n";
   }
@@ -143,7 +151,11 @@ int main(int argc, char **argv)
     for (auto &i: result.unmatched()) {
       // const auto name = d.path().filename().generic_string();
       std::cout << "Updating: " << i << "\n";
-      workspace.update_component(i);
+      auto result = workspace.update_component(i);
+      if (!result.has_value()) {
+        spdlog::error("Failed to update component '{}'. See yakka.log for details: {}", i, result.error().message());
+        return -1;
+      }
     }
 
     std::cout << "Complete\n";

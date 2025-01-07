@@ -273,6 +273,19 @@ std::future<fs::path> workspace::fetch_component(std::string_view name, const YA
   });
 }
 
+std::expected<void, std::error_code> workspace::execute_git_command(std::string_view command, std::string_view git_directory_string)
+{
+  constexpr auto GIT_STRING = "git";
+  auto [output, result]     = yakka::exec(GIT_STRING, std::string(git_directory_string) + std::string(command));
+
+  if (result != 0) {
+    spdlog::error(output);
+    return std::unexpected(std::make_error_code(std::errc::protocol_error));
+  }
+  spdlog::debug(output);
+  return {};
+};
+
 // Modern implementation of registry fetching using std::expected
 std::expected<void, std::error_code> workspace::fetch_registry(std::string_view url)
 {
@@ -303,28 +316,16 @@ std::expected<void, std::error_code> workspace::update_component(std::string_vie
     return std::unexpected(std::make_error_code(std::errc::no_such_file_or_directory));
   }
 
-  // Using structured bindings for cleaner error handling
-  const auto execute_git_command = [&](std::string_view command) -> std::expected<void, std::error_code> {
-    auto [output, result] = yakka::exec(GIT_STRING, std::string(git_directory_string) + std::string(command));
-
-    if (result != 0) {
-      spdlog::error(output);
-      return std::unexpected(std::make_error_code(std::errc::protocol_error));
-    }
-    spdlog::debug(output);
-    return {};
-  };
-
   // Execute git commands in sequence
-  if (auto result = execute_git_command("stash"); !result) {
+  if (auto result = execute_git_command("stash", git_directory_string); !result) {
     return result;
   }
 
-  if (auto result = execute_git_command("pull --progress"); !result) {
+  if (auto result = execute_git_command("pull --progress", git_directory_string); !result) {
     return result;
   }
 
-  return execute_git_command("stash pop");
+  return execute_git_command("stash pop", git_directory_string);
 }
 
 // Modern implementation using C++23 features
