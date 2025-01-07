@@ -304,7 +304,6 @@ std::expected<void, std::error_code> workspace::fetch_registry(std::string_view 
 // Modern implementation of component updating using std::expected
 std::expected<void, std::error_code> workspace::update_component(std::string_view name)
 {
-  constexpr auto GIT_STRING = "git";
   std::string git_directory_string;
 
   // Determine git directory string based on component location

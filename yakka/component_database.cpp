@@ -3,6 +3,7 @@
 #include "ryml.hpp"
 #include "ryml_std.hpp"
 #include "utilities.hpp"
+#include "yakka.hpp"
 #include <ranges>
 #include <format>
 #include <fstream>
@@ -126,15 +127,22 @@ void component_database::scan_for_components(std::optional<path> search_start_pa
     const auto id    = path.stem().string();
 
     if (auto result = add_component(id, path); result && *result) {
-      if (ext == ".yakka") {
+      if (ext == yakka_component_extension || ext == yakka_component_old_extension) {
         parse_yakka_file(path, id);
+      } else if (ext == slcc_component_extension) {
+        spdlog::info("Found {}", path.string());
+        parse_slcc_file(path);
+      } else if (ext == slcp_component_extension) {
+        spdlog::info("Found project '{}'", path.string());
+        // parse_slcp_file(path);
       }
-      // Add other file type handling as needed
     }
   };
 
   auto entries = fs::recursive_directory_iterator(scan_path) | std::views::filter([](const auto &e) {
-                   return !e.is_directory() && e.path().filename().string().front() != '.';
+                   return !e.is_directory() && e.path().filename().string().front() != '.'
+                          && (e.path().extension() == yakka::yakka_component_extension || e.path().extension() == yakka::yakka_component_old_extension || e.path().extension() == yakka::slcc_component_extension
+                              || e.path().extension() == yakka::slcp_component_extension);
                  });
 
   std::ranges::for_each(entries, process_entry);
@@ -152,9 +160,28 @@ std::expected<path, error> component_database::get_component(std::string_view id
     return std::unexpected(std::make_error_code(std::errc::no_such_file_or_directory));
   }
 
-  // Implementation similar to original but using modern syntax
-  // ...existing implementation...
-  return workspace_path;
+  const auto &node = database["components"][std::string{ id }];
+
+  for (const auto &n: node) {
+    const auto path      = this->workspace_path / std::filesystem::path{ n.get<std::string>() };
+    const auto extension = path.extension();
+    if (flags == flag::IGNORE_ALL_SLC && ((extension == slcc_component_extension) || (extension == slce_component_extension) || (extension == slcp_component_extension)))
+      continue;
+    if (flags == flag::IGNORE_YAKKA && extension == yakka_component_extension)
+      continue;
+    if (flags == flag::ONLY_SLCC && ((extension == slce_component_extension) || (extension == slcp_component_extension)))
+      continue;
+    // If there is an SLCP and there is more than one entry, ignore the SLCP
+    if (extension == slcp_component_extension && node.size() > 1)
+      continue;
+    if (fs::exists(path)) {
+      return path;
+    } else {
+      spdlog::error("Couldn't find {}", path.string());
+      return {};
+    }
+  }
+  return {};
 }
 
 std::expected<std::string, error> component_database::get_component_id(const path &path) const
@@ -204,6 +231,78 @@ std::optional<json> component_database::get_feature_provider(std::string_view fe
     return database["features"][feature_str];
   }
   return std::nullopt;
+}
+
+std::expected<void, std::error_code> component_database::parse_slcc_file(const path &path)
+{
+  try {
+    std::vector<char> contents = yakka::get_file_contents<std::vector<char>>(path.string());
+    ryml::Tree tree            = ryml::parse_in_place(ryml::to_substr(contents));
+    auto root                  = tree.crootref();
+
+    c4::yml::ConstNodeRef id_node;
+    c4::yml::ConstNodeRef provides_node;
+    c4::yml::ConstNodeRef blueprint_node;
+
+    // Check if the slcc is an omap
+    if (root.is_seq()) {
+      for (const auto &c: root.children()) {
+        if (c.has_child("id"))
+          id_node = c["id"];
+        if (c.has_child("provides"))
+          provides_node = c["provides"];
+        if (c.has_child("blueprints"))
+          blueprint_node = c["blueprints"];
+      }
+    } else {
+      if (root.has_child("id"))
+        id_node = root["id"];
+      if (root.has_child("provides"))
+        provides_node = root["provides"];
+      if (root.has_child("blueprints"))
+        blueprint_node = root["blueprints"];
+    }
+
+    if (!id_node.valid()) {
+      return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+    }
+
+    std::string id_string = std::string(id_node.val().str, id_node.val().len);
+
+    auto result = add_component(id_string, path);
+    if (!result) {
+      return std::unexpected(result.error());
+    } else if (*result) {
+      if (provides_node.valid()) {
+        for (const auto &f: provides_node.children()) {
+          if (!f.has_child("name"))
+            continue;
+          auto feature_node        = f["name"].val();
+          std::string feature_name = std::string(feature_node.str, feature_node.len);
+          if (f.has_child("condition")) {
+            nlohmann::json node({ { "name", id_string }, { "condition", {} } });
+            for (const auto &c: f["condition"].children()) {
+              std::string condition_string = std::string(c.val().str, c.val().len);
+              node["condition"].push_back(condition_string);
+            }
+            database["features"][feature_name].push_back(node);
+          } else {
+            database["features"][feature_name].push_back(id_string);
+          }
+        }
+      }
+
+      if (blueprint_node.valid()) {
+        for (const auto &b: blueprint_node.children()) {
+          process_blueprint(database, id_string, b);
+        }
+      }
+    }
+
+    return {};
+  } catch (const std::exception &) {
+    return std::unexpected(std::make_error_code(std::errc::io_error));
+  }
 }
 
 static void process_blueprint(nlohmann::json &database, std::string_view id_string, const c4::yml::ConstNodeRef &blueprint_node)
